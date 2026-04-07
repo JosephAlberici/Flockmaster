@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Flockmaster Aviary</title>
   <style>
     body {
@@ -241,16 +242,16 @@
       border-top: 1px solid #b9b2a8;
     }
 
-    .overview-divider {
-      margin-top: 18px;
-      padding-top: 14px;
-      border-top: 1px solid #b9b2a8;
-    }
-
     .bird-summary:first-of-type {
       margin-top: 0;
       padding-top: 0;
       border-top: none;
+    }
+
+    .overview-divider {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
     }
 
     .bird-summary h3 {
@@ -272,6 +273,63 @@
       color: #f7f1e6;
       font-size: 14px;
       vertical-align: middle;
+    }
+
+    .upgrade-section-title {
+      margin: 0 0 14px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .upgrade-entry {
+      margin-bottom: 14px;
+    }
+
+    .upgrade-action-button {
+      display: block;
+      width: 100%;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .upgrade-requirement {
+      margin: 8px 0 0;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .upgrade-tooltip {
+      position: relative;
+      display: block;
+    }
+
+    .upgrade-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .upgrade-tooltip:hover .upgrade-tooltip-box {
+      visibility: visible;
+      opacity: 1;
     }
   </style>
 </head>
@@ -339,11 +397,6 @@
   <script src="game.js"></script>
   <script>
     const gameState = loadGameState();
-    const acquiredBirds = getAcquiredBirds(gameState);
-    const visitorsPerDay = getVisitorsPerDay(gameState);
-    const flock_diversity = getFlockDiversity(gameState);
-    const twigsPerSecond = getTwigsPerSecond(gameState);
-    const cityLivingTotals = getHabitatBirdTotals(gameState, "City Living");
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
     const visitorsPerDayDisplay = document.querySelector("#visPerDay");
@@ -365,24 +418,33 @@
     let activeOverviewMode = "minimize";
     let activeUpgradesMode = "minimize";
 
-    updateCoinsFromElapsedTime(gameState, Date.now());
-    renderTopBar(topBar, gameState);
-    startIncomeSystem(gameState, function () {
-      renderTopBar(topBar, gameState);
-    });
-    const urbanWatersTotals = getHabitatBirdTotals(gameState, "Urban Waters");
-    cityLivingHeader.textContent = "City Living (" + cityLivingTotals.acquiredSpecies + "/" + cityLivingTotals.totalSpecies + ")";
-    urbanWatersHeader.textContent = "Urban Waters (" + urbanWatersTotals.acquiredSpecies + "/" + urbanWatersTotals.totalSpecies + ")";
-    speciesCount.textContent = flock_diversity;
-    visitorsPerDayDisplay.textContent = visitorsPerDay;
-    twigsPerSecondDisplay.textContent = twigsPerSecond.toFixed(2);
-    coinsPerVisitorDisplay.textContent = "+0.1 coins/sec";
-    habitatsOwnedDisplay.textContent = gameState.ownedHabitats.length;
+    function getAcquiredBirdsSnapshot() {
+      return getAcquiredBirds(gameState);
+    }
+
+    function refreshAviarySummary() {
+      const cityLivingTotals = getHabitatBirdTotals(gameState, "City Living");
+      const urbanWatersTotals = getHabitatBirdTotals(gameState, "Urban Waters");
+
+      cityLivingHeader.textContent = "City Living (" + cityLivingTotals.acquiredSpecies + "/" + cityLivingTotals.totalSpecies + ")";
+      urbanWatersHeader.textContent = "Urban Waters (" + urbanWatersTotals.acquiredSpecies + "/" + urbanWatersTotals.totalSpecies + ")";
+      speciesCount.textContent = getFlockDiversity(gameState);
+      visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
+      twigsPerSecondDisplay.textContent = getTwigsPerSecond(gameState).toFixed(2);
+      coinsPerVisitorDisplay.textContent = "+" + getCoinsPerVisitorRate(gameState).toFixed(1) + " coins/sec";
+      habitatsOwnedDisplay.textContent = gameState.ownedHabitats.length;
+    }
 
     function setActiveOverviewButton() {
       overviewMinimizeButton.classList.toggle("is-active", activeOverviewMode === "minimize");
       overviewCityLivingButton.classList.toggle("is-active", activeOverviewMode === "city-living");
       overviewAllBirdsButton.classList.toggle("is-active", activeOverviewMode === "all-birds");
+    }
+
+    function setActiveUpgradesButton() {
+      upgradesMinimizeButton.classList.toggle("is-active", activeUpgradesMode === "minimize");
+      flockUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "flock");
+      aviaryUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "aviary");
     }
 
     function appendBirdSummary(bird) {
@@ -391,15 +453,16 @@
       birdSummary.innerHTML =
         "<h3>" + bird.species + "</h3>" +
         "<p class='stat-line'>" + bird.scientificName + "</p>" +
-        "<p class='stat-line'>Visitors Per Day: +" + bird.visitorsPerDay + "</p>" +
+        "<p class='stat-line'>Visitors Per Day: +" + getBirdVisitorRatePerDay(bird, gameState) + "</p>" +
         (typeof bird.twigsPerSecond === "number"
-          ? "<p class='stat-line'>Twigs Per Second: +" + bird.twigsPerSecond.toFixed(2) + "</p>"
+          ? "<p class='stat-line'>Twigs Per Second: +" + getBirdTwigRatePerSecond(bird, gameState).toFixed(2) + "</p>"
           : "") +
         "<p class='stat-line'>Rarity: " + bird.rarity + "</p>";
       birdOverviewList.appendChild(birdSummary);
     }
 
     function renderOverview() {
+      const acquiredBirds = getAcquiredBirdsSnapshot();
       birdOverviewList.innerHTML = "";
       setActiveOverviewButton();
 
@@ -422,15 +485,275 @@
       });
     }
 
-    function setActiveUpgradesButton() {
-      upgradesMinimizeButton.classList.toggle("is-active", activeUpgradesMode === "minimize");
-      flockUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "flock");
-      aviaryUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "aviary");
+    function renderHabitatPanel(habitatName, habitatBirdList) {
+      const acquiredBirds = getAcquiredBirdsSnapshot();
+      const birdsInHabitat = acquiredBirds.filter(function (bird) {
+        return bird.nativeHabitat === habitatName;
+      });
+
+      habitatBirdList.innerHTML = "";
+
+      if (!gameState.ownedHabitats.includes(habitatName)) {
+        habitatBirdList.classList.add("is-empty");
+        habitatBirdList.innerHTML = "<p class='habitat-empty'>Not Constructed</p>";
+        return;
+      }
+
+      if (birdsInHabitat.length === 0) {
+        habitatBirdList.classList.add("is-empty");
+        habitatBirdList.innerHTML = "<p class='habitat-empty'>No Birds Present</p>";
+        return;
+      }
+
+      habitatBirdList.classList.remove("is-empty");
+
+      birdsInHabitat.forEach(function (bird) {
+        const habitatFigure = document.createElement("figure");
+        habitatFigure.className = "habitat-bird-figure";
+        const totalVisitors = getBirdVisitorRatePerDay(bird, gameState) * bird.count;
+        const totalTwigs = getBirdTwigRatePerSecond(bird, gameState) * bird.count;
+
+        habitatFigure.innerHTML =
+          "<div class='habitat-bird-tooltip'>" +
+            "<p>Visitors Per Day: +" + totalVisitors + "</p>" +
+            (typeof bird.twigsPerSecond === "number"
+              ? "<p>Twigs Per Second: +" + totalTwigs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
+          "</div>" +
+          "<img src='" + bird.image + "' alt='" + bird.species + " inside the aviary habitat'>" +
+          "<figcaption>" + bird.species +
+            (bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
+          "</figcaption>";
+
+        habitatBirdList.appendChild(habitatFigure);
+
+        const habitatImage = habitatFigure.querySelector("img");
+        habitatImage.addEventListener("click", function () {
+          const birdCall = new Audio(bird.call);
+          birdCall.currentTime = 0;
+          birdCall.play();
+        });
+      });
+    }
+
+    function rerenderAviary() {
+      refreshAviarySummary();
+      renderTopBar(topBar, gameState);
+      renderOverview();
+      renderUpgradesOverview();
+      renderHabitatPanel("City Living", cityLivingBirdList);
+      renderHabitatPanel("Urban Waters", urbanWatersBirdList);
     }
 
     function renderUpgradesOverview() {
       upgradesOverviewList.innerHTML = "";
       setActiveUpgradesButton();
+
+      if (activeUpgradesMode === "minimize") {
+        return;
+      }
+
+      if (activeUpgradesMode === "flock") {
+        const flockTitle = document.createElement("p");
+        flockTitle.className = "upgrade-section-title";
+        flockTitle.textContent = "Population Bonuses";
+        upgradesOverviewList.appendChild(flockTitle);
+
+        const murderPartyEntry = document.createElement("div");
+        murderPartyEntry.className = "upgrade-entry";
+
+        const murderPartyTooltip = document.createElement("div");
+        murderPartyTooltip.className = "upgrade-tooltip";
+
+        const murderPartyButton = document.createElement("button");
+        murderPartyButton.className = "upgrade-action-button";
+        murderPartyButton.type = "button";
+        murderPartyButton.textContent = gameState.murderPartyPurchased
+          ? "Murder Party (Active)"
+          : "Murder Party";
+
+        murderPartyButton.addEventListener("click", function () {
+          const crowInFlock = gameState.birds.find(function (bird) {
+            return bird.id === "crow";
+          });
+
+          if (gameState.murderPartyPurchased) {
+            return;
+          }
+
+          if (!crowInFlock || crowInFlock.count < 3) {
+            return;
+          }
+
+          gameState.murderPartyPurchased = true;
+          saveGameState(gameState);
+          rerenderAviary();
+        });
+
+        const murderPartyTooltipBox = document.createElement("div");
+        murderPartyTooltipBox.className = "upgrade-tooltip-box";
+        murderPartyTooltipBox.textContent = "Doubles visitors per day generated by crows";
+
+        const murderPartyRequirement = document.createElement("p");
+        murderPartyRequirement.className = "upgrade-requirement";
+        murderPartyRequirement.textContent = "Requires: " + formatLargeNumber(3) + " Crows";
+
+        murderPartyTooltip.appendChild(murderPartyButton);
+        murderPartyTooltip.appendChild(murderPartyTooltipBox);
+        murderPartyEntry.appendChild(murderPartyTooltip);
+        murderPartyEntry.appendChild(murderPartyRequirement);
+        upgradesOverviewList.appendChild(murderPartyEntry);
+        return;
+      }
+
+      const constructTitle = document.createElement("p");
+      constructTitle.className = "upgrade-section-title";
+      constructTitle.textContent = "Construct Habitats";
+      upgradesOverviewList.appendChild(constructTitle);
+
+      const urbanWatersEntry = document.createElement("div");
+      urbanWatersEntry.className = "upgrade-entry";
+
+      const urbanWatersTooltip = document.createElement("div");
+      urbanWatersTooltip.className = "upgrade-tooltip";
+
+      const urbanWatersButton = document.createElement("button");
+      urbanWatersButton.className = "upgrade-action-button";
+      urbanWatersButton.type = "button";
+      urbanWatersButton.textContent = gameState.ownedHabitats.includes("Urban Waters")
+        ? "Urban Waters (Constructed)"
+        : "Urban Waters (" + formatLargeNumber(10000) + " Coins)";
+
+      urbanWatersButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.ownedHabitats.includes("Urban Waters")) {
+          return;
+        }
+
+        if (getTotalBirdCount(gameState) < 20 || gameState.coins < 10000) {
+          return;
+        }
+
+        gameState.coins -= 10000;
+        gameState.ownedHabitats.push("Urban Waters");
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      urbanWatersTooltip.appendChild(urbanWatersButton);
+      urbanWatersEntry.appendChild(urbanWatersTooltip);
+
+      const urbanWatersRequirement = document.createElement("p");
+      urbanWatersRequirement.className = "upgrade-requirement";
+      urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(20) + " Birds";
+      urbanWatersEntry.appendChild(urbanWatersRequirement);
+      upgradesOverviewList.appendChild(urbanWatersEntry);
+
+      const divider = document.createElement("div");
+      divider.className = "overview-divider";
+      upgradesOverviewList.appendChild(divider);
+
+      const amenitiesTitle = document.createElement("p");
+      amenitiesTitle.className = "upgrade-section-title";
+      amenitiesTitle.textContent = "Amenities";
+      upgradesOverviewList.appendChild(amenitiesTitle);
+
+      const cafeEntry = document.createElement("div");
+      cafeEntry.className = "upgrade-entry";
+
+      const cafeTooltip = document.createElement("div");
+      cafeTooltip.className = "upgrade-tooltip";
+
+      const cafeButton = document.createElement("button");
+      cafeButton.className = "upgrade-action-button";
+      cafeButton.type = "button";
+      cafeButton.textContent = gameState.cafePurchased
+        ? "Café (Owned)"
+        : "Café (" + formatLargeNumber(1000) + " Coins)";
+
+      cafeButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.cafePurchased) {
+          return;
+        }
+
+        if (getFlockDiversity(gameState) < 3 || gameState.coins < 1000) {
+          return;
+        }
+
+        gameState.coins -= 1000;
+        gameState.cafePurchased = true;
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const cafeTooltipBox = document.createElement("div");
+      cafeTooltipBox.className = "upgrade-tooltip-box";
+      cafeTooltipBox.textContent = "Adds +0.1 coins/sec for every visitor per day";
+
+      cafeTooltip.appendChild(cafeButton);
+      cafeTooltip.appendChild(cafeTooltipBox);
+      cafeEntry.appendChild(cafeTooltip);
+
+      const cafeRequirement = document.createElement("p");
+      cafeRequirement.className = "upgrade-requirement";
+      cafeRequirement.textContent = "Requires: " + formatLargeNumber(3) + " Species";
+      cafeEntry.appendChild(cafeRequirement);
+      upgradesOverviewList.appendChild(cafeEntry);
+
+      const indoorGardenEntry = document.createElement("div");
+      indoorGardenEntry.className = "upgrade-entry";
+
+      const indoorGardenTooltip = document.createElement("div");
+      indoorGardenTooltip.className = "upgrade-tooltip";
+
+      const indoorGardenButton = document.createElement("button");
+      indoorGardenButton.className = "upgrade-action-button";
+      indoorGardenButton.type = "button";
+      indoorGardenButton.textContent = gameState.indoorGardenPurchased
+        ? "Indoor Garden (Owned)"
+        : "Indoor Garden (" + formatLargeNumber(10000) + " Seeds)";
+
+      indoorGardenButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        const kestrelInFlock = gameState.birds.find(function (bird) {
+          return bird.id === "kestrel";
+        });
+
+        if (gameState.indoorGardenPurchased) {
+          return;
+        }
+
+        if (!kestrelInFlock || kestrelInFlock.count < 2) {
+          return;
+        }
+
+        if (gameState.seeds < 10000) {
+          return;
+        }
+
+        gameState.seeds -= 10000;
+        gameState.indoorGardenPurchased = true;
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const indoorGardenTooltipBox = document.createElement("div");
+      indoorGardenTooltipBox.className = "upgrade-tooltip-box";
+      indoorGardenTooltipBox.textContent = "Doubles twigs per second generated by kestrels";
+
+      indoorGardenTooltip.appendChild(indoorGardenButton);
+      indoorGardenTooltip.appendChild(indoorGardenTooltipBox);
+      indoorGardenEntry.appendChild(indoorGardenTooltip);
+
+      const indoorGardenRequirement = document.createElement("p");
+      indoorGardenRequirement.className = "upgrade-requirement";
+      indoorGardenRequirement.textContent = "Requires: " + formatLargeNumber(2) + " Kestrels";
+      indoorGardenEntry.appendChild(indoorGardenRequirement);
+      upgradesOverviewList.appendChild(indoorGardenEntry);
     }
 
     overviewMinimizeButton.addEventListener("click", function () {
@@ -463,54 +786,18 @@
       renderUpgradesOverview();
     });
 
-    function renderHabitatPanel(habitatName, habitatBirdList) {
-      const birdsInHabitat = acquiredBirds.filter(function (bird) {
-        return bird.nativeHabitat === habitatName;
-      });
-
-      habitatBirdList.innerHTML = "";
-
-      if (birdsInHabitat.length === 0) {
-        habitatBirdList.classList.add("is-empty");
-        habitatBirdList.innerHTML = "<p class='habitat-empty'>Not Constructed</p>";
-        return;
-      }
-
-      habitatBirdList.classList.remove("is-empty");
-
-      birdsInHabitat.forEach(function (bird) {
-      const habitatFigure = document.createElement("figure");
-      habitatFigure.className = "habitat-bird-figure";
-      const totalVisitors = bird.visitorsPerDay * bird.count;
-      const totalTwigs = (bird.twigsPerSecond || 0) * bird.count;
-      habitatFigure.innerHTML =
-        "<div class='habitat-bird-tooltip'>" +
-        "<p>Visitors Per Day: +" + totalVisitors + "</p>" +
-        (typeof bird.twigsPerSecond === "number"
-          ? "<p>Twigs Per Second: +" + totalTwigs.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') + "</p>"
-          : "") +
-        "</div>" +
-        "<img src='" + bird.image + "' alt='" + bird.species + " inside the aviary habitat'>" +
-        "<figcaption>" + bird.species +
-        (bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
-        "</figcaption>";
-      habitatBirdList.appendChild(habitatFigure);
-
-      const habitatImage = habitatFigure.querySelector("img");
-
-      habitatImage.addEventListener("click", function () {
-        const birdCall = new Audio(bird.call);
-        birdCall.currentTime = 0;
-        birdCall.play();
-      });
-      });
-    }
-
-    renderHabitatPanel("City Living", cityLivingBirdList);
-    renderHabitatPanel("Urban Waters", urbanWatersBirdList);
-
+    updateCoinsFromElapsedTime(gameState, Date.now());
+    renderTopBar(topBar, gameState);
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+      refreshAviarySummary();
+    });
+    refreshAviarySummary();
     renderOverview();
     renderUpgradesOverview();
+    renderHabitatPanel("City Living", cityLivingBirdList);
+    renderHabitatPanel("Urban Waters", urbanWatersBirdList);
   </script>
 </body>
 </html>
+

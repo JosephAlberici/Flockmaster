@@ -55,6 +55,9 @@ function createDefaultGameState() {
     ownedHabitats: ["City Living"],
     newPlotPurchased: false,
     basicBeddingPurchased: false,
+    cafePurchased: false,
+    indoorGardenPurchased: false,
+    murderPartyPurchased: false,
     appleTrees: 0,
     pearTrees: 0,
     peachTrees: 0,
@@ -160,6 +163,18 @@ function loadGameState() {
       parsedGameState.basicBeddingPurchased = false;
     }
 
+    if (typeof parsedGameState.cafePurchased !== "boolean") {
+      parsedGameState.cafePurchased = false;
+    }
+
+    if (typeof parsedGameState.indoorGardenPurchased !== "boolean") {
+      parsedGameState.indoorGardenPurchased = false;
+    }
+
+    if (typeof parsedGameState.murderPartyPurchased !== "boolean") {
+      parsedGameState.murderPartyPurchased = false;
+    }
+
     parsedGameState.birds = mergeBirdProgress(parsedGameState.birds);
 
     return parsedGameState;
@@ -170,6 +185,16 @@ function loadGameState() {
   }
 }
 
+function getBirdVisitorRatePerDay(bird, gameState) {
+  let visitorRate = bird.visitorsPerDay || 0;
+
+  if (gameState.murderPartyPurchased && bird.id === "crow") {
+    visitorRate *= 2;
+  }
+
+  return visitorRate;
+}
+
 function getAcquiredBirds(gameState) {
   return gameState.birds.filter(function (bird) {
     return (typeof bird.count === "number" ? bird.count > 0 : bird.acquired === true);
@@ -178,7 +203,7 @@ function getAcquiredBirds(gameState) {
 
 function getVisitorsPerDay(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    return total + bird.visitorsPerDay * bird.count;
+    return total + getBirdVisitorRatePerDay(bird, gameState) * bird.count;
   }, 0);
 }
 
@@ -225,6 +250,16 @@ function getTotalBirdCount(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
     return total + bird.count;
   }, 0);
+}
+
+function getBirdTwigRatePerSecond(bird, gameState) {
+  let twigRate = bird.twigsPerSecond || 0;
+
+  if (gameState.indoorGardenPurchased && bird.id === "kestrel") {
+    twigRate *= 2;
+  }
+
+  return twigRate;
 }
 
 function getEffectiveRarityWeights(birdPool) {
@@ -323,7 +358,11 @@ function getRandomBirdByRarityForGameState(birdPool, gameState) {
 }
 
 function getCoinsPerSecond(gameState) {
-  return getVisitorsPerDay(gameState) * 0.1;
+  return getVisitorsPerDay(gameState) * getCoinsPerVisitorRate(gameState);
+}
+
+function getCoinsPerVisitorRate(gameState) {
+  return gameState.cafePurchased ? 0.2 : 0.1;
 }
 
 function getSeedsPerSecond(gameState) {
@@ -336,7 +375,7 @@ function getSeedsPerSecond(gameState) {
 
 function getTwigsPerSecond(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    return total + ((bird.twigsPerSecond || 0) * bird.count);
+    return total + (getBirdTwigRatePerSecond(bird, gameState) * bird.count);
   }, 0);
 }
 
@@ -395,6 +434,7 @@ function renderTopBar(topBarElement, gameState) {
             "<span class='top-bar-tooltip-box top-bar-twigs-tooltip'></span>" +
           "</span></span>" +
           " | <span class='top-bar-birds'></span>" +
+          " | <span class='top-bar-species'></span>" +
         "</div>" +
         "<a class='top-bar-link' href='settings.html'>Settings</a>" +
       "</div>";
@@ -411,7 +451,8 @@ function renderTopBar(topBarElement, gameState) {
     "Twigs from birds: " + twigsPerSecond.toFixed(2) + " twigs/sec";
   topBarElement.querySelector(".top-bar-twigs-wrapper").style.display =
     (gameState.twigs >= 1 || twigsPerSecond > 0) ? "inline" : "none";
-  topBarElement.querySelector(".top-bar-birds").textContent = "Birds: " + totalBirds;
+  topBarElement.querySelector(".top-bar-birds").textContent = "Individuals: " + totalBirds;
+  topBarElement.querySelector(".top-bar-species").textContent = "Species: " + getFlockDiversity(gameState);
 }
 
 function updateCoinsFromElapsedTime(gameState, currentTime) {
