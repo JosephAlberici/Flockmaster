@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flockmaster Bird Catching</title>
+  <style>
+    body {
+      background-color: #b8b8b8;
+      font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+      margin: 0;
+      color: #1f2a36;
+    }
+
+    .top-bar {
+      background: #2c3e50;
+      color: #f7f1e6;
+      padding: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-sizing: border-box;
+    }
+
+    .top-bar-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .top-bar-link {
+      color: #f7f1e6;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .top-bar-tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: default;
+    }
+
+    .top-bar-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+      letter-spacing: 0;
+    }
+
+    .top-bar-tooltip:hover .top-bar-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .page-title {
+      color: #2c3e50;
+      letter-spacing: 2px;
+      margin: 28px 0 8px;
+      text-align: center;
+      text-shadow: 1px 1px 0 #d9d9d9;
+    }
+
+    .page-layout {
+      display: flex;
+      gap: 28px;
+      padding: 24px 32px 40px;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+
+    .catching-sidebar {
+      width: 40%;
+    }
+
+    .catching-panel {
+      width: 60%;
+      min-height: 360px;
+      background: #8fbc7a;
+      border: 3px solid #2c3e50;
+      border-radius: 18px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-sizing: border-box;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .menu-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 12px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .panel-header {
+      margin-top: 0;
+      color: #17311e;
+      letter-spacing: 1px;
+    }
+
+    .trap-panel-content {
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .panel-note {
+      font-size: 18px;
+      color: #17311e;
+      margin-bottom: 20px;
+    }
+
+    .trap-image {
+      max-width: 85%;
+      max-height: 260px;
+      margin-bottom: 24px;
+    }
+
+    .upgrade-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .upgrade-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .upgrade-tooltip:hover .upgrade-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .shop-row {
+      display: inline-block;
+      vertical-align: top;
+      margin-right: 12px;
+      margin-bottom: 12px;
+    }
+
+    .shop-count {
+      margin: 0 0 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .shop-max {
+      margin: -8px 0 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .shop-divider {
+      width: 100%;
+      margin: 8px 0 14px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .upgrade-divider {
+      margin: 16px 0 18px;
+      padding-top: 16px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .catch-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 42, 54, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .catch-overlay.is-visible {
+      display: flex;
+    }
+
+    .catch-overlay-card {
+      background: #f7f1e6;
+      border: 3px solid black;
+      border-radius: 24px;
+      padding: 28px;
+      max-width: 760px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .catch-overlay-title {
+      margin-top: 0;
+      color: #2c3e50;
+      letter-spacing: 1px;
+    }
+
+    .catch-overlay-image {
+      max-width: 100%;
+      max-height: 360px;
+      margin: 16px auto 20px;
+      display: block;
+    }
+
+    .catch-overlay-text {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top-bar" id="topBar"></div>
+
+  <div class="catch-overlay" id="catchOverlay">
+    <div class="catch-overlay-card">
+      <h2 class="catch-overlay-title">NEW BIRD CAUGHT</h2>
+      <img class="catch-overlay-image" id="catchOverlayImage" alt="">
+      <p class="catch-overlay-text" id="catchOverlayText"></p>
+      <button class="menu-button" type="button" id="catchOverlayClose">Continue</button>
+    </div>
+  </div>
+
+  <h1 class="page-title">BIRD CATCHING</h1>
+
+  <div class="page-layout">
+    <div class="catching-sidebar">
+      <div class="card">
+        <a class="menu-button" href="aviary.html">Return To Aviary</a>
+      </div>
+
+      <div class="card" id="upgradesCard">
+        <h2>Upgrades</h2>
+        <div id="upgradesList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sapling Shop</h2>
+        <div id="saplingShopList"></div>
+      </div>
+    </div>
+
+    <div class="catching-panel">
+      <h2 class="panel-header">Check Trap</h2>
+      <div class="trap-panel-content" id="trapPanelContent"></div>
+    </div>
+  </div>
+
+  <script src="birds.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const gameState = loadGameState();
+    const topBar = document.querySelector("#topBar");
+    const upgradesList = document.querySelector("#upgradesList");
+    const saplingShopList = document.querySelector("#saplingShopList");
+    const trapPanelContent = document.querySelector("#trapPanelContent");
+    const catchOverlay = document.querySelector("#catchOverlay");
+    const catchOverlayImage = document.querySelector("#catchOverlayImage");
+    const catchOverlayText = document.querySelector("#catchOverlayText");
+    const catchOverlayClose = document.querySelector("#catchOverlayClose");
+
+    updateCoinsFromElapsedTime(gameState, Date.now());
+    renderTopBar(topBar, gameState);
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
+
+    function showCaughtBirdOverlay(bird) {
+      catchOverlayImage.src = bird.image;
+      catchOverlayImage.alt = bird.species;
+      catchOverlayText.textContent = "Congratulations: you caught a " + bird.species;
+      catchOverlay.classList.add("is-visible");
+
+      const birdCall = new Audio(bird.call);
+      birdCall.currentTime = 0;
+      birdCall.play();
+    }
+
+    catchOverlayClose.addEventListener("click", function () {
+      catchOverlay.classList.remove("is-visible");
+    });
+
+    function createUpgradeTooltipButton(labelText) {
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+      tooltipWrapper.style.display = "block";
+
+      const button = document.createElement("button");
+      button.className = "menu-button";
+      button.type = "button";
+      button.style.width = "100%";
+      button.style.marginRight = "0";
+      button.textContent = labelText;
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = "Increases Chance of Catching Rare Birds (-5% to Common Catch Rate)";
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+
+      return tooltipWrapper;
+    }
+
+    function createBeddingUpgradeButton(config) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "shop-row";
+      wrapper.style.display = "block";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+      tooltipWrapper.style.display = "block";
+
+      const button = document.createElement("button");
+      button.className = "menu-button";
+      button.type = "button";
+      button.style.width = "100%";
+      button.style.marginRight = "0";
+      button.textContent = gameState[config.ownedKey]
+        ? config.label + " (Owned)"
+        : config.label;
+
+      button.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState[config.ownedKey]) {
+          return;
+        }
+
+        if (gameState.twigs < config.twigCost) {
+          return;
+        }
+
+        if (getCaughtBirdCountByRarity(gameState, "Common") < config.commonRequirement) {
+          return;
+        }
+
+        gameState.twigs -= config.twigCost;
+        gameState[config.ownedKey] = true;
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderUpgrades();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = config.tooltipText;
+
+      const requirementLine = document.createElement("p");
+      requirementLine.className = "shop-count";
+      requirementLine.textContent =
+        "Requires: " + formatLargeNumber(config.twigCost) + " Twigs | " + formatLargeNumber(config.commonRequirement) + " Common Birds";
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+      wrapper.appendChild(tooltipWrapper);
+      wrapper.appendChild(requirementLine);
+
+      return wrapper;
+    }
+
+    function createStorageUpgradeButton(config) {
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+
+      const button = document.createElement("button");
+      button.className = "menu-button";
+      button.type = "button";
+
+      if (gameState.seedMax >= config.newMax) {
+        button.textContent = config.label + " (Owned)";
+      } else {
+        button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Coins)";
+      }
+
+      button.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.seedMax >= config.newMax) {
+          return;
+        }
+
+        if (gameState.coins < config.cost) {
+          return;
+        }
+
+        gameState.coins -= config.cost;
+        gameState.seedMax = config.newMax;
+        if (gameState.seeds > gameState.seedMax) {
+          gameState.seeds = gameState.seedMax;
+        }
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderUpgrades();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = config.tooltipText;
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+
+      return tooltipWrapper;
+    }
+
+    function createWildlifeRestorationButton() {
+      const wrapper = document.createElement("div");
+      wrapper.className = "shop-row";
+      wrapper.style.display = "block";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+      tooltipWrapper.style.display = "block";
+
+      const button = document.createElement("button");
+      button.className = "menu-button";
+      button.type = "button";
+      button.style.width = "100%";
+      button.style.marginRight = "0";
+      button.textContent = "Wildlife Restoration (" + formatLargeNumber(1000000) + " Seeds)";
+
+      button.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.seeds < 1000000) {
+          return;
+        }
+
+        gameState.seeds -= 1000000;
+        gameState.trapLoadCost = 1000;
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderTrapPanel();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = "Resets cost to load trap";
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+      wrapper.appendChild(tooltipWrapper);
+
+      return wrapper;
+    }
+
+    function createSaplingButton(config) {
+      const shopRow = document.createElement("div");
+      shopRow.className = "shop-row";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+
+      const button = document.createElement("button");
+      button.className = "menu-button";
+      button.type = "button";
+      const treeMaxCount = getTreeMaxCount(gameState);
+
+      if (gameState[config.countKey] >= treeMaxCount) {
+        button.textContent = config.label + " (Maxed)";
+      } else {
+        button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Coins)";
+      }
+
+      button.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState[config.countKey] >= getTreeMaxCount(gameState)) {
+          return;
+        }
+
+        if (gameState.coins < config.cost) {
+          return;
+        }
+
+        gameState.coins -= config.cost;
+        gameState[config.countKey] += 1;
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderSaplingShop();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = config.rateText + " | Max owned: " + formatLargeNumber(treeMaxCount);
+
+      const countLine = document.createElement("p");
+      countLine.className = "shop-count";
+      countLine.textContent = "Owned: " + formatLargeNumber(gameState[config.countKey]);
+
+      const maxLine = document.createElement("p");
+      maxLine.className = "shop-max";
+      maxLine.textContent = "Max: " + formatLargeNumber(treeMaxCount);
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+      shopRow.appendChild(tooltipWrapper);
+      shopRow.appendChild(countLine);
+      shopRow.appendChild(maxLine);
+
+      return shopRow;
+    }
+
+    function renderSaplingShop() {
+      saplingShopList.innerHTML = "";
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Apple Tree",
+        cost: 100,
+        countKey: "appleTrees",
+        rateText: "Provides 1.0 seeds/sec"
+      }));
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Pear Tree",
+        cost: 500,
+        countKey: "pearTrees",
+        rateText: "Provides 3.0 seeds/sec"
+      }));
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Peach Tree",
+        cost: 2000,
+        countKey: "peachTrees",
+        rateText: "Provides 5.0 seeds/sec"
+      }));
+
+      const divider = document.createElement("div");
+      divider.className = "shop-divider";
+      saplingShopList.appendChild(divider);
+
+      const newPlotUpgrade = document.createElement("div");
+      newPlotUpgrade.className = "shop-row";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+
+      const newPlotButton = document.createElement("button");
+      newPlotButton.className = "menu-button";
+      newPlotButton.type = "button";
+
+      if (gameState.newPlotPurchased) {
+        newPlotButton.textContent = "New Plot (Owned)";
+      } else {
+        newPlotButton.textContent = "New Plot (" + formatLargeNumber(2000) + " Coins)";
+      }
+
+      newPlotButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.newPlotPurchased) {
+          return;
+        }
+
+        if (getFlockDiversity(gameState) < 5) {
+          return;
+        }
+
+        if (gameState.coins < 2000) {
+          return;
+        }
+
+        gameState.coins -= 2000;
+        gameState.newPlotPurchased = true;
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderSaplingShop();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = "Increases number of trees you can own";
+
+      const countLine = document.createElement("p");
+      countLine.className = "shop-count";
+      countLine.textContent = "Requirement: 5 Species";
+
+      tooltipWrapper.appendChild(newPlotButton);
+      tooltipWrapper.appendChild(tooltipBox);
+      newPlotUpgrade.appendChild(tooltipWrapper);
+      newPlotUpgrade.appendChild(countLine);
+      saplingShopList.appendChild(newPlotUpgrade);
+    }
+
+    function renderTrapPanel() {
+      trapPanelContent.innerHTML = "";
+
+      if (!gameState.trapPurchased) {
+        return;
+      }
+
+      const trapNote = document.createElement("p");
+      trapNote.className = "panel-note";
+      if (gameState.trapPulled) {
+        trapNote.textContent = "The trap has been pulled.";
+      } else if (gameState.trapLoaded) {
+        trapNote.textContent = "Your trap is loaded and ready.";
+      } else if (gameState.lastTrapResult) {
+        trapNote.textContent = gameState.lastTrapResult;
+      } else {
+        trapNote.textContent = "Your trap is ready to be baited.";
+      }
+
+      const trapImage = document.createElement("img");
+      trapImage.className = "trap-image";
+      if (gameState.trapPulled) {
+        trapImage.src = "/Resources/Misc%20Images/pulledTrap.png";
+        trapImage.alt = "Pulled bird trap";
+      } else if (gameState.trapLoaded) {
+        trapImage.src = "/Resources/Misc%20Images/loadedTrap.png";
+        trapImage.alt = "Loaded bird trap";
+      } else {
+        trapImage.src = "/Resources/Misc%20Images/unloadedTrap.png";
+        trapImage.alt = "Unloaded bird trap";
+      }
+
+      trapPanelContent.appendChild(trapImage);
+      trapPanelContent.appendChild(trapNote);
+
+      if (gameState.trapPulled) {
+        const checkTrapButton = document.createElement("button");
+        checkTrapButton.className = "menu-button";
+        checkTrapButton.type = "button";
+        checkTrapButton.textContent = "Check Trap";
+
+        checkTrapButton.addEventListener("click", function () {
+          const catchRoll = Math.random();
+          const catchableBirds = getCatchableBirds(gameState);
+
+          if (catchRoll < gameState.catchRate) {
+            if (catchableBirds.length === 0) {
+              gameState.lastTrapResult = "No new birds can be caught in your current habitats.";
+            } else {
+              const caughtBird = getRandomBirdByRarityForGameState(catchableBirds, gameState);
+              const birdInFlock = gameState.birds.find(function (bird) {
+                return bird.id === caughtBird.id;
+              });
+
+              const alreadyOwned = birdInFlock.count > 0;
+
+              birdInFlock.acquired = true;
+              birdInFlock.count += 1;
+
+              if (alreadyOwned) {
+                gameState.lastTrapResult = "You caught another " + caughtBird.species + ".";
+              } else {
+                gameState.lastTrapResult = "Caught: " + caughtBird.species;
+                showCaughtBirdOverlay(caughtBird);
+              }
+            }
+          } else {
+            gameState.lastTrapResult = "Trap Empty";
+          }
+
+          gameState.trapLoaded = false;
+          gameState.trapPulled = false;
+          gameState.trapLoadCost *= 1.3;
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          renderTrapPanel();
+        });
+
+        trapPanelContent.appendChild(checkTrapButton);
+        return;
+      }
+
+      if (!gameState.trapLoaded) {
+        const loadTrapButton = document.createElement("button");
+        loadTrapButton.className = "menu-button";
+        loadTrapButton.type = "button";
+        loadTrapButton.textContent = "Load Trap (" + formatLargeNumber(Math.ceil(gameState.trapLoadCost)) + " Seeds)";
+
+        loadTrapButton.addEventListener("click", function () {
+          updateCoinsFromElapsedTime(gameState, Date.now());
+
+          if (gameState.seeds < gameState.trapLoadCost) {
+            return;
+          }
+
+          gameState.seeds -= gameState.trapLoadCost;
+          gameState.trapLoaded = true;
+          gameState.trapPulled = false;
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          renderTrapPanel();
+        });
+
+        trapPanelContent.appendChild(loadTrapButton);
+      }
+
+      if (gameState.trapLoaded) {
+        const initiateProtocolButton = document.createElement("button");
+        initiateProtocolButton.className = "menu-button";
+        initiateProtocolButton.type = "button";
+        initiateProtocolButton.textContent = "Initiate Avian Isolation Protocol";
+
+        initiateProtocolButton.addEventListener("click", function () {
+          gameState.trapPulled = true;
+          saveGameState(gameState);
+          renderTrapPanel();
+        });
+
+        trapPanelContent.appendChild(initiateProtocolButton);
+      }
+    }
+
+    function renderUpgrades() {
+      upgradesList.innerHTML = "";
+
+      if (!gameState.trapPurchased) {
+        const buyTrapButton = document.createElement("button");
+        buyTrapButton.className = "menu-button";
+        buyTrapButton.type = "button";
+        buyTrapButton.textContent = "Buy Trap (" + formatLargeNumber(50) + " Coins)";
+
+        buyTrapButton.addEventListener("click", function () {
+          updateCoinsFromElapsedTime(gameState, Date.now());
+
+          if (gameState.coins < 50) {
+            return;
+          }
+
+          gameState.coins -= 50;
+          gameState.trapPurchased = true;
+          gameState.trapLoaded = false;
+          gameState.trapPulled = false;
+          gameState.lastTrapResult = "";
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          renderUpgrades();
+          renderTrapPanel();
+        });
+
+        upgradesList.appendChild(buyTrapButton);
+      }
+
+      const beddingLabel = document.createElement("p");
+      beddingLabel.className = "shop-count";
+      beddingLabel.style.textAlign = "left";
+      beddingLabel.textContent = "Bedding: Modifies Catch Rates";
+      upgradesList.appendChild(beddingLabel);
+
+      upgradesList.appendChild(createBeddingUpgradeButton({
+        label: "Basic Bedding",
+        ownedKey: "basicBeddingPurchased",
+        twigCost: 20,
+        commonRequirement: 10,
+        tooltipText: "-5% Common, +4% Uncommon, +1% Rare"
+      }));
+      upgradesList.appendChild(createUpgradeTooltipButton("Advanced Bedding"));
+
+      const divider = document.createElement("div");
+      divider.className = "upgrade-divider";
+      upgradesList.appendChild(divider);
+
+      const storageLabel = document.createElement("p");
+      storageLabel.className = "shop-count";
+      storageLabel.style.textAlign = "left";
+      storageLabel.textContent = "Storage: Increase Max Seeds";
+      upgradesList.appendChild(storageLabel);
+
+      upgradesList.appendChild(createStorageUpgradeButton({
+        label: "Seed Pouch",
+        cost: 500,
+        newMax: 50000,
+        tooltipText: "Increases maximum seeds to 50,000"
+      }));
+
+      upgradesList.appendChild(createStorageUpgradeButton({
+        label: "Seed Bank",
+        cost: 20000,
+        newMax: 1000000,
+        tooltipText: "Increases maximum seeds to 1,000,000"
+      }));
+
+      const storageDivider = document.createElement("div");
+      storageDivider.className = "upgrade-divider";
+      upgradesList.appendChild(storageDivider);
+
+      upgradesList.appendChild(createWildlifeRestorationButton());
+    }
+
+    renderSaplingShop();
+    renderUpgrades();
+    renderTrapPanel();
+  </script>
+</body>
+</html>

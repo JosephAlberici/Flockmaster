@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flockmaster Settings</title>
+  <style>
+    body {
+      background-color: #b8b8b8;
+      font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+      margin: 0;
+      color: #1f2a36;
+    }
+
+    .top-bar {
+      background: #2c3e50;
+      color: #f7f1e6;
+      padding: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-sizing: border-box;
+    }
+
+    .top-bar-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .top-bar-link {
+      color: #f7f1e6;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .top-bar-tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: default;
+    }
+
+    .top-bar-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+      letter-spacing: 0;
+    }
+
+    .top-bar-tooltip:hover .top-bar-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .settings-shell {
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 24px;
+      box-sizing: border-box;
+    }
+
+    .settings-card {
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 24px;
+    }
+
+    .page-title {
+      color: #2c3e50;
+      margin-top: 0;
+      letter-spacing: 2px;
+      text-shadow: 1px 1px 0 #d9d9d9;
+    }
+
+    .back-link {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .settings-actions {
+      margin-top: 24px;
+    }
+
+    .settings-actions button,
+    .settings-actions a {
+      margin-right: 12px;
+      margin-bottom: 12px;
+    }
+
+    .danger-button {
+      display: inline-block;
+      background: #8a2d2d;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .action-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .confirm-box {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #b9b2a8;
+      display: none;
+    }
+
+    .confirm-box.is-visible {
+      display: block;
+    }
+
+    .confirm-text {
+      margin: 0 0 16px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top-bar" id="topBar"></div>
+
+  <div class="settings-shell">
+    <div class="settings-card">
+      <h1 class="page-title">SETTINGS</h1>
+      <a class="back-link" href="index.html">Back To Home</a>
+
+      <div class="settings-actions">
+        <button class="action-button" type="button" id="exportSaveButton">Export Save</button>
+        <button class="action-button" type="button" id="importSaveButton">Import Save</button>
+        <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
+      </div>
+
+      <input type="file" id="importSaveInput" accept=".txt" style="display: none;">
+
+      <div class="confirm-box" id="eraseConfirmBox">
+        <p class="confirm-text">Are you sure? This will permanently erase your current save.</p>
+        <button class="danger-button" type="button" id="confirmEraseButton">Yes, Erase Save</button>
+        <button class="back-link" type="button" id="cancelEraseButton">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="birds.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const gameState = loadGameState();
+    const topBar = document.querySelector("#topBar");
+    const exportSaveButton = document.querySelector("#exportSaveButton");
+    const importSaveButton = document.querySelector("#importSaveButton");
+    const importSaveInput = document.querySelector("#importSaveInput");
+    const eraseProgressButton = document.querySelector("#eraseProgressButton");
+    const eraseConfirmBox = document.querySelector("#eraseConfirmBox");
+    const confirmEraseButton = document.querySelector("#confirmEraseButton");
+    const cancelEraseButton = document.querySelector("#cancelEraseButton");
+
+    updateCoinsFromElapsedTime(gameState, Date.now());
+    renderTopBar(topBar, gameState);
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
+
+    exportSaveButton.addEventListener("click", function () {
+      updateCoinsFromElapsedTime(gameState, Date.now());
+
+      const saveText = JSON.stringify(gameState, null, 2);
+      const saveBlob = new Blob([saveText], { type: "text/plain" });
+      const downloadUrl = URL.createObjectURL(saveBlob);
+      const downloadLink = document.createElement("a");
+
+      downloadLink.href = downloadUrl;
+      downloadLink.download = "flockmaster_save.txt";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(downloadUrl);
+    });
+
+    importSaveButton.addEventListener("click", function () {
+      importSaveInput.click();
+    });
+
+    importSaveInput.addEventListener("change", async function () {
+      const selectedFile = importSaveInput.files[0];
+
+      if (!selectedFile) {
+        return;
+      }
+
+      try {
+        const fileText = await selectedFile.text();
+        importGameProgress(fileText);
+        window.location.reload();
+      } catch (error) {
+        alert("That save file could not be imported.");
+      } finally {
+        importSaveInput.value = "";
+      }
+    });
+
+    eraseProgressButton.addEventListener("click", function () {
+      eraseConfirmBox.classList.add("is-visible");
+    });
+
+    cancelEraseButton.addEventListener("click", function () {
+      eraseConfirmBox.classList.remove("is-visible");
+    });
+
+    confirmEraseButton.addEventListener("click", function () {
+      eraseGameProgress();
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
