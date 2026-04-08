@@ -155,6 +155,155 @@
       margin: 0;
       font-size: 18px;
     }
+
+    .compendium-bestiary-image {
+      display: block;
+      width: 100%;
+      max-width: 220px;
+      max-width: 100%;
+      margin: 12px 0;
+    }
+
+    .compendium-bestiary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
+      gap: 20px;
+      align-items: start;
+      justify-content: start;
+    }
+
+    .compendium-bestiary-grid .compendium-entry {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .compendium-bestiary-entry {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .compendium-bestiary-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .compendium-bestiary-image-wrap {
+      width: 100%;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .compendium-bestiary-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .compendium-toggle-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .compendium-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .compendium-tooltip-trigger {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .compendium-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 220px;
+      white-space: normal;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .compendium-tooltip:hover .compendium-tooltip-box,
+    .compendium-tooltip:focus-within .compendium-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .compendium-tooltip-box p + p {
+      margin-top: 8px;
+    }
+
+    .compendium-pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 22px;
+      flex-wrap: wrap;
+    }
+
+    .compendium-page-button {
+      display: none;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .compendium-page-button.is-visible {
+      display: inline-block;
+    }
+
+    .compendium-page-button.is-active {
+      background: #17311e;
+    }
+
+    .compendium-abilities-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px 20px;
+      align-items: start;
+    }
+
+    .compendium-abilities-grid .compendium-entry {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
   </style>
 </head>
 
@@ -165,7 +314,10 @@
 
   <div class="page-layout">
     <div class="compendium-sidebar">
-      <div class="card"></div>
+      <div class="card">
+        <a class="menu-button" href="index.html">Back To Home</a>
+        <a class="menu-button" href="aviary.html">Back To Aviary</a>
+      </div>
       <div class="card"></div>
       <div class="card"></div>
     </div>
@@ -190,10 +342,145 @@
     const bestiaryButton = document.querySelector("#bestiaryButton");
     const abilityDescriptionsButton = document.querySelector("#abilityDescriptionsButton");
     const compendiumContent = document.querySelector("#compendiumContent");
+    let activeCompendiumTab = "bestiary";
+    let bestiaryPage = 1;
+    let abilitiesPage = 1;
 
-    // Show a placeholder until the Bestiary view is built out.
+    // Highlight whichever Compendium tab is currently selected.
+    function setActiveCompendiumTab() {
+      bestiaryButton.classList.toggle("is-active", activeCompendiumTab === "bestiary");
+      abilityDescriptionsButton.classList.toggle("is-active", activeCompendiumTab === "abilities");
+    }
+
+    // Render page buttons only when more than one page exists.
+    function appendPagination(container, totalPages, currentPage, onPageChange) {
+      if (totalPages <= 1) {
+        return;
+      }
+
+      const pagination = document.createElement("div");
+      pagination.className = "compendium-pagination";
+
+      for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+        const pageButton = document.createElement("button");
+        pageButton.className = "compendium-page-button is-visible";
+        pageButton.type = "button";
+        pageButton.textContent = "Page " + pageNumber;
+        pageButton.classList.toggle("is-active", pageNumber === currentPage);
+        pageButton.addEventListener("click", function () {
+          onPageChange(pageNumber);
+        });
+        pagination.appendChild(pageButton);
+      }
+
+      container.appendChild(pagination);
+    }
+
+    // List every species in alphabetical order with its image and habitat.
     function renderBestiaryView() {
-      compendiumContent.innerHTML = "<p class='compendium-note'>Bestiary entries will live here.</p>";
+      const entriesPerPage = 10;
+      const sortedBirds = [...BIRD_LIBRARY].sort(function (leftBird, rightBird) {
+        return leftBird.species.localeCompare(rightBird.species);
+      });
+      const totalPages = Math.ceil(sortedBirds.length / entriesPerPage);
+      const startingIndex = (bestiaryPage - 1) * entriesPerPage;
+      const visibleBirds = sortedBirds.slice(startingIndex, startingIndex + entriesPerPage);
+
+      activeCompendiumTab = "bestiary";
+      compendiumContent.innerHTML = "";
+      setActiveCompendiumTab();
+
+      const bestiaryGrid = document.createElement("div");
+      bestiaryGrid.className = "compendium-bestiary-grid";
+
+      visibleBirds.forEach(function (bird) {
+        const birdEntry = document.createElement("div");
+        birdEntry.className = "compendium-entry compendium-bestiary-entry";
+        const birdAbilityNames = getBirdAbilityNames(bird);
+        const metaBlock = document.createElement("div");
+        metaBlock.className = "compendium-bestiary-meta";
+        const actionRow = document.createElement("div");
+        actionRow.className = "compendium-bestiary-actions";
+
+        const birdName = document.createElement("h3");
+        birdName.textContent = bird.species;
+        birdEntry.appendChild(birdName);
+
+        const habitatLine = document.createElement("p");
+        habitatLine.textContent = "Native Habitat: " + bird.nativeHabitat;
+        metaBlock.appendChild(habitatLine);
+
+        const rarityLine = document.createElement("p");
+        rarityLine.textContent = "Rarity: " + bird.rarity;
+        metaBlock.appendChild(rarityLine);
+
+        const abilityLine = document.createElement("p");
+        abilityLine.textContent = "Ability: " + (birdAbilityNames.length > 0 ? birdAbilityNames.join(", ") : "None");
+        metaBlock.appendChild(abilityLine);
+
+        birdEntry.appendChild(metaBlock);
+
+        const imageWrap = document.createElement("div");
+        imageWrap.className = "compendium-bestiary-image-wrap";
+
+        if (bird.variantImages) {
+          const variantKeys = Object.keys(bird.variantImages);
+          let activeVariantIndex = 0;
+
+          const toggleButton = document.createElement("button");
+          toggleButton.className = "compendium-toggle-button";
+          toggleButton.type = "button";
+          toggleButton.textContent = "Toggle Sex";
+          actionRow.appendChild(toggleButton);
+
+          const bestiaryImage = document.createElement("img");
+          bestiaryImage.className = "compendium-bestiary-image";
+          bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
+          bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+          imageWrap.appendChild(bestiaryImage);
+
+          toggleButton.addEventListener("click", function () {
+            activeVariantIndex = (activeVariantIndex + 1) % variantKeys.length;
+            bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
+            bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+          });
+        } else {
+          const bestiaryImage = document.createElement("img");
+          bestiaryImage.className = "compendium-bestiary-image";
+          bestiaryImage.src = getBirdPrimaryImage(bird);
+          bestiaryImage.alt = bird.species;
+          imageWrap.appendChild(bestiaryImage);
+        }
+
+        const baseStatsTooltip = document.createElement("div");
+        baseStatsTooltip.className = "compendium-tooltip";
+        baseStatsTooltip.innerHTML =
+          "<button class='compendium-tooltip-trigger' type='button'>Base Stats</button>" +
+          "<div class='compendium-tooltip-box'>" +
+            "<p>Visitors Per Day: +" + (bird.visitorsPerDay || 0) + "</p>" +
+            (typeof bird.grubsPerSecond === "number"
+              ? "<p>Grubs Per Second: +" + bird.grubsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
+            (typeof bird.twigsPerSecond === "number"
+              ? "<p>Twigs Per Second: +" + bird.twigsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
+            (typeof bird.seedsPerSecond === "number"
+              ? "<p>Seeds Per Second: +" + bird.seedsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
+          "</div>";
+        actionRow.appendChild(baseStatsTooltip);
+
+        birdEntry.appendChild(actionRow);
+        birdEntry.appendChild(imageWrap);
+
+        bestiaryGrid.appendChild(birdEntry);
+      });
+
+      compendiumContent.appendChild(bestiaryGrid);
+      appendPagination(compendiumContent, totalPages, bestiaryPage, function (newPage) {
+        bestiaryPage = newPage;
+        renderBestiaryView();
+      });
     }
 
     // List every known ability in alphabetical order with its description.
@@ -205,16 +492,31 @@
         .sort(function (leftAbility, rightAbility) {
           return leftAbility.name.localeCompare(rightAbility.name);
         });
+      const entriesPerPage = 30;
+      const totalPages = Math.ceil(sortedAbilities.length / entriesPerPage);
+      const startingIndex = (abilitiesPage - 1) * entriesPerPage;
+      const visibleAbilities = sortedAbilities.slice(startingIndex, startingIndex + entriesPerPage);
 
+      activeCompendiumTab = "abilities";
       compendiumContent.innerHTML = "";
+      setActiveCompendiumTab();
 
-      sortedAbilities.forEach(function (ability) {
+      const abilitiesGrid = document.createElement("div");
+      abilitiesGrid.className = "compendium-abilities-grid";
+
+      visibleAbilities.forEach(function (ability) {
         const abilityEntry = document.createElement("div");
         abilityEntry.className = "compendium-entry";
         abilityEntry.innerHTML =
           "<h3>" + ability.name + "</h3>" +
           "<p>" + ability.description + "</p>";
-        compendiumContent.appendChild(abilityEntry);
+        abilitiesGrid.appendChild(abilityEntry);
+      });
+
+      compendiumContent.appendChild(abilitiesGrid);
+      appendPagination(compendiumContent, totalPages, abilitiesPage, function (newPage) {
+        abilitiesPage = newPage;
+        renderAbilityDescriptionsView();
       });
     }
 
@@ -226,10 +528,12 @@
     renderBestiaryView();
 
     bestiaryButton.addEventListener("click", function () {
+      bestiaryPage = 1;
       renderBestiaryView();
     });
 
     abilityDescriptionsButton.addEventListener("click", function () {
+      abilitiesPage = 1;
       renderAbilityDescriptionsView();
     });
   </script>

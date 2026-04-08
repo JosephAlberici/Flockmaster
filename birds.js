@@ -59,7 +59,7 @@ const BIRD_LIBRARY = [
     rarity: "Common",
     acquired: false,
     image: "/Resources/Bird Images/mourningdove.png",
-    call: "/Resources/Calls/mourningdove.png",
+    call: "/Resources/Calls/mourningdove.wav",
     nativeHabitat: "City Living",
     scientificName: "Zenaida macroura"
   },
