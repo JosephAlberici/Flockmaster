@@ -148,17 +148,20 @@
   <h1>FLOCKMASTER</h1>
 
   <a class="button" href="aviary.html">My Aviary</a>
+  <a class="button" href="compendium.html">Compendium</a>
   <div class="button">Friends</div>
   <a class="button" href="settings.html">Settings</a>
 
   <div class="home-bird">
     <div class="speech-bubble"></div>
-    <img src="/Resources/Images/crow_frontpage.png" alt="Crow on the home screen">
+    <img src="/Resources/Bird%20Images/crow_frontpage.png" alt="Crow on the home screen">
   </div>
 
   <script src="birds.js"></script>
+  <script src="abilities.js"></script>
   <script src="game.js"></script>
   <script>
+    // Load the save and cache the home-page UI elements.
     const gameState = loadGameState();
     const speechOptions = [
       "Hey, Daddy-O", 
@@ -174,6 +177,7 @@
     const speechRoll = Math.random();
     let selectedSpeech;
 
+    // Pick one home-page speech line using weighted random odds.
     if (speechRoll < 0.35) {
       selectedSpeech = "*CAW*";
     } else if (speechRoll < 0.70) {
@@ -183,7 +187,9 @@
       selectedSpeech = speechOptions[randomIndex];
     }
 
+    // Keep the shared top bar current while this page is open.
     renderTopBar(topBar, gameState);
+    initButtonAudio();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });

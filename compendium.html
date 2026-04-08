@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flockmaster Compendium</title>
+  <style>
+    body {
+      background-color: #b8b8b8;
+      font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+      margin: 0;
+      color: #1f2a36;
+    }
+
+    .top-bar {
+      background: #2c3e50;
+      color: #f7f1e6;
+      padding: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-sizing: border-box;
+    }
+
+    .top-bar-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .top-bar-link {
+      color: #f7f1e6;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .top-bar-tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: default;
+    }
+
+    .top-bar-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+      letter-spacing: 0;
+    }
+
+    .top-bar-tooltip:hover .top-bar-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .page-title {
+      color: #2c3e50;
+      letter-spacing: 2px;
+      margin: 28px 0 8px;
+      text-align: center;
+      text-shadow: 1px 1px 0 #d9d9d9;
+    }
+
+    .page-layout {
+      display: flex;
+      gap: 28px;
+      padding: 24px 32px 40px;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+
+    .compendium-sidebar {
+      width: 32%;
+    }
+
+    .compendium-panel {
+      width: 68%;
+      min-height: 720px;
+      background: #f7f1e6;
+      border: 3px solid #2c3e50;
+      border-radius: 18px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 22px;
+      min-height: 120px;
+      box-sizing: border-box;
+    }
+
+    .menu-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 12px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .panel-header {
+      margin-top: 0;
+      color: #2c3e50;
+      letter-spacing: 1px;
+    }
+
+    .compendium-controls {
+      margin-bottom: 18px;
+    }
+
+    .compendium-entry {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .compendium-entry:first-of-type {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .compendium-entry h3 {
+      margin: 0 0 10px;
+      color: #2c3e50;
+    }
+
+    .compendium-entry p {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .compendium-note {
+      margin: 0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top-bar" id="topBar"></div>
+
+  <h1 class="page-title">COMPENDIUM</h1>
+
+  <div class="page-layout">
+    <div class="compendium-sidebar">
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+    </div>
+
+    <div class="compendium-panel">
+      <h2 class="panel-header">Compendium</h2>
+      <div class="compendium-controls">
+        <button class="menu-button" type="button" id="bestiaryButton">Bestiary</button>
+        <button class="menu-button" type="button" id="abilityDescriptionsButton">Ability Descriptions</button>
+      </div>
+      <div id="compendiumContent"></div>
+    </div>
+  </div>
+
+  <script src="birds.js"></script>
+  <script src="abilities.js"></script>
+  <script src="game.js"></script>
+  <script>
+    // Load the save and keep the shared top bar current on this page.
+    const gameState = loadGameState();
+    const topBar = document.querySelector("#topBar");
+    const bestiaryButton = document.querySelector("#bestiaryButton");
+    const abilityDescriptionsButton = document.querySelector("#abilityDescriptionsButton");
+    const compendiumContent = document.querySelector("#compendiumContent");
+
+    // Show a placeholder until the Bestiary view is built out.
+    function renderBestiaryView() {
+      compendiumContent.innerHTML = "<p class='compendium-note'>Bestiary entries will live here.</p>";
+    }
+
+    // List every known ability in alphabetical order with its description.
+    function renderAbilityDescriptionsView() {
+      const sortedAbilities = Object.keys(ABILITIES)
+        .map(function (abilityId) {
+          return ABILITIES[abilityId];
+        })
+        .sort(function (leftAbility, rightAbility) {
+          return leftAbility.name.localeCompare(rightAbility.name);
+        });
+
+      compendiumContent.innerHTML = "";
+
+      sortedAbilities.forEach(function (ability) {
+        const abilityEntry = document.createElement("div");
+        abilityEntry.className = "compendium-entry";
+        abilityEntry.innerHTML =
+          "<h3>" + ability.name + "</h3>" +
+          "<p>" + ability.description + "</p>";
+        compendiumContent.appendChild(abilityEntry);
+      });
+    }
+
+    renderTopBar(topBar, gameState);
+    initButtonAudio();
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
+    renderBestiaryView();
+
+    bestiaryButton.addEventListener("click", function () {
+      renderBestiaryView();
+    });
+
+    abilityDescriptionsButton.addEventListener("click", function () {
+      renderAbilityDescriptionsView();
+    });
+  </script>
+</body>
+</html>

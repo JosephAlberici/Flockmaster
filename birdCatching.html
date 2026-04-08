@@ -145,8 +145,9 @@
     }
 
     .trap-image {
-      max-width: 85%;
-      max-height: 260px;
+      width: 100%;
+      max-width: 760px;
+      max-height: 420px;
       margin-bottom: 24px;
     }
 
@@ -174,6 +175,39 @@
     .upgrade-tooltip:hover .upgrade-tooltip-box {
       visibility: visible;
       opacity: 1;
+    }
+
+    .nav-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .nav-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .nav-tooltip:hover .nav-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .menu-button.is-locked {
+      background: #6f7780;
+      color: #d7dde4;
+      cursor: default;
+      pointer-events: none;
     }
 
     .shop-row {
@@ -272,11 +306,12 @@
 
   <h1 class="page-title">BIRD CATCHING</h1>
 
-  <div class="page-layout">
-    <div class="catching-sidebar">
-      <div class="card">
-        <a class="menu-button" href="aviary.html">Return To Aviary</a>
-      </div>
+    <div class="page-layout">
+      <div class="catching-sidebar">
+        <div class="card">
+          <a class="menu-button" href="aviary.html">Return To Aviary</a>
+          <span class="nav-tooltip" id="earthworksNavWrapper"></span>
+        </div>
 
       <div class="card" id="upgradesCard">
         <h2>Upgrades</h2>
@@ -296,8 +331,10 @@
   </div>
 
   <script src="birds.js"></script>
+  <script src="abilities.js"></script>
   <script src="game.js"></script>
   <script>
+    // Cache page state and the main UI elements this screen updates.
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const upgradesList = document.querySelector("#upgradesList");
@@ -307,15 +344,33 @@
     const catchOverlayImage = document.querySelector("#catchOverlayImage");
     const catchOverlayText = document.querySelector("#catchOverlayText");
     const catchOverlayClose = document.querySelector("#catchOverlayClose");
+    const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
 
+    function renderEarthworksNav() {
+      earthworksNavWrapper.innerHTML = "";
+
+      if (isEarthworksUnlocked(gameState)) {
+        earthworksNavWrapper.innerHTML = "<a class='menu-button' href='earthworks.html'>Earthworks</a>";
+        return;
+      }
+
+      earthworksNavWrapper.innerHTML =
+        "<span class='menu-button is-locked'>Earthworks</span>" +
+        "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+    }
+
+    // Keep the shared top bar current while this page is open.
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
+    initButtonAudio();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });
+    renderEarthworksNav();
 
+    // Show the full-screen celebration only for first-time catches.
     function showCaughtBirdOverlay(bird) {
-      catchOverlayImage.src = bird.image;
+      catchOverlayImage.src = getBirdPrimaryImage(bird);
       catchOverlayImage.alt = bird.species;
       catchOverlayText.textContent = "Congratulations: you caught a " + bird.species;
       catchOverlay.classList.add("is-visible");
@@ -329,6 +384,7 @@
       catchOverlay.classList.remove("is-visible");
     });
 
+    // Generic placeholder upgrade button used for not-yet-built upgrades.
     function createUpgradeTooltipButton(labelText) {
       const tooltipWrapper = document.createElement("div");
       tooltipWrapper.className = "upgrade-tooltip";
@@ -337,6 +393,7 @@
       const button = document.createElement("button");
       button.className = "menu-button";
       button.type = "button";
+      button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
       button.textContent = labelText;
@@ -351,6 +408,7 @@
       return tooltipWrapper;
     }
 
+    // Build a one-time bedding upgrade row with requirements and tooltip text.
     function createBeddingUpgradeButton(config) {
       const wrapper = document.createElement("div");
       wrapper.className = "shop-row";
@@ -386,6 +444,7 @@
 
         gameState.twigs -= config.twigCost;
         gameState[config.ownedKey] = true;
+        playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderUpgrades();
@@ -408,6 +467,7 @@
       return wrapper;
     }
 
+    // Build a one-time seed storage upgrade button.
     function createStorageUpgradeButton(config) {
       const tooltipWrapper = document.createElement("div");
       tooltipWrapper.className = "upgrade-tooltip";
@@ -415,6 +475,7 @@
       const button = document.createElement("button");
       button.className = "menu-button";
       button.type = "button";
+      button.dataset.requiresSuccess = "true";
 
       if (gameState.seedMax >= config.newMax) {
         button.textContent = config.label + " (Owned)";
@@ -438,6 +499,7 @@
         if (gameState.seeds > gameState.seedMax) {
           gameState.seeds = gameState.seedMax;
         }
+        playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderUpgrades();
@@ -453,6 +515,7 @@
       return tooltipWrapper;
     }
 
+    // Build the late-game trap cost reset upgrade.
     function createWildlifeRestorationButton() {
       const wrapper = document.createElement("div");
       wrapper.className = "shop-row";
@@ -465,6 +528,7 @@
       const button = document.createElement("button");
       button.className = "menu-button";
       button.type = "button";
+      button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
       button.textContent = "Wildlife Restoration (" + formatLargeNumber(1000000) + " Seeds)";
@@ -478,6 +542,7 @@
 
         gameState.seeds -= 1000000;
         gameState.trapLoadCost = 1000;
+        playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderTrapPanel();
@@ -494,6 +559,7 @@
       return wrapper;
     }
 
+    // Build one sapling purchase button with owned/max counters.
     function createSaplingButton(config) {
       const shopRow = document.createElement("div");
       shopRow.className = "shop-row";
@@ -504,7 +570,8 @@
       const button = document.createElement("button");
       button.className = "menu-button";
       button.type = "button";
-      const treeMaxCount = getTreeMaxCount(gameState);
+      button.dataset.requiresSuccess = "true";
+      const treeMaxCount = getTreeMaxCount(gameState, config.countKey);
 
       if (gameState[config.countKey] >= treeMaxCount) {
         button.textContent = config.label + " (Maxed)";
@@ -515,7 +582,7 @@
       button.addEventListener("click", function () {
         updateCoinsFromElapsedTime(gameState, Date.now());
 
-        if (gameState[config.countKey] >= getTreeMaxCount(gameState)) {
+        if (gameState[config.countKey] >= getTreeMaxCount(gameState, config.countKey)) {
           return;
         }
 
@@ -525,6 +592,7 @@
 
         gameState.coins -= config.cost;
         gameState[config.countKey] += 1;
+        playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderSaplingShop();
@@ -551,6 +619,7 @@
       return shopRow;
     }
 
+    // Rebuild the sapling shop from current save data.
     function renderSaplingShop() {
       saplingShopList.innerHTML = "";
 
@@ -588,6 +657,7 @@
       const newPlotButton = document.createElement("button");
       newPlotButton.className = "menu-button";
       newPlotButton.type = "button";
+      newPlotButton.dataset.requiresSuccess = "true";
 
       if (gameState.newPlotPurchased) {
         newPlotButton.textContent = "New Plot (Owned)";
@@ -612,6 +682,7 @@
 
         gameState.coins -= 2000;
         gameState.newPlotPurchased = true;
+        playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderSaplingShop();
@@ -630,8 +701,72 @@
       newPlotUpgrade.appendChild(tooltipWrapper);
       newPlotUpgrade.appendChild(countLine);
       saplingShopList.appendChild(newPlotUpgrade);
+
+      const flockDivider = document.createElement("div");
+      flockDivider.className = "shop-divider";
+      saplingShopList.appendChild(flockDivider);
+
+      const flockBonusLabel = document.createElement("p");
+      flockBonusLabel.className = "shop-count";
+      flockBonusLabel.style.textAlign = "left";
+      flockBonusLabel.textContent = "Flock Bonuses";
+      saplingShopList.appendChild(flockBonusLabel);
+
+      const seedDispersalUpgrade = document.createElement("div");
+      seedDispersalUpgrade.className = "shop-row";
+      seedDispersalUpgrade.style.display = "block";
+
+      const seedDispersalTooltip = document.createElement("div");
+      seedDispersalTooltip.className = "upgrade-tooltip";
+      seedDispersalTooltip.style.display = "block";
+
+      const seedDispersalButton = document.createElement("button");
+      seedDispersalButton.className = "menu-button";
+      seedDispersalButton.type = "button";
+      seedDispersalButton.dataset.requiresSuccess = "true";
+      seedDispersalButton.style.width = "100%";
+      seedDispersalButton.style.marginRight = "0";
+      seedDispersalButton.textContent = gameState.seedDispersalPurchased
+        ? "Seed Dispersal (Active)"
+        : "Seed Dispersal";
+
+      seedDispersalButton.addEventListener("click", function () {
+        const mourningDoveInFlock = gameState.birds.find(function (bird) {
+          return bird.id === "mourningdove";
+        });
+
+        if (gameState.seedDispersalPurchased) {
+          return;
+        }
+
+        if (!mourningDoveInFlock || mourningDoveInFlock.count < 3) {
+          return;
+        }
+
+        gameState.seedDispersalPurchased = true;
+        gameState.pearTrees += 1;
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderSaplingShop();
+      });
+
+      const seedDispersalTooltipBox = document.createElement("div");
+      seedDispersalTooltipBox.className = "upgrade-tooltip-box";
+      seedDispersalTooltipBox.textContent = "Grants a free Pear Tree and increases the Pear Tree max by 1";
+
+      const seedDispersalRequirement = document.createElement("p");
+      seedDispersalRequirement.className = "shop-count";
+      seedDispersalRequirement.textContent = "Requires: 3 Mourning Doves";
+
+      seedDispersalTooltip.appendChild(seedDispersalButton);
+      seedDispersalTooltip.appendChild(seedDispersalTooltipBox);
+      seedDispersalUpgrade.appendChild(seedDispersalTooltip);
+      seedDispersalUpgrade.appendChild(seedDispersalRequirement);
+      saplingShopList.appendChild(seedDispersalUpgrade);
     }
 
+    // Rebuild the trap panel based on the trap's current step.
     function renderTrapPanel() {
       trapPanelContent.innerHTML = "";
 
@@ -644,7 +779,7 @@
       if (gameState.trapPulled) {
         trapNote.textContent = "The trap has been pulled.";
       } else if (gameState.trapLoaded) {
-        trapNote.textContent = "Your trap is loaded and ready.";
+        trapNote.textContent = "Your trap is loaded with " + gameState.trapBaitType + " and ready.";
       } else if (gameState.lastTrapResult) {
         trapNote.textContent = gameState.lastTrapResult;
       } else {
@@ -657,8 +792,13 @@
         trapImage.src = "/Resources/Misc%20Images/pulledTrap.png";
         trapImage.alt = "Pulled bird trap";
       } else if (gameState.trapLoaded) {
-        trapImage.src = "/Resources/Misc%20Images/loadedTrap.png";
-        trapImage.alt = "Loaded bird trap";
+        if (gameState.trapBaitType === "grubs") {
+          trapImage.src = "/Resources/Misc%20Images/loadedTrapGrubs.png";
+          trapImage.alt = "Loaded bird trap with grub bait";
+        } else {
+          trapImage.src = "/Resources/Misc%20Images/loadedTrap.png";
+          trapImage.alt = "Loaded bird trap with seed bait";
+        }
       } else {
         trapImage.src = "/Resources/Misc%20Images/unloadedTrap.png";
         trapImage.alt = "Unloaded bird trap";
@@ -673,14 +813,17 @@
         checkTrapButton.type = "button";
         checkTrapButton.textContent = "Check Trap";
 
+        // This is the actual successful-catch branch:
+        // a trap passed the catch roll and there is at least one eligible bird.
         checkTrapButton.addEventListener("click", function () {
           const catchRoll = Math.random();
-          const catchableBirds = getCatchableBirds(gameState);
+          const catchableBirds = getCatchableBirdsByDiet(gameState, gameState.trapBaitType);
 
           if (catchRoll < gameState.catchRate) {
             if (catchableBirds.length === 0) {
               gameState.lastTrapResult = "No new birds can be caught in your current habitats.";
             } else {
+              // Pull one bird from the weighted habitat catch pool.
               const caughtBird = getRandomBirdByRarityForGameState(catchableBirds, gameState);
               const birdInFlock = gameState.birds.find(function (bird) {
                 return bird.id === caughtBird.id;
@@ -688,8 +831,9 @@
 
               const alreadyOwned = birdInFlock.count > 0;
 
-              birdInFlock.acquired = true;
-              birdInFlock.count += 1;
+              // Update the real saved bird entry after the catch succeeds.
+              addBirdToFlock(birdInFlock);
+              gameState.trapLoadCost *= 1.15;
 
               if (alreadyOwned) {
                 gameState.lastTrapResult = "You caught another " + caughtBird.species + ".";
@@ -704,9 +848,10 @@
 
           gameState.trapLoaded = false;
           gameState.trapPulled = false;
-          gameState.trapLoadCost *= 1.3;
+          gameState.trapBaitType = null;
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
+          renderEarthworksNav();
           renderTrapPanel();
         });
 
@@ -715,27 +860,61 @@
       }
 
       if (!gameState.trapLoaded) {
-        const loadTrapButton = document.createElement("button");
-        loadTrapButton.className = "menu-button";
-        loadTrapButton.type = "button";
-        loadTrapButton.textContent = "Load Trap (" + formatLargeNumber(Math.ceil(gameState.trapLoadCost)) + " Seeds)";
+        const loadSeedTrapButton = document.createElement("button");
+        loadSeedTrapButton.className = "menu-button";
+        loadSeedTrapButton.type = "button";
+        loadSeedTrapButton.dataset.requiresSuccess = "true";
+        const effectiveTrapSeedCost = getEffectiveTrapSeedCost(gameState);
+        loadSeedTrapButton.textContent = "Load Trap (" + formatLargeNumber(Math.ceil(effectiveTrapSeedCost)) + " Seeds)";
 
-        loadTrapButton.addEventListener("click", function () {
+        loadSeedTrapButton.addEventListener("click", function () {
           updateCoinsFromElapsedTime(gameState, Date.now());
 
-          if (gameState.seeds < gameState.trapLoadCost) {
+          const currentTrapSeedCost = getEffectiveTrapSeedCost(gameState);
+
+          if (gameState.seeds < currentTrapSeedCost) {
             return;
           }
 
-          gameState.seeds -= gameState.trapLoadCost;
+          gameState.seeds -= currentTrapSeedCost;
           gameState.trapLoaded = true;
           gameState.trapPulled = false;
+          gameState.trapBaitType = "seeds";
+          playButtonSound();
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
           renderTrapPanel();
         });
 
-        trapPanelContent.appendChild(loadTrapButton);
+        trapPanelContent.appendChild(loadSeedTrapButton);
+
+        if (isEarthworksUnlocked(gameState)) {
+          const loadGrubTrapButton = document.createElement("button");
+          loadGrubTrapButton.className = "menu-button";
+          loadGrubTrapButton.type = "button";
+          loadGrubTrapButton.dataset.requiresSuccess = "true";
+          loadGrubTrapButton.textContent = "Load Trap (" + formatLargeNumber(gameState.trapGrubLoadCost) + " Grubs)";
+
+          loadGrubTrapButton.addEventListener("click", function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+
+            if (gameState.grubs < gameState.trapGrubLoadCost) {
+              return;
+            }
+
+            gameState.grubs -= gameState.trapGrubLoadCost;
+            gameState.trapGrubLoadCost += 5;
+            gameState.trapLoaded = true;
+            gameState.trapPulled = false;
+            gameState.trapBaitType = "grubs";
+            playButtonSound();
+            saveGameState(gameState);
+            renderTopBar(topBar, gameState);
+            renderTrapPanel();
+          });
+
+          trapPanelContent.appendChild(loadGrubTrapButton);
+        }
       }
 
       if (gameState.trapLoaded) {
@@ -754,6 +933,7 @@
       }
     }
 
+    // Rebuild the left-side upgrade list from current save data.
     function renderUpgrades() {
       upgradesList.innerHTML = "";
 
@@ -761,6 +941,7 @@
         const buyTrapButton = document.createElement("button");
         buyTrapButton.className = "menu-button";
         buyTrapButton.type = "button";
+        buyTrapButton.dataset.requiresSuccess = "true";
         buyTrapButton.textContent = "Buy Trap (" + formatLargeNumber(50) + " Coins)";
 
         buyTrapButton.addEventListener("click", function () {
@@ -774,9 +955,12 @@
           gameState.trapPurchased = true;
           gameState.trapLoaded = false;
           gameState.trapPulled = false;
+          gameState.trapBaitType = null;
           gameState.lastTrapResult = "";
+          playButtonSound();
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
+          renderEarthworksNav();
           renderUpgrades();
           renderTrapPanel();
         });

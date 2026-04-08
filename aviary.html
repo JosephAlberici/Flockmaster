@@ -200,6 +200,24 @@
       cursor: pointer;
     }
 
+    .habitat-bird-image-group {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .habitat-bird-image-group img {
+      width: 220px;
+      max-width: 46%;
+    }
+
+    .habitat-bird-figure img[data-bird-id="cardinal"][data-variant="male"] {
+      transform: scale(1.1);
+      transform-origin: bottom center;
+    }
+
     .habitat-bird-tooltip {
       position: absolute;
       bottom: calc(100% + 12px);
@@ -236,13 +254,24 @@
       font-size: 18px;
     }
 
+    #birdOverviewList.overview-two-column {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-auto-flow: column;
+      column-gap: 24px;
+      align-items: start;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
+    }
+
     .bird-summary {
       margin-top: 18px;
       padding-top: 14px;
       border-top: 1px solid #b9b2a8;
     }
 
-    .bird-summary:first-of-type {
+    .bird-summary.is-first-summary {
       margin-top: 0;
       padding-top: 0;
       border-top: none;
@@ -252,6 +281,10 @@
       margin-top: 18px;
       padding-top: 14px;
       border-top: 1px solid #b9b2a8;
+    }
+
+    #birdOverviewList.overview-two-column .overview-divider {
+      display: none;
     }
 
     .bird-summary h3 {
@@ -331,6 +364,50 @@
       visibility: visible;
       opacity: 1;
     }
+
+    .nav-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .nav-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .nav-tooltip:hover .nav-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .back-link.is-locked {
+      background: #6f7780;
+      color: #d7dde4;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .overview-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 28px;
+      align-items: start;
+    }
+
+    .overview-stat-column .stat-line:first-child {
+      margin-top: 0;
+    }
   </style>
 </head>
 
@@ -344,6 +421,7 @@
       <div class="card">
         <a class="back-link" href="index.html">Back To Home</a>
         <a class="back-link" href="birdCatching.html">Bird Catching</a>
+        <span class="nav-tooltip" id="earthworksNavWrapper"></span>
       </div>
 
       <div class="card">
@@ -352,19 +430,28 @@
           <div class="overview-controls">
             <button class="overview-button is-active" id="overviewMinimizeButton" type="button">Minimize</button>
             <button class="overview-button" id="overviewCityLivingButton" type="button">City Living</button>
-            <button class="overview-button" id="overviewAllBirdsButton" type="button">All Birds</button>
+            <button class="overview-button" id="overviewAllBirdsButton" type="button">Urban Waters</button>
           </div>
         </div>
         <p class="stat-line">Species Count: <span id="speciesCount"></span></p>
+        <p class="stat-line">Grubs Per Second: <span id="grubsPerSecond"></span></p>
         <p class="stat-line">Twigs Per Second: <span id="twigsPerSecond"></span></p>
         <div id="birdOverviewList"></div>
       </div>
 
       <div class="card">
         <h2>Aviary Overview</h2>
-        <p class="stat-line">Visitors Per Day: <span id="visPerDay"></span></p>
-        <p class="stat-line">Coins Per Visitor: <span id="coinsPerVisitor"></span></p>
-        <p class="stat-line">Habitats Owned: <span id="habitatsOwned"></span></p>
+        <div class="overview-stat-grid">
+          <div class="overview-stat-column">
+            <p class="stat-line">Visitors Per Day: <span id="visPerDay"></span></p>
+            <p class="stat-line">Coins Per Visitor: <span id="coinsPerVisitor"></span></p>
+            <p class="stat-line">Habitats Owned: <span id="habitatsOwned"></span></p>
+          </div>
+          <div class="overview-stat-column">
+            <p class="stat-line">Coins Per Second: <span id="coinsPerSecond"></span></p>
+            <p class="stat-line">Seeds Per Second: <span id="seedsPerSecond"></span></p>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -394,15 +481,20 @@
   </div>
 
   <script src="birds.js"></script>
+  <script src="abilities.js"></script>
   <script src="game.js"></script>
   <script>
+    // Cache page state and the main UI elements this screen updates.
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
     const visitorsPerDayDisplay = document.querySelector("#visPerDay");
+    const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
     const twigsPerSecondDisplay = document.querySelector("#twigsPerSecond");
     const coinsPerVisitorDisplay = document.querySelector("#coinsPerVisitor");
     const habitatsOwnedDisplay = document.querySelector("#habitatsOwned");
+    const coinsPerSecondDisplay = document.querySelector("#coinsPerSecond");
+    const seedsPerSecondDisplay = document.querySelector("#seedsPerSecond");
     const birdOverviewList = document.querySelector("#birdOverviewList");
     const upgradesOverviewList = document.querySelector("#upgradesOverviewList");
     const cityLivingBirdList = document.querySelector("#cityLivingBirdList");
@@ -415,13 +507,28 @@
     const upgradesMinimizeButton = document.querySelector("#upgradesMinimizeButton");
     const flockUpgradesButton = document.querySelector("#flockUpgradesButton");
     const aviaryUpgradesButton = document.querySelector("#aviaryUpgradesButton");
+    const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
     let activeOverviewMode = "minimize";
     let activeUpgradesMode = "minimize";
+
+    function renderEarthworksNav() {
+      earthworksNavWrapper.innerHTML = "";
+
+      if (isEarthworksUnlocked(gameState)) {
+        earthworksNavWrapper.innerHTML = "<a class='back-link' href='earthworks.html'>Earthworks</a>";
+        return;
+      }
+
+      earthworksNavWrapper.innerHTML =
+        "<span class='back-link is-locked'>Earthworks</span>" +
+        "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+    }
 
     function getAcquiredBirdsSnapshot() {
       return getAcquiredBirds(gameState);
     }
 
+    // Refresh the summary cards and habitat headers from current save data.
     function refreshAviarySummary() {
       const cityLivingTotals = getHabitatBirdTotals(gameState, "City Living");
       const urbanWatersTotals = getHabitatBirdTotals(gameState, "Urban Waters");
@@ -430,61 +537,111 @@
       urbanWatersHeader.textContent = "Urban Waters (" + urbanWatersTotals.acquiredSpecies + "/" + urbanWatersTotals.totalSpecies + ")";
       speciesCount.textContent = getFlockDiversity(gameState);
       visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
+      grubsPerSecondDisplay.textContent = getGrubsPerSecond(gameState).toFixed(2);
       twigsPerSecondDisplay.textContent = getTwigsPerSecond(gameState).toFixed(2);
       coinsPerVisitorDisplay.textContent = "+" + getCoinsPerVisitorRate(gameState).toFixed(1) + " coins/sec";
       habitatsOwnedDisplay.textContent = gameState.ownedHabitats.length;
+      coinsPerSecondDisplay.textContent = "+" + getCoinsPerSecond(gameState).toFixed(1);
+      seedsPerSecondDisplay.textContent = "+" + getSeedsPerSecond(gameState).toFixed(1);
     }
 
+    // Toggle which flock-overview button is visually active.
     function setActiveOverviewButton() {
       overviewMinimizeButton.classList.toggle("is-active", activeOverviewMode === "minimize");
       overviewCityLivingButton.classList.toggle("is-active", activeOverviewMode === "city-living");
-      overviewAllBirdsButton.classList.toggle("is-active", activeOverviewMode === "all-birds");
+      overviewAllBirdsButton.classList.toggle("is-active", activeOverviewMode === "urban-waters");
     }
 
+    // Toggle which upgrades-tab button is visually active.
     function setActiveUpgradesButton() {
       upgradesMinimizeButton.classList.toggle("is-active", activeUpgradesMode === "minimize");
       flockUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "flock");
       aviaryUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "aviary");
     }
 
+    // Build one bird summary row for the flock overview panel.
     function appendBirdSummary(bird) {
       const birdSummary = document.createElement("div");
       birdSummary.className = "bird-summary";
+      const birdAbilityNames = getBirdAbilityNames(bird);
       birdSummary.innerHTML =
         "<h3>" + bird.species + "</h3>" +
         "<p class='stat-line'>" + bird.scientificName + "</p>" +
         "<p class='stat-line'>Visitors Per Day: +" + getBirdVisitorRatePerDay(bird, gameState) + "</p>" +
+        (typeof bird.grubsPerSecond === "number"
+          ? "<p class='stat-line'>Grubs Per Second: +" + getBirdGrubRatePerSecond(bird).toFixed(2) + "</p>"
+          : "") +
         (typeof bird.twigsPerSecond === "number"
           ? "<p class='stat-line'>Twigs Per Second: +" + getBirdTwigRatePerSecond(bird, gameState).toFixed(2) + "</p>"
+          : "") +
+        (typeof bird.seedsPerSecond === "number"
+          ? "<p class='stat-line'>Seeds Per Second: +" + getBirdSeedRatePerSecond(bird).toFixed(2) + "</p>"
+          : "") +
+        (birdAbilityNames.length > 0
+          ? "<p class='stat-line'>Ability: " + birdAbilityNames.join(", ") + "</p>"
           : "") +
         "<p class='stat-line'>Rarity: " + bird.rarity + "</p>";
       birdOverviewList.appendChild(birdSummary);
     }
 
+    // Decide when a habitat overview should split into two vertical columns.
+    function getOverviewSplitPointForMode(mode) {
+      if (mode === "city-living") {
+        return Math.ceil(getHabitatBirdTotals(gameState, "City Living").totalSpecies / 2);
+      }
+
+      if (mode === "urban-waters") {
+        return Math.ceil(getHabitatBirdTotals(gameState, "Urban Waters").totalSpecies / 2);
+      }
+
+      return Math.ceil(gameState.birds.length / 2);
+    }
+
+    // Render the flock overview in compact or expanded mode.
     function renderOverview() {
       const acquiredBirds = getAcquiredBirdsSnapshot();
       birdOverviewList.innerHTML = "";
+      birdOverviewList.classList.remove("overview-two-column");
       setActiveOverviewButton();
 
       if (activeOverviewMode === "minimize") {
         return;
       }
 
-      const divider = document.createElement("div");
-      divider.className = "overview-divider";
-      birdOverviewList.appendChild(divider);
-
       const birdsToShow = activeOverviewMode === "city-living"
         ? acquiredBirds.filter(function (bird) {
             return bird.nativeHabitat === "City Living";
           })
-        : acquiredBirds;
+        : acquiredBirds.filter(function (bird) {
+            return bird.nativeHabitat === "Urban Waters";
+          });
 
-      birdsToShow.forEach(function (bird) {
+      const overviewSplitPoint = getOverviewSplitPointForMode(activeOverviewMode);
+
+      if (birdsToShow.length > overviewSplitPoint) {
+        birdOverviewList.classList.add("overview-two-column");
+        birdOverviewList.style.gridTemplateRows = "repeat(" + overviewSplitPoint + ", auto)";
+      } else {
+        birdOverviewList.style.gridTemplateRows = "";
+        const divider = document.createElement("div");
+        divider.className = "overview-divider";
+        birdOverviewList.appendChild(divider);
+      }
+
+      birdsToShow.forEach(function (bird, index) {
         appendBirdSummary(bird);
+        const latestSummary = birdOverviewList.lastElementChild;
+        if (
+          latestSummary &&
+          latestSummary.classList.contains("bird-summary") &&
+          (index === 0 || (birdsToShow.length > overviewSplitPoint && index === overviewSplitPoint))
+        ) {
+          latestSummary.classList.add("is-first-summary");
+        }
       });
     }
 
+    // Render one habitat panel, including its empty or unconstructed state.
     function renderHabitatPanel(habitatName, habitatBirdList) {
       const acquiredBirds = getAcquiredBirdsSnapshot();
       const birdsInHabitat = acquiredBirds.filter(function (bird) {
@@ -510,32 +667,52 @@
       birdsInHabitat.forEach(function (bird) {
         const habitatFigure = document.createElement("figure");
         habitatFigure.className = "habitat-bird-figure";
+        const birdAbilityNames = getBirdAbilityNames(bird);
+        const habitatImages = getBirdHabitatImages(bird);
+        const imageMarkup = habitatImages.length > 1
+          ? "<div class='habitat-bird-image-group'>" + habitatImages.map(function (imageEntry) {
+              return "<img src='" + imageEntry.src + "' alt='" + imageEntry.alt + "' data-bird-id='" + bird.id + "' data-variant='" + (imageEntry.variantKey || "") + "'>";
+            }).join("") + "</div>"
+          : "<img src='" + habitatImages[0].src + "' alt='" + habitatImages[0].alt + "' data-bird-id='" + bird.id + "' data-variant='" + (habitatImages[0].variantKey || "") + "'>";
         const totalVisitors = getBirdVisitorRatePerDay(bird, gameState) * bird.count;
+        const totalGrubs = getBirdGrubRatePerSecond(bird) * bird.count;
         const totalTwigs = getBirdTwigRatePerSecond(bird, gameState) * bird.count;
+        const totalSeeds = getBirdSeedRatePerSecond(bird) * bird.count;
 
         habitatFigure.innerHTML =
           "<div class='habitat-bird-tooltip'>" +
             "<p>Visitors Per Day: +" + totalVisitors + "</p>" +
+            (typeof bird.grubsPerSecond === "number"
+              ? "<p>Grubs Per Second: +" + totalGrubs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
             (typeof bird.twigsPerSecond === "number"
               ? "<p>Twigs Per Second: +" + totalTwigs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
               : "") +
+            (typeof bird.seedsPerSecond === "number"
+              ? "<p>Seeds Per Second: +" + totalSeeds.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+              : "") +
+            (birdAbilityNames.length > 0
+              ? "<p>Ability: " + birdAbilityNames.join(", ") + "</p>"
+              : "") +
           "</div>" +
-          "<img src='" + bird.image + "' alt='" + bird.species + " inside the aviary habitat'>" +
+          imageMarkup +
           "<figcaption>" + bird.species +
             (bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
           "</figcaption>";
 
         habitatBirdList.appendChild(habitatFigure);
 
-        const habitatImage = habitatFigure.querySelector("img");
-        habitatImage.addEventListener("click", function () {
-          const birdCall = new Audio(bird.call);
-          birdCall.currentTime = 0;
-          birdCall.play();
+        habitatFigure.querySelectorAll("img").forEach(function (habitatImage) {
+          habitatImage.addEventListener("click", function () {
+            const birdCall = new Audio(bird.call);
+            birdCall.currentTime = 0;
+            birdCall.play();
+          });
         });
       });
     }
 
+    // Refresh all Aviary-specific UI after an upgrade or state change.
     function rerenderAviary() {
       refreshAviarySummary();
       renderTopBar(topBar, gameState);
@@ -545,6 +722,7 @@
       renderHabitatPanel("Urban Waters", urbanWatersBirdList);
     }
 
+    // Render the active upgrades tab for either flock or aviary upgrades.
     function renderUpgradesOverview() {
       upgradesOverviewList.innerHTML = "";
       setActiveUpgradesButton();
@@ -568,6 +746,7 @@
         const murderPartyButton = document.createElement("button");
         murderPartyButton.className = "upgrade-action-button";
         murderPartyButton.type = "button";
+        murderPartyButton.dataset.requiresSuccess = "true";
         murderPartyButton.textContent = gameState.murderPartyPurchased
           ? "Murder Party (Active)"
           : "Murder Party";
@@ -586,6 +765,7 @@
           }
 
           gameState.murderPartyPurchased = true;
+          playButtonSound();
           saveGameState(gameState);
           rerenderAviary();
         });
@@ -620,6 +800,7 @@
       const urbanWatersButton = document.createElement("button");
       urbanWatersButton.className = "upgrade-action-button";
       urbanWatersButton.type = "button";
+      urbanWatersButton.dataset.requiresSuccess = "true";
       urbanWatersButton.textContent = gameState.ownedHabitats.includes("Urban Waters")
         ? "Urban Waters (Constructed)"
         : "Urban Waters (" + formatLargeNumber(10000) + " Coins)";
@@ -637,6 +818,7 @@
 
         gameState.coins -= 10000;
         gameState.ownedHabitats.push("Urban Waters");
+        playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
       });
@@ -668,6 +850,7 @@
       const cafeButton = document.createElement("button");
       cafeButton.className = "upgrade-action-button";
       cafeButton.type = "button";
+      cafeButton.dataset.requiresSuccess = "true";
       cafeButton.textContent = gameState.cafePurchased
         ? "Café (Owned)"
         : "Café (" + formatLargeNumber(1000) + " Coins)";
@@ -685,6 +868,7 @@
 
         gameState.coins -= 1000;
         gameState.cafePurchased = true;
+        playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
       });
@@ -712,6 +896,7 @@
       const indoorGardenButton = document.createElement("button");
       indoorGardenButton.className = "upgrade-action-button";
       indoorGardenButton.type = "button";
+      indoorGardenButton.dataset.requiresSuccess = "true";
       indoorGardenButton.textContent = gameState.indoorGardenPurchased
         ? "Indoor Garden (Owned)"
         : "Indoor Garden (" + formatLargeNumber(10000) + " Seeds)";
@@ -737,6 +922,7 @@
 
         gameState.seeds -= 10000;
         gameState.indoorGardenPurchased = true;
+        playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
       });
@@ -767,7 +953,7 @@
     });
 
     overviewAllBirdsButton.addEventListener("click", function () {
-      activeOverviewMode = "all-birds";
+      activeOverviewMode = "urban-waters";
       renderOverview();
     });
 
@@ -788,10 +974,12 @@
 
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
+    initButtonAudio();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
       refreshAviarySummary();
     });
+    renderEarthworksNav();
     refreshAviarySummary();
     renderOverview();
     renderUpgradesOverview();
