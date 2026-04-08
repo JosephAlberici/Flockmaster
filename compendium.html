@@ -125,6 +125,26 @@
       letter-spacing: 1px;
     }
 
+    .rarity-uncommon {
+      color: #2f8f46;
+      font-weight: bold;
+    }
+
+    .rarity-rare {
+      color: #2f6fd4;
+      font-weight: bold;
+    }
+
+    .rarity-epic {
+      color: #7d46c7;
+      font-weight: bold;
+    }
+
+    .rarity-legendary {
+      color: #d4b55a;
+      font-weight: bold;
+    }
+
     .compendium-controls {
       margin-bottom: 18px;
     }
@@ -410,8 +430,13 @@
         habitatLine.textContent = "Native Habitat: " + bird.nativeHabitat;
         metaBlock.appendChild(habitatLine);
 
+        const scientificNameLine = document.createElement("p");
+        scientificNameLine.textContent = "Scientific Name: " + bird.scientificName;
+        metaBlock.appendChild(scientificNameLine);
+
         const rarityLine = document.createElement("p");
-        rarityLine.textContent = "Rarity: " + bird.rarity;
+        const rarityClassName = getRarityClassName(bird.rarity);
+        rarityLine.innerHTML = "Rarity: <span class='" + rarityClassName + "'>" + bird.rarity + "</span>";
         metaBlock.appendChild(rarityLine);
 
         const abilityLine = document.createElement("p");
@@ -483,11 +508,14 @@
       });
     }
 
-    // List every known ability in alphabetical order with its description.
+    // List every known ability in alphabetical order with its description and matching species.
     function renderAbilityDescriptionsView() {
       const sortedAbilities = Object.keys(ABILITIES)
         .map(function (abilityId) {
-          return ABILITIES[abilityId];
+          return {
+            id: abilityId,
+            ...ABILITIES[abilityId]
+          };
         })
         .sort(function (leftAbility, rightAbility) {
           return leftAbility.name.localeCompare(rightAbility.name);
@@ -505,11 +533,23 @@
       abilitiesGrid.className = "compendium-abilities-grid";
 
       visibleAbilities.forEach(function (ability) {
+        const matchingSpecies = BIRD_LIBRARY
+          .filter(function (bird) {
+            return Array.isArray(bird.abilities) && bird.abilities.includes(ability.id);
+          })
+          .map(function (bird) {
+            return bird.species;
+          })
+          .sort(function (leftSpecies, rightSpecies) {
+            return leftSpecies.localeCompare(rightSpecies);
+          });
+
         const abilityEntry = document.createElement("div");
         abilityEntry.className = "compendium-entry";
         abilityEntry.innerHTML =
           "<h3>" + ability.name + "</h3>" +
-          "<p>" + ability.description + "</p>";
+          "<p>" + ability.description + "</p>" +
+          "<p><strong>Birds:</strong> " + (matchingSpecies.length > 0 ? matchingSpecies.join(", ") : "N/A") + "</p>";
         abilitiesGrid.appendChild(abilityEntry);
       });
 

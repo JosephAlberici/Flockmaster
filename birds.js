@@ -105,5 +105,18 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/nuthatch.wav",
     nativeHabitat: "City Living",
     scientificName: "Sitta carolinensis",
+  },
+  {
+    id: "screechowl",
+    species: "Eastern Screech Owl",
+    grubsPerSecond: 0.25,
+    abilities: ["overseer"],
+    diet: "grubs",
+    rarity: "Epic",
+    acquired: false,
+    image: "/Resources/Bird Images/screechowl.png",
+    call: "/Resources/Calls/screechowl.wav",
+    nativeHabitat: "City Living",
+    scientificName: "Megascops asio",
   }
 ];

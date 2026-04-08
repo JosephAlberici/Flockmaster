@@ -114,6 +114,26 @@
       color: #2c3e50;
     }
 
+    .rarity-uncommon {
+      color: #2f8f46;
+      font-weight: bold;
+    }
+
+    .rarity-rare {
+      color: #2f6fd4;
+      font-weight: bold;
+    }
+
+    .rarity-epic {
+      color: #7d46c7;
+      font-weight: bold;
+    }
+
+    .rarity-legendary {
+      color: #d4b55a;
+      font-weight: bold;
+    }
+
     .overview-header {
       display: flex;
       align-items: center;
@@ -291,6 +311,22 @@
       margin-bottom: 10px;
     }
 
+    .bird-summary .upgrade-tooltip {
+      display: block;
+      position: relative;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .bird-summary .upgrade-tooltip-box {
+      white-space: normal;
+      min-width: 220px;
+    }
+
+    .bird-summary .upgrade-tooltip .stat-line {
+      margin: 12px 0;
+    }
+
     .habitat-bird-figure figcaption {
       margin-top: 10px;
       font-weight: bold;
@@ -319,6 +355,18 @@
       margin-bottom: 14px;
     }
 
+    .upgrade-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: start;
+    }
+
+    .upgrade-row.upgrade-row-three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
     .upgrade-action-button {
       display: block;
       width: 100%;
@@ -337,6 +385,12 @@
       margin: 8px 0 0;
       color: #2c3e50;
       font-weight: bold;
+    }
+
+    .upgrade-entry .upgrade-action-button.is-placeholder {
+      background: #6f7780;
+      color: #d7dde4;
+      cursor: default;
     }
 
     .upgrade-tooltip {
@@ -434,6 +488,7 @@
           </div>
         </div>
         <p class="stat-line">Species Count: <span id="speciesCount"></span></p>
+        <p class="stat-line">Max Offline Duration: <span id="maxOfflineDuration"></span> hours</p>
         <p class="stat-line">Grubs Per Second: <span id="grubsPerSecond"></span></p>
         <p class="stat-line">Twigs Per Second: <span id="twigsPerSecond"></span></p>
         <div id="birdOverviewList"></div>
@@ -488,6 +543,7 @@
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
+    const maxOfflineDurationDisplay = document.querySelector("#maxOfflineDuration");
     const visitorsPerDayDisplay = document.querySelector("#visPerDay");
     const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
     const twigsPerSecondDisplay = document.querySelector("#twigsPerSecond");
@@ -536,6 +592,7 @@
       cityLivingHeader.textContent = "City Living (" + cityLivingTotals.acquiredSpecies + "/" + cityLivingTotals.totalSpecies + ")";
       urbanWatersHeader.textContent = "Urban Waters (" + urbanWatersTotals.acquiredSpecies + "/" + urbanWatersTotals.totalSpecies + ")";
       speciesCount.textContent = getFlockDiversity(gameState);
+      maxOfflineDurationDisplay.textContent = getMaxOfflineDurationLabel(gameState);
       visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
       grubsPerSecondDisplay.textContent = getGrubsPerSecond(gameState).toFixed(2);
       twigsPerSecondDisplay.textContent = getTwigsPerSecond(gameState).toFixed(2);
@@ -564,10 +621,14 @@
       const birdSummary = document.createElement("div");
       birdSummary.className = "bird-summary";
       const birdAbilityNames = getBirdAbilityNames(bird);
+      const birdAbilityDescriptions = getBirdAbilityDescriptions(bird);
+      const rarityClassName = getRarityClassName(bird.rarity);
       birdSummary.innerHTML =
         "<h3>" + bird.species + "</h3>" +
-        "<p class='stat-line'>" + bird.scientificName + "</p>" +
-        "<p class='stat-line'>Visitors Per Day: +" + getBirdVisitorRatePerDay(bird, gameState) + "</p>" +
+        "<p class='stat-line'>Diet: " + bird.diet + "</p>" +
+        (typeof bird.visitorsPerDay === "number"
+          ? "<p class='stat-line'>Visitors Per Day: +" + getBirdVisitorRatePerDay(bird, gameState) + "</p>"
+          : "") +
         (typeof bird.grubsPerSecond === "number"
           ? "<p class='stat-line'>Grubs Per Second: +" + getBirdGrubRatePerSecond(bird).toFixed(2) + "</p>"
           : "") +
@@ -575,12 +636,12 @@
           ? "<p class='stat-line'>Twigs Per Second: +" + getBirdTwigRatePerSecond(bird, gameState).toFixed(2) + "</p>"
           : "") +
         (typeof bird.seedsPerSecond === "number"
-          ? "<p class='stat-line'>Seeds Per Second: +" + getBirdSeedRatePerSecond(bird).toFixed(2) + "</p>"
+          ? "<p class='stat-line'>Seeds Per Second: +" + getBirdSeedRatePerSecond(bird, gameState).toFixed(2) + "</p>"
           : "") +
         (birdAbilityNames.length > 0
-          ? "<p class='stat-line'>Ability: " + birdAbilityNames.join(", ") + "</p>"
+          ? "<div class='upgrade-tooltip'><p class='stat-line'>Ability: " + birdAbilityNames.join(", ") + "</p><div class='upgrade-tooltip-box'>" + birdAbilityDescriptions.join("<br><br>") + "</div></div>"
           : "") +
-        "<p class='stat-line'>Rarity: " + bird.rarity + "</p>";
+        "<p class='stat-line'>Rarity: <span class='" + rarityClassName + "'>" + bird.rarity + "</span></p>";
       birdOverviewList.appendChild(birdSummary);
     }
 
@@ -677,11 +738,13 @@
         const totalVisitors = getBirdVisitorRatePerDay(bird, gameState) * bird.count;
         const totalGrubs = getBirdGrubRatePerSecond(bird) * bird.count;
         const totalTwigs = getBirdTwigRatePerSecond(bird, gameState) * bird.count;
-        const totalSeeds = getBirdSeedRatePerSecond(bird) * bird.count;
+        const totalSeeds = getBirdSeedRatePerSecond(bird, gameState) * bird.count;
 
         habitatFigure.innerHTML =
           "<div class='habitat-bird-tooltip'>" +
-            "<p>Visitors Per Day: +" + totalVisitors + "</p>" +
+            (typeof bird.visitorsPerDay === "number"
+              ? "<p>Visitors Per Day: +" + totalVisitors + "</p>"
+              : "") +
             (typeof bird.grubsPerSecond === "number"
               ? "<p>Grubs Per Second: +" + totalGrubs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
               : "") +
@@ -737,6 +800,10 @@
         flockTitle.textContent = "Population Bonuses";
         upgradesOverviewList.appendChild(flockTitle);
 
+        const populationRow = document.createElement("div");
+        populationRow.className = "upgrade-row upgrade-row-three";
+        upgradesOverviewList.appendChild(populationRow);
+
         const murderPartyEntry = document.createElement("div");
         murderPartyEntry.className = "upgrade-entry";
 
@@ -782,7 +849,109 @@
         murderPartyTooltip.appendChild(murderPartyTooltipBox);
         murderPartyEntry.appendChild(murderPartyTooltip);
         murderPartyEntry.appendChild(murderPartyRequirement);
-        upgradesOverviewList.appendChild(murderPartyEntry);
+        populationRow.appendChild(murderPartyEntry);
+
+        const turtleWakeEntry = document.createElement("div");
+        turtleWakeEntry.className = "upgrade-entry";
+
+        const turtleWakeTooltip = document.createElement("div");
+        turtleWakeTooltip.className = "upgrade-tooltip";
+
+        const turtleWakeButton = document.createElement("button");
+        turtleWakeButton.className = "upgrade-action-button";
+        turtleWakeButton.type = "button";
+        turtleWakeButton.dataset.requiresSuccess = "true";
+        turtleWakeButton.textContent = gameState.turtleWakePurchased
+          ? "Turtle Wake (Active)"
+          : "Turtle Wake";
+
+        turtleWakeButton.addEventListener("click", function () {
+          const mourningDoveInFlock = gameState.birds.find(function (bird) {
+            return bird.id === "mourningdove";
+          });
+
+          if (gameState.turtleWakePurchased) {
+            return;
+          }
+
+          if (!mourningDoveInFlock || mourningDoveInFlock.count < 5) {
+            return;
+          }
+
+          gameState.turtleWakePurchased = true;
+          playButtonSound();
+          saveGameState(gameState);
+          rerenderAviary();
+        });
+
+        const turtleWakeTooltipBox = document.createElement("div");
+        turtleWakeTooltipBox.className = "upgrade-tooltip-box";
+        turtleWakeTooltipBox.textContent = "Mourning Doves start generating 0.04 twigs per second";
+
+        const turtleWakeRequirement = document.createElement("p");
+        turtleWakeRequirement.className = "upgrade-requirement";
+        turtleWakeRequirement.textContent = "Requires: " + formatLargeNumber(5) + " Mourning Doves";
+
+        turtleWakeTooltip.appendChild(turtleWakeButton);
+        turtleWakeTooltip.appendChild(turtleWakeTooltipBox);
+        turtleWakeEntry.appendChild(turtleWakeTooltip);
+        turtleWakeEntry.appendChild(turtleWakeRequirement);
+        populationRow.appendChild(turtleWakeEntry);
+
+        const flockResourceTitle = document.createElement("p");
+        flockResourceTitle.className = "upgrade-section-title";
+        flockResourceTitle.textContent = "Resource Generation";
+        upgradesOverviewList.appendChild(flockResourceTitle);
+
+        const flockResourceRow = document.createElement("div");
+        flockResourceRow.className = "upgrade-row upgrade-row-three";
+        upgradesOverviewList.appendChild(flockResourceRow);
+
+        const flockForestryEntry = document.createElement("div");
+        flockForestryEntry.className = "upgrade-entry";
+
+        const flockForestryTooltip = document.createElement("div");
+        flockForestryTooltip.className = "upgrade-tooltip";
+
+        const flockForestryButton = document.createElement("button");
+        flockForestryButton.className = "upgrade-action-button";
+        flockForestryButton.type = "button";
+        flockForestryButton.dataset.requiresSuccess = "true";
+        flockForestryButton.textContent = gameState.flockForestryPurchased
+          ? "Flock Forestry (Active)"
+          : "Flock Forestry (" + formatLargeNumber(50000) + " Coins)";
+
+        flockForestryButton.addEventListener("click", function () {
+          updateCoinsFromElapsedTime(gameState, Date.now());
+
+          if (gameState.flockForestryPurchased) {
+            return;
+          }
+
+          if (getFlockDiversity(gameState) < 7 || gameState.coins < 50000) {
+            return;
+          }
+
+          gameState.coins -= 50000;
+          gameState.flockForestryPurchased = true;
+          playButtonSound();
+          saveGameState(gameState);
+          rerenderAviary();
+        });
+
+        const flockForestryTooltipBox = document.createElement("div");
+        flockForestryTooltipBox.className = "upgrade-tooltip-box";
+        flockForestryTooltipBox.textContent = "Doubles seeds per second and twigs per second generated by birds";
+
+        const flockForestryRequirement = document.createElement("p");
+        flockForestryRequirement.className = "upgrade-requirement";
+        flockForestryRequirement.textContent = "Requires: " + formatLargeNumber(7) + " Species";
+
+        flockForestryTooltip.appendChild(flockForestryButton);
+        flockForestryTooltip.appendChild(flockForestryTooltipBox);
+        flockForestryEntry.appendChild(flockForestryTooltip);
+        flockForestryEntry.appendChild(flockForestryRequirement);
+        flockResourceRow.appendChild(flockForestryEntry);
         return;
       }
 
@@ -841,6 +1010,9 @@
       amenitiesTitle.textContent = "Amenities";
       upgradesOverviewList.appendChild(amenitiesTitle);
 
+      const amenitiesRow = document.createElement("div");
+      amenitiesRow.className = "upgrade-row";
+
       const cafeEntry = document.createElement("div");
       cafeEntry.className = "upgrade-entry";
 
@@ -885,7 +1057,7 @@
       cafeRequirement.className = "upgrade-requirement";
       cafeRequirement.textContent = "Requires: " + formatLargeNumber(3) + " Species";
       cafeEntry.appendChild(cafeRequirement);
-      upgradesOverviewList.appendChild(cafeEntry);
+      amenitiesRow.appendChild(cafeEntry);
 
       const indoorGardenEntry = document.createElement("div");
       indoorGardenEntry.className = "upgrade-entry";
@@ -939,7 +1111,122 @@
       indoorGardenRequirement.className = "upgrade-requirement";
       indoorGardenRequirement.textContent = "Requires: " + formatLargeNumber(2) + " Kestrels";
       indoorGardenEntry.appendChild(indoorGardenRequirement);
-      upgradesOverviewList.appendChild(indoorGardenEntry);
+      amenitiesRow.appendChild(indoorGardenEntry);
+      upgradesOverviewList.appendChild(amenitiesRow);
+
+      const treasuryDivider = document.createElement("div");
+      treasuryDivider.className = "overview-divider";
+      upgradesOverviewList.appendChild(treasuryDivider);
+
+      const treasuryTitle = document.createElement("p");
+      treasuryTitle.className = "upgrade-section-title";
+      treasuryTitle.textContent = "Treasury";
+      upgradesOverviewList.appendChild(treasuryTitle);
+
+      const treasuryRow = document.createElement("div");
+      treasuryRow.className = "upgrade-row upgrade-row-three";
+
+      const basketEntry = document.createElement("div");
+      basketEntry.className = "upgrade-entry";
+
+      const basketTooltip = document.createElement("div");
+      basketTooltip.className = "upgrade-tooltip";
+
+      const basketButton = document.createElement("button");
+      basketButton.className = "upgrade-action-button";
+      basketButton.type = "button";
+      basketButton.dataset.requiresSuccess = "true";
+      basketButton.textContent = gameState.basketPurchased
+        ? "Basket (Owned)"
+        : "Basket (" + formatLargeNumber(100) + " Twigs)";
+
+      basketButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.basketPurchased) {
+          return;
+        }
+
+        if (gameState.twigs < 100) {
+          return;
+        }
+
+        gameState.twigs -= 100;
+        gameState.coinMax = 100000;
+        gameState.basketPurchased = true;
+        if (gameState.coins > gameState.coinMax) {
+          gameState.coins = gameState.coinMax;
+        }
+        playButtonSound();
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const basketTooltipBox = document.createElement("div");
+      basketTooltipBox.className = "upgrade-tooltip-box";
+      basketTooltipBox.textContent = "Increases maximum coins to 100k";
+
+      basketTooltip.appendChild(basketButton);
+      basketTooltip.appendChild(basketTooltipBox);
+      basketEntry.appendChild(basketTooltip);
+      treasuryRow.appendChild(basketEntry);
+
+      const depositBoxEntry = document.createElement("div");
+      depositBoxEntry.className = "upgrade-entry";
+
+      const depositBoxTooltip = document.createElement("div");
+      depositBoxTooltip.className = "upgrade-tooltip";
+
+      const depositBoxButton = document.createElement("button");
+      depositBoxButton.className = "upgrade-action-button";
+      depositBoxButton.type = "button";
+      depositBoxButton.dataset.requiresSuccess = "true";
+      depositBoxButton.textContent = gameState.depositBoxPurchased
+        ? "Deposit Box (Owned)"
+        : "Deposit Box (" + formatLargeNumber(10) + " Hardwood)";
+
+      depositBoxButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.depositBoxPurchased) {
+          return;
+        }
+
+        if (gameState.hardwood < 10) {
+          return;
+        }
+
+        gameState.hardwood -= 10;
+        gameState.coinMax = 1000000;
+        gameState.depositBoxPurchased = true;
+        if (gameState.coins > gameState.coinMax) {
+          gameState.coins = gameState.coinMax;
+        }
+        playButtonSound();
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const depositBoxTooltipBox = document.createElement("div");
+      depositBoxTooltipBox.className = "upgrade-tooltip-box";
+      depositBoxTooltipBox.textContent = "Increases maximum coins to 1M";
+
+      depositBoxTooltip.appendChild(depositBoxButton);
+      depositBoxTooltip.appendChild(depositBoxTooltipBox);
+      depositBoxEntry.appendChild(depositBoxTooltip);
+      treasuryRow.appendChild(depositBoxEntry);
+
+      const simpleSafeEntry = document.createElement("div");
+      simpleSafeEntry.className = "upgrade-entry";
+
+      const simpleSafeButton = document.createElement("button");
+      simpleSafeButton.className = "upgrade-action-button is-placeholder";
+      simpleSafeButton.type = "button";
+      simpleSafeButton.textContent = "Simple Safe";
+      simpleSafeEntry.appendChild(simpleSafeButton);
+      treasuryRow.appendChild(simpleSafeEntry);
+
+      upgradesOverviewList.appendChild(treasuryRow);
     }
 
     overviewMinimizeButton.addEventListener("click", function () {

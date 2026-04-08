@@ -515,8 +515,8 @@
       return tooltipWrapper;
     }
 
-    // Build the late-game trap cost reset upgrade.
-    function createWildlifeRestorationButton() {
+    // Build a seed-bait reset upgrade button.
+    function createTrapSeedResetButton(config) {
       const wrapper = document.createElement("div");
       wrapper.className = "shop-row";
       wrapper.style.display = "block";
@@ -531,17 +531,17 @@
       button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = "Wildlife Restoration (" + formatLargeNumber(1000000) + " Seeds)";
+      button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Seeds)";
 
       button.addEventListener("click", function () {
         updateCoinsFromElapsedTime(gameState, Date.now());
 
-        if (gameState.seeds < 1000000) {
+        if (gameState.seeds < config.cost) {
           return;
         }
 
-        gameState.seeds -= 1000000;
-        gameState.trapLoadCost = 1000;
+        gameState.seeds -= config.cost;
+        gameState.trapLoadCost = config.resetCost;
         playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
@@ -550,7 +550,7 @@
 
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = "Resets cost to load trap";
+      tooltipBox.textContent = "Resets seed bait cost to " + formatLargeNumber(config.resetCost) + " seeds";
 
       tooltipWrapper.appendChild(button);
       tooltipWrapper.appendChild(tooltipBox);
@@ -739,7 +739,7 @@
           return;
         }
 
-        if (!mourningDoveInFlock || mourningDoveInFlock.count < 3) {
+        if (!mourningDoveInFlock || mourningDoveInFlock.count < 2) {
           return;
         }
 
@@ -757,7 +757,7 @@
 
       const seedDispersalRequirement = document.createElement("p");
       seedDispersalRequirement.className = "shop-count";
-      seedDispersalRequirement.textContent = "Requires: 3 Mourning Doves";
+      seedDispersalRequirement.textContent = "Requires: 2 Mourning Doves";
 
       seedDispersalTooltip.appendChild(seedDispersalButton);
       seedDispersalTooltip.appendChild(seedDispersalTooltipBox);
@@ -777,13 +777,13 @@
       const trapNote = document.createElement("p");
       trapNote.className = "panel-note";
       if (gameState.trapPulled) {
-        trapNote.textContent = "The trap has been pulled.";
+        trapNote.textContent = "The trap has been pulled";
       } else if (gameState.trapLoaded) {
-        trapNote.textContent = "Your trap is loaded with " + gameState.trapBaitType + " and ready.";
+        trapNote.textContent = "Your trap is loaded with " + gameState.trapBaitType + " and ready";
       } else if (gameState.lastTrapResult) {
         trapNote.textContent = gameState.lastTrapResult;
       } else {
-        trapNote.textContent = "Your trap is ready to be baited.";
+        trapNote.textContent = "Your trap is ready to be baited";
       }
 
       const trapImage = document.createElement("img");
@@ -821,7 +821,7 @@
 
           if (catchRoll < gameState.catchRate) {
             if (catchableBirds.length === 0) {
-              gameState.lastTrapResult = "No new birds can be caught in your current habitats.";
+              gameState.lastTrapResult = "No new birds can be caught in your current habitats";
             } else {
               // Pull one bird from the weighted habitat catch pool.
               const caughtBird = getRandomBirdByRarityForGameState(catchableBirds, gameState);
@@ -836,7 +836,7 @@
               gameState.trapLoadCost *= 1.15;
 
               if (alreadyOwned) {
-                gameState.lastTrapResult = "You caught another " + caughtBird.species + ".";
+                gameState.lastTrapResult = "You caught another " + caughtBird.species;
               } else {
                 gameState.lastTrapResult = "Caught: " + caughtBird.species;
                 showCaughtBirdOverlay(caughtBird);
@@ -1011,7 +1011,16 @@
       storageDivider.className = "upgrade-divider";
       upgradesList.appendChild(storageDivider);
 
-      upgradesList.appendChild(createWildlifeRestorationButton());
+      upgradesList.appendChild(createTrapSeedResetButton({
+        label: "Avian Repopulation",
+        cost: 100000,
+        resetCost: 1000
+      }));
+      upgradesList.appendChild(createTrapSeedResetButton({
+        label: "Wildlife Restoration",
+        cost: 1000000,
+        resetCost: 10000
+      }));
     }
 
     renderSaplingShop();

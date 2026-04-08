@@ -2,7 +2,7 @@
 const ABILITIES = {
   dimorphic: {
     name: "Dimorphic",
-    description: "Visitors per day from this species doubles after acquiring both a male and a female.",
+    description: "Visitors per day from this species doubles after acquiring both a male and a female",
 
     // Double visitor output once both visual variants have been collected.
     modifyVisitorsPerDay(currentVisitorsPerDay, context) {
@@ -15,9 +15,17 @@ const ABILITIES = {
       return currentVisitorsPerDay;
     }
   },
+  nocturnal: {
+    name: "Nocturnal",
+    description: "Increases max offline duration by 10 minutes per individual, up to 24 hours"
+  },
+  overseer: {
+    name: "Overseer",
+    description: "Can supervise the sawmill and trigger automatic twig processing when a threshold is met"
+  },
   treePeck: {
     name: "Tree Peck",
-    description: "Lowers seed bait cost by 20% of its current value per individual.",
+    description: "Lowers seed bait cost by 20% of its current value per individual",
 
     // Reduce the seed bait cost once for each bird carrying this ability.
     modifyTrapSeedCost(currentCost, context) {

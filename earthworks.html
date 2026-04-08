@@ -82,14 +82,27 @@
       width: 40%;
     }
 
-    .earthworks-panel {
+    .earthworks-main {
       width: 60%;
+    }
+
+    .earthworks-panel {
+      width: 100%;
       min-height: 420px;
       background: #8b6a4f;
       border: 3px solid #2c3e50;
       border-radius: 18px;
       padding: 24px;
       box-sizing: border-box;
+      margin-bottom: 22px;
+    }
+
+    .earthworks-panel:last-child {
+      margin-bottom: 0;
+    }
+
+    .lumber-panel {
+      background: #8b6a4f;
     }
 
     .card {
@@ -148,10 +161,203 @@
       margin: 0;
     }
 
+    .upgrade-subtitle {
+      margin: 0 0 14px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
     .log-shell {
       position: relative;
       margin-top: 24px;
       text-align: center;
+    }
+
+    .sawmill-action-shell {
+      margin-top: 24px;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: center;
+    }
+
+    .process-tooltip {
+      position: relative;
+      display: block;
+    }
+
+    .process-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .process-tooltip:hover .process-tooltip-box,
+    .process-tooltip-box.is-visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .sawmill-image {
+      width: 100%;
+      max-width: 760px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .sawmill-progress-shell {
+      width: 100%;
+      margin-top: auto;
+      padding-top: 22px;
+    }
+
+    .sawmill-progress-bar {
+      width: 100%;
+      height: 18px;
+      background: rgba(247, 241, 230, 0.35);
+      border: 2px solid #2c3e50;
+      border-radius: 999px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .sawmill-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #f7f1e6;
+      transition: width 0.2s linear;
+    }
+
+    .sawmill-progress-label {
+      margin-top: 10px;
+      color: #f7f1e6;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .sawmill-button-row {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .sawmill-button-row .menu-button {
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 42, 54, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .overlay.is-visible {
+      display: flex;
+    }
+
+    .overlay-card {
+      width: 100%;
+      max-width: 720px;
+      background: #f7f1e6;
+      border: 3px solid black;
+      border-radius: 20px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .overlay-card h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .overlay-subtext {
+      margin: 0 0 16px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overseer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .overseer-card {
+      background: #ffffff;
+      border: 2px solid black;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .overseer-card img {
+      width: 100%;
+      max-width: 140px;
+      display: block;
+      margin: 0 auto 12px;
+    }
+
+    .overseer-card-name {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overlay-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .threshold-input {
+      min-width: 240px;
+      padding: 12px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .threshold-helper {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overlay-status {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+      min-height: 24px;
     }
 
     .log-button {
@@ -195,6 +401,29 @@
 <body>
   <div class="top-bar" id="topBar"></div>
 
+  <div class="overlay" id="overseerOverlay">
+    <div class="overlay-card">
+      <h2>Select Overseer</h2>
+      <p class="overlay-subtext">Choose which overseer species will supervise automatic sawmill runs</p>
+      <div class="overseer-grid" id="overseerGrid"></div>
+      <button class="menu-button" type="button" id="closeOverseerOverlay">Close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="thresholdOverlay">
+    <div class="overlay-card">
+      <h2>Set Overseer Minimum</h2>
+      <p class="overlay-subtext">Set the minimum twig stockpile where the sawmill will automatically begin processing</p>
+      <div class="overlay-row">
+        <input class="threshold-input" type="text" id="thresholdInput" placeholder="Enter twig threshold">
+        <button class="menu-button" type="button" id="saveThresholdButton" data-requires-success="true">Save Threshold</button>
+      </div>
+      <p class="threshold-helper">Use zeroes, i.e 20000 instead of 20k</p>
+      <p class="overlay-status" id="thresholdStatus"></p>
+      <button class="menu-button" type="button" id="closeThresholdOverlay">Close</button>
+    </div>
+  </div>
+
   <h1 class="page-title">EARTHWORKS</h1>
 
   <div class="page-layout">
@@ -208,20 +437,53 @@
         <h2>Earthworks Overview</h2>
         <p class="panel-note">Grubs Per Click: <span id="grubsPerClick"></span></p>
         <p class="panel-note">Grubs Per Second: <span id="grubsPerSecond"></span></p>
+        <p class="panel-note">Hardwood Yield: <span id="hardwoodYield"></span></p>
+        <p class="panel-note">Twig Processing Time: <span id="twigProcessingTime"></span></p>
       </div>
 
       <div class="card">
-        <h2>Materials</h2>
+        <h2>Grub Upgrades</h2>
+        <p class="upgrade-subtitle">Grubs Per Click</p>
+        <button class="menu-button" type="button" id="pheromonesButton" data-requires-success="true">Pheromones (100k Coins)</button>
+      </div>
+
+      <div class="card">
+        <h2>Sawmill Upgrades</h2>
       </div>
     </div>
 
-    <div class="earthworks-panel">
-      <h2 class="panel-header">Grub Digging</h2>
-      <p class="panel-note">Click the log to hunt grubs.</p>
-      <div class="log-shell" id="logShell">
-        <button class="log-button" type="button" id="logButton">
-          <img src="/Resources/Misc%20Images/log.png" alt="Log for grub hunting">
-        </button>
+    <div class="earthworks-main">
+      <div class="earthworks-panel">
+        <h2 class="panel-header">Grub Hunting</h2>
+        <p class="panel-note">Click the log to hunt grubs</p>
+        <div class="log-shell" id="logShell">
+          <button class="log-button" type="button" id="logButton">
+            <img src="/Resources/Misc%20Images/log.png" alt="Log for grub hunting">
+          </button>
+        </div>
+      </div>
+
+      <div class="earthworks-panel lumber-panel">
+        <h2 class="panel-header">Sawmill</h2>
+        <p class="panel-note">Process stored twigs into hardwood</p>
+        <p class="panel-note" style="margin-top: 8px;">Overseer minimum must be set to begin automation</p>
+        <div class="sawmill-action-shell">
+          <div class="sawmill-button-row">
+            <div class="process-tooltip">
+              <button class="menu-button" type="button" id="processTwigsButton" data-requires-success="true" style="display: block; margin: 0 auto;">Process Twigs (10k)</button>
+              <div class="process-tooltip-box" id="processTwigsTooltip"></div>
+            </div>
+            <button class="menu-button" type="button" id="selectOverseerButton">Select Overseer</button>
+            <button class="menu-button" type="button" id="setThresholdButton">Set Overseer Minimum</button>
+          </div>
+          <img class="sawmill-image" id="sawmillImage" src="/Resources/Misc%20Images/sawmill.png" alt="Sawmill for processing twigs">
+          <div class="sawmill-progress-shell">
+            <div class="sawmill-progress-bar">
+              <div class="sawmill-progress-fill" id="sawmillProgressFill"></div>
+            </div>
+            <div class="sawmill-progress-label" id="sawmillProgressLabel"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -237,13 +499,195 @@
     const panelNote = document.querySelector(".panel-note");
     const grubsPerClickDisplay = document.querySelector("#grubsPerClick");
     const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
+    const hardwoodYieldDisplay = document.querySelector("#hardwoodYield");
+    const twigProcessingTimeDisplay = document.querySelector("#twigProcessingTime");
+    const pheromonesButton = document.querySelector("#pheromonesButton");
+    const processTwigsButton = document.querySelector("#processTwigsButton");
+    const processTwigsTooltip = document.querySelector("#processTwigsTooltip");
+    const selectOverseerButton = document.querySelector("#selectOverseerButton");
+    const setThresholdButton = document.querySelector("#setThresholdButton");
     const logButton = document.querySelector("#logButton");
     const logShell = document.querySelector("#logShell");
+    const sawmillImage = document.querySelector("#sawmillImage");
+    const sawmillProgressFill = document.querySelector("#sawmillProgressFill");
+    const sawmillProgressLabel = document.querySelector("#sawmillProgressLabel");
+    const overseerOverlay = document.querySelector("#overseerOverlay");
+    const overseerGrid = document.querySelector("#overseerGrid");
+    const closeOverseerOverlay = document.querySelector("#closeOverseerOverlay");
+    const thresholdOverlay = document.querySelector("#thresholdOverlay");
+    const thresholdInput = document.querySelector("#thresholdInput");
+    const thresholdStatus = document.querySelector("#thresholdStatus");
+    const saveThresholdButton = document.querySelector("#saveThresholdButton");
+    const closeThresholdOverlay = document.querySelector("#closeThresholdOverlay");
     const grubSplatSound = new Audio("/Resources/Sound%20Effects/grubsplat.mp3");
+    const sawmillSound = new Audio("/Resources/Sound%20Effects/saw.mp3");
+    let processTooltipTimeoutId = null;
 
+    // Refresh the summary stats shown in the left-hand overview panel.
     function renderEarthworksOverview() {
       grubsPerClickDisplay.textContent = "+" + gameState.grubsPerClick;
       grubsPerSecondDisplay.textContent = "+" + getGrubsPerSecond(gameState).toFixed(2);
+      hardwoodYieldDisplay.textContent = "+10";
+      twigProcessingTimeDisplay.textContent = formatDurationLabel(gameState.sawmillProcessingDurationMs);
+      pheromonesButton.textContent = gameState.pheromonesPurchased
+        ? "Pheromones (Owned)"
+        : "Pheromones (100k Coins)";
+      thresholdStatus.textContent = gameState.sawmillTwigThreshold > 0
+        ? "Current threshold: " + formatLargeNumber(gameState.sawmillTwigThreshold) + " twigs"
+        : "Current threshold: none";
+    }
+
+    // Build the overseer picker from owned birds that carry the overseer ability.
+    function renderOverseerOverlay() {
+      const unavailableOverseerIds = getAssignedOverseerIdsExcept(gameState, "sawmill");
+      const overseerBirds = getAcquiredBirdsWithAbility(gameState, "overseer").filter(function (bird) {
+        return !unavailableOverseerIds.includes(bird.id) || getAssignedOverseerId(gameState, "sawmill") === bird.id;
+      });
+      overseerGrid.innerHTML = "";
+
+      if (overseerBirds.length === 0) {
+        overseerGrid.innerHTML = "<p class='overlay-subtext'>No overseer species acquired yet</p>";
+        return;
+      }
+
+      overseerBirds.forEach(function (bird) {
+        const overseerCard = document.createElement("div");
+        overseerCard.className = "overseer-card";
+
+        const overseerImage = document.createElement("img");
+        overseerImage.src = getBirdPrimaryImage(bird);
+        overseerImage.alt = bird.species;
+
+        const overseerName = document.createElement("p");
+        overseerName.className = "overseer-card-name";
+        overseerName.textContent = bird.species;
+
+        const overseerSelectButton = document.createElement("button");
+        overseerSelectButton.className = "menu-button";
+        overseerSelectButton.type = "button";
+        overseerSelectButton.textContent = getAssignedOverseerId(gameState, "sawmill") === bird.id ? "Selected" : "Select";
+
+        overseerSelectButton.addEventListener("click", function () {
+          setAssignedOverseerId(gameState, "sawmill", bird.id);
+          playButtonSound();
+          saveGameState(gameState);
+          if (runSawmillAutomation()) {
+            renderTopBar(topBar, gameState);
+          }
+          renderOverseerOverlay();
+          renderEarthworksOverview();
+          renderSawmillAction();
+        });
+
+        overseerCard.appendChild(overseerImage);
+        overseerCard.appendChild(overseerName);
+        overseerCard.appendChild(overseerSelectButton);
+        overseerGrid.appendChild(overseerCard);
+      });
+    }
+
+    // Refresh the sawmill button label, tooltip text, and image for the current state.
+    function renderSawmillAction() {
+      const currentTime = Date.now();
+      updateSawmillProcessingState(gameState, currentTime);
+
+      if (gameState.sawmillProcessingReady) {
+        processTwigsButton.textContent = "Collect";
+        processTwigsTooltip.textContent = "Ready to collect " + formatLargeNumber(gameState.sawmillProcessingPendingHardwood) + " hardwood";
+        sawmillImage.src = "/Resources/Misc%20Images/sawmillfinished.png";
+        sawmillImage.alt = "Finished sawmill batch";
+        sawmillProgressFill.style.width = "100%";
+        sawmillProgressLabel.textContent = "Batch complete";
+        return;
+      }
+
+      if (gameState.sawmillProcessingActive) {
+        const remainingMs = getSawmillRemainingMs(gameState, currentTime);
+        const completedRatio = Math.max(0, Math.min(1, 1 - (remainingMs / gameState.sawmillProcessingDurationMs)));
+        processTwigsButton.textContent = "Processing...";
+        processTwigsTooltip.textContent = formatDurationLabel(remainingMs) + " left";
+        sawmillImage.src = "/Resources/Misc%20Images/sawmill.png";
+        sawmillImage.alt = "Sawmill for processing twigs";
+        sawmillProgressFill.style.width = (completedRatio * 100) + "%";
+        sawmillProgressLabel.textContent = formatDurationLabel(remainingMs) + " left";
+        return;
+      }
+
+      processTwigsButton.textContent = "Process Twigs (10k)";
+      processTwigsTooltip.textContent = "Uses 10k twigs to make 10 hardwood in " + formatDurationLabel(gameState.sawmillProcessingDurationMs);
+      sawmillImage.src = "/Resources/Misc%20Images/sawmill.png";
+      sawmillImage.alt = "Sawmill for processing twigs";
+      sawmillProgressFill.style.width = "0%";
+      sawmillProgressLabel.textContent = "Idle";
+    }
+
+    // Start a new sawmill batch if automation conditions are met.
+    function tryAutoStartSawmill() {
+      if (
+        gameState.sawmillProcessingActive ||
+        gameState.sawmillProcessingReady ||
+        !getAssignedOverseerId(gameState, "sawmill") ||
+        gameState.sawmillTwigThreshold <= 0
+      ) {
+        return false;
+      }
+
+      const minimumTwigRequirement = Math.max(10000, gameState.sawmillTwigThreshold);
+
+      if (gameState.twigs < minimumTwigRequirement) {
+        return false;
+      }
+
+      gameState.twigs -= 10000;
+      gameState.sawmillProcessingStart = Date.now();
+      gameState.sawmillProcessingPendingHardwood = 10;
+      gameState.sawmillProcessingActive = true;
+      gameState.sawmillProcessingReady = false;
+      saveGameState(gameState);
+      return true;
+    }
+
+    // Let the assigned overseer collect finished hardwood and restart the mill when possible.
+    function runSawmillAutomation() {
+      let didChange = false;
+
+      if (!getAssignedOverseerId(gameState, "sawmill") || gameState.sawmillTwigThreshold <= 0) {
+        return false;
+      }
+
+      updateSawmillProcessingState(gameState, Date.now());
+
+      if (gameState.sawmillProcessingReady) {
+        gameState.hardwood += gameState.sawmillProcessingPendingHardwood;
+        gameState.sawmillProcessingPendingHardwood = 0;
+        gameState.sawmillProcessingStart = null;
+        gameState.sawmillProcessingActive = false;
+        gameState.sawmillProcessingReady = false;
+        didChange = true;
+      }
+
+      if (tryAutoStartSawmill()) {
+        didChange = true;
+      }
+
+      if (didChange) {
+        saveGameState(gameState);
+      }
+
+      return didChange;
+    }
+
+    // Briefly reveal the sawmill tooltip on click for touch-friendly countdown checks.
+    function showProcessTooltipTemporarily() {
+      processTwigsTooltip.classList.add("is-visible");
+
+      if (processTooltipTimeoutId !== null) {
+        clearTimeout(processTooltipTimeoutId);
+      }
+
+      processTooltipTimeoutId = setTimeout(function () {
+        processTwigsTooltip.classList.remove("is-visible");
+      }, 1800);
     }
 
     function spawnGrubFloat(x, y, amount) {
@@ -261,19 +705,144 @@
 
     // Keep the shared top bar current while this page is open.
     updateCoinsFromElapsedTime(gameState, Date.now());
+    runSawmillAutomation();
     renderTopBar(topBar, gameState);
     initButtonAudio();
     renderEarthworksOverview();
+    renderOverseerOverlay();
+    renderSawmillAction();
     startIncomeSystem(gameState, function () {
+      runSawmillAutomation();
       renderTopBar(topBar, gameState);
+      renderSawmillAction();
+      renderEarthworksOverview();
     });
+    setInterval(function () {
+      if (runSawmillAutomation()) {
+        renderTopBar(topBar, gameState);
+        renderEarthworksOverview();
+        renderOverseerOverlay();
+      }
+
+      renderSawmillAction();
+    }, 1000);
 
     if (!isEarthworksUnlocked(gameState)) {
       panelHeader.textContent = "Earthworks Locked";
       panelNote.className = "locked-note";
-      panelNote.textContent = "Unlock Earthworks by reaching 4 species in your aviary.";
+      panelNote.textContent = "Unlock Earthworks by reaching 4 species in your aviary";
       logShell.style.display = "none";
+      pheromonesButton.disabled = true;
+      pheromonesButton.classList.add("is-locked");
+      processTwigsButton.disabled = true;
+      processTwigsButton.classList.add("is-locked");
+      selectOverseerButton.disabled = true;
+      selectOverseerButton.classList.add("is-locked");
+      setThresholdButton.disabled = true;
+      setThresholdButton.classList.add("is-locked");
     } else {
+      selectOverseerButton.addEventListener("click", function () {
+        renderOverseerOverlay();
+        overseerOverlay.classList.add("is-visible");
+      });
+
+      closeOverseerOverlay.addEventListener("click", function () {
+        overseerOverlay.classList.remove("is-visible");
+      });
+
+      setThresholdButton.addEventListener("click", function () {
+        thresholdInput.value = gameState.sawmillTwigThreshold > 0 ? gameState.sawmillTwigThreshold.toString() : "";
+        thresholdStatus.textContent = gameState.sawmillTwigThreshold > 0
+          ? "Current threshold: " + formatLargeNumber(gameState.sawmillTwigThreshold) + " twigs"
+          : "Current threshold: none";
+        thresholdOverlay.classList.add("is-visible");
+      });
+
+      closeThresholdOverlay.addEventListener("click", function () {
+        thresholdOverlay.classList.remove("is-visible");
+      });
+
+      saveThresholdButton.addEventListener("click", function () {
+        const thresholdValue = Number(thresholdInput.value.trim());
+
+        if (!Number.isFinite(thresholdValue) || thresholdInput.value.trim() === "" || thresholdValue < 0) {
+          thresholdStatus.textContent = "Enter a whole number threshold";
+          return;
+        }
+
+        gameState.sawmillTwigThreshold = Math.floor(thresholdValue);
+        playButtonSound();
+        saveGameState(gameState);
+        if (runSawmillAutomation()) {
+          renderTopBar(topBar, gameState);
+        }
+        renderEarthworksOverview();
+        renderSawmillAction();
+        thresholdStatus.textContent = gameState.sawmillTwigThreshold > 0
+          ? "Threshold saved at " + formatLargeNumber(gameState.sawmillTwigThreshold) + " twigs"
+          : "Threshold cleared";
+      });
+
+      pheromonesButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.pheromonesPurchased) {
+          return;
+        }
+
+        if (gameState.coins < 100000) {
+          return;
+        }
+
+        gameState.coins -= 100000;
+        gameState.grubsPerClick += 2;
+        gameState.pheromonesPurchased = true;
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderEarthworksOverview();
+      });
+
+      processTwigsButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.sawmillProcessingReady) {
+          gameState.hardwood += gameState.sawmillProcessingPendingHardwood;
+          gameState.sawmillProcessingPendingHardwood = 0;
+          gameState.sawmillProcessingStart = null;
+          gameState.sawmillProcessingActive = false;
+          gameState.sawmillProcessingReady = false;
+          playButtonSound();
+          saveGameState(gameState);
+          runSawmillAutomation();
+          renderTopBar(topBar, gameState);
+          renderEarthworksOverview();
+          renderSawmillAction();
+          return;
+        }
+
+        if (gameState.sawmillProcessingActive) {
+          showProcessTooltipTemporarily();
+          return;
+        }
+
+        if (gameState.twigs < 10000) {
+          return;
+        }
+
+        gameState.twigs -= 10000;
+        gameState.sawmillProcessingStart = Date.now();
+        gameState.sawmillProcessingPendingHardwood = 10;
+        gameState.sawmillProcessingActive = true;
+        gameState.sawmillProcessingReady = false;
+        sawmillSound.currentTime = 0;
+        sawmillSound.play();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderEarthworksOverview();
+        renderSawmillAction();
+      });
+
       logButton.addEventListener("click", function (event) {
         gameState.grubs += gameState.grubsPerClick;
         saveGameState(gameState);

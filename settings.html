@@ -235,7 +235,7 @@
       <input type="file" id="importSaveInput" accept=".txt" style="display: none;">
 
       <div class="confirm-box" id="eraseConfirmBox">
-        <p class="confirm-text">Are you sure? This will permanently erase your current save.</p>
+        <p class="confirm-text">Are you sure? This will permanently erase your current save</p>
         <button class="danger-button" type="button" id="confirmEraseButton">Yes, Erase Save</button>
         <button class="back-link" type="button" id="cancelEraseButton">Cancel</button>
       </div>
@@ -304,7 +304,7 @@
         importGameProgress(fileText);
         window.location.reload();
       } catch (error) {
-        alert("That save file could not be imported.");
+        alert("That save file could not be imported");
       } finally {
         importSaveInput.value = "";
       }
@@ -340,7 +340,7 @@
       const submittedCode = codeInput.value.trim().toLowerCase();
 
       if (!submittedCode) {
-        codeResult.textContent = "Enter a code first.";
+        codeResult.textContent = "Enter a code first";
         return;
       }
 
@@ -358,18 +358,51 @@
         playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
-        codeResult.textContent = "Code redeemed: trap cost reset and tree counts restored to max.";
+        codeResult.textContent = "Code redeemed: trap cost reset and tree counts restored to max";
         codeInput.value = "";
         return;
       }
 
-      if (submittedCode === "valentinesday") {
+      if (submittedCode === "patchcoin1") {
+        gameState.coins += 100000;
+        gameState.coinMax = Math.max(gameState.coinMax, gameState.coins);
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: 100k coins added";
+        codeInput.value = "";
+        return;
+      }
+
+      // Temporarily disabled patch code kept in place for later reactivation.
+      if (false && submittedCode === "screechtest") {
+        const screechOwlInFlock = gameState.birds.find(function (bird) {
+          return bird.id === "screechowl";
+        });
+
+        if (!screechOwlInFlock) {
+          codeResult.textContent = "Eastern Screech Owl data could not be found";
+          return;
+        }
+
+        addBirdToFlock(screechOwlInFlock);
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: Eastern Screech Owl joined your flock";
+        codeInput.value = "";
+        return;
+      }
+
+      if (false && submittedCode === "valentinesday") {
         const cardinalInFlock = gameState.birds.find(function (bird) {
           return bird.id === "cardinal";
         });
 
         if (!cardinalInFlock) {
-          codeResult.textContent = "Cardinal data could not be found.";
+          codeResult.textContent = "Cardinal data could not be found";
           return;
         }
 
@@ -385,12 +418,37 @@
         playButtonSound();
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
-        codeResult.textContent = "Code redeemed: a male and female Northern Cardinal joined your flock.";
+        codeResult.textContent = "Code redeemed: a male and female Northern Cardinal joined your flock";
         codeInput.value = "";
         return;
       }
 
-      codeResult.textContent = "That code is not valid.";
+      if (submittedCode === "legacybirds") {
+        const repairReport = repairLegacyBirdProgress(gameState);
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+
+        if (repairReport.didChange) {
+          codeResult.textContent =
+            "Code redeemed: legacy bird data repaired, Total individuals: " +
+            repairReport.totalIndividuals +
+            ", Common individuals: " +
+            repairReport.commonIndividuals;
+        } else {
+          codeResult.textContent =
+            "Code redeemed: no bird-count discrepancy found, Total individuals: " +
+            repairReport.totalIndividuals +
+            ", Common individuals: " +
+            repairReport.commonIndividuals;
+        }
+
+        codeInput.value = "";
+        return;
+      }
+
+      codeResult.textContent = "That code is not valid";
     });
   </script>
 </body>
