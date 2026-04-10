@@ -354,6 +354,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
     // Load the save and keep the shared top bar current on this page.
@@ -362,10 +363,12 @@
     const bestiaryButton = document.querySelector("#bestiaryButton");
     const abilityDescriptionsButton = document.querySelector("#abilityDescriptionsButton");
     const compendiumContent = document.querySelector("#compendiumContent");
+    const compendiumPanel = document.querySelector(".compendium-panel");
     let activeCompendiumTab = "bestiary";
     let bestiaryPage = 1;
     let abilitiesPage = 1;
 
+    // Keep the whole page in sync when passive resources update in the background.
     // Highlight whichever Compendium tab is currently selected.
     function setActiveCompendiumTab() {
       bestiaryButton.classList.toggle("is-active", activeCompendiumTab === "bestiary");
@@ -396,15 +399,175 @@
       container.appendChild(pagination);
     }
 
+    // Build one bestiary card so measurement and rendering stay in sync.
+    function createBestiaryEntry(bird) {
+      const birdEntry = document.createElement("div");
+      birdEntry.className = "compendium-entry compendium-bestiary-entry";
+      const birdAbilityNames = getBirdAbilityNames(bird);
+      const metaBlock = document.createElement("div");
+      metaBlock.className = "compendium-bestiary-meta";
+      const actionRow = document.createElement("div");
+      actionRow.className = "compendium-bestiary-actions";
+
+      const birdName = document.createElement("h3");
+      birdName.textContent = bird.species;
+      birdEntry.appendChild(birdName);
+
+      const habitatLine = document.createElement("p");
+      habitatLine.textContent = "Native Habitat: " + bird.nativeHabitat;
+      metaBlock.appendChild(habitatLine);
+
+      const scientificNameLine = document.createElement("p");
+      scientificNameLine.textContent = "Scientific Name: " + bird.scientificName;
+      metaBlock.appendChild(scientificNameLine);
+
+      const rarityLine = document.createElement("p");
+      const rarityClassName = getRarityClassName(bird.rarity);
+      rarityLine.innerHTML = "Rarity: <span class='" + rarityClassName + "'>" + bird.rarity + "</span>";
+      metaBlock.appendChild(rarityLine);
+
+      const abilityLine = document.createElement("p");
+      abilityLine.textContent = "Ability: " + (birdAbilityNames.length > 0 ? birdAbilityNames.join(", ") : "None");
+      metaBlock.appendChild(abilityLine);
+
+      birdEntry.appendChild(metaBlock);
+
+      const imageWrap = document.createElement("div");
+      imageWrap.className = "compendium-bestiary-image-wrap";
+
+      if (bird.variantImages) {
+        const variantKeys = Object.keys(bird.variantImages);
+        let activeVariantIndex = 0;
+
+        const toggleButton = document.createElement("button");
+        toggleButton.className = "compendium-toggle-button";
+        toggleButton.type = "button";
+        toggleButton.textContent = "Toggle Sex";
+        actionRow.appendChild(toggleButton);
+
+        const bestiaryImage = document.createElement("img");
+        bestiaryImage.className = "compendium-bestiary-image";
+        bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
+        bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+        imageWrap.appendChild(bestiaryImage);
+
+        toggleButton.addEventListener("click", function () {
+          activeVariantIndex = (activeVariantIndex + 1) % variantKeys.length;
+          bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
+          bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+        });
+      } else {
+        const bestiaryImage = document.createElement("img");
+        bestiaryImage.className = "compendium-bestiary-image";
+        bestiaryImage.src = getBirdPrimaryImage(bird);
+        bestiaryImage.alt = bird.species;
+        imageWrap.appendChild(bestiaryImage);
+      }
+
+      const baseStatsTooltip = document.createElement("div");
+      baseStatsTooltip.className = "compendium-tooltip";
+      baseStatsTooltip.innerHTML =
+        "<button class='compendium-tooltip-trigger' type='button'>Base Stats</button>" +
+        "<div class='compendium-tooltip-box'>" +
+          getBirdResourceLinesHtml(bird, gameState, { baseValues: true }) +
+        "</div>";
+      actionRow.appendChild(baseStatsTooltip);
+
+      birdEntry.appendChild(actionRow);
+      birdEntry.appendChild(imageWrap);
+
+      return birdEntry;
+    }
+
+    // Split bestiary entries into pages based on the current panel width and height.
+    function buildBestiaryPages(sortedBirds) {
+      const pageWidth = compendiumContent.clientWidth || compendiumPanel.clientWidth || 800;
+      const gap = 20;
+      const cardWidth = 240;
+      const columnCount = Math.max(1, Math.floor((pageWidth + gap) / (cardWidth + gap)));
+      const availableHeight = Math.max(
+        320,
+        compendiumPanel.clientHeight - (compendiumContent.offsetTop - compendiumPanel.offsetTop) - 24
+      );
+      const measurementGrid = document.createElement("div");
+      measurementGrid.className = "compendium-bestiary-grid";
+      measurementGrid.style.position = "absolute";
+      measurementGrid.style.left = "-9999px";
+      measurementGrid.style.top = "0";
+      measurementGrid.style.visibility = "hidden";
+      measurementGrid.style.pointerEvents = "none";
+      measurementGrid.style.width = pageWidth + "px";
+      document.body.appendChild(measurementGrid);
+
+      const measuredEntries = sortedBirds.map(function (bird) {
+        const birdEntry = createBestiaryEntry(bird);
+        measurementGrid.appendChild(birdEntry);
+        return {
+          bird: bird,
+          height: birdEntry.offsetHeight
+        };
+      });
+
+      document.body.removeChild(measurementGrid);
+
+      const pages = [];
+      let currentPageBirds = [];
+      let currentRowHeights = [];
+
+      function getProjectedHeight(nextEntryHeight) {
+        const currentColumnIndex = currentPageBirds.length % columnCount;
+        const projectedRowHeights = currentRowHeights.slice();
+
+        if (currentColumnIndex === 0) {
+          projectedRowHeights.push(nextEntryHeight);
+        } else {
+          projectedRowHeights[projectedRowHeights.length - 1] = Math.max(
+            projectedRowHeights[projectedRowHeights.length - 1],
+            nextEntryHeight
+          );
+        }
+
+        return projectedRowHeights.reduce(function (totalHeight, rowHeight) {
+          return totalHeight + rowHeight;
+        }, 0) + Math.max(0, projectedRowHeights.length - 1) * gap;
+      }
+
+      measuredEntries.forEach(function (entry) {
+        if (currentPageBirds.length > 0 && getProjectedHeight(entry.height) > availableHeight) {
+          pages.push(currentPageBirds);
+          currentPageBirds = [];
+          currentRowHeights = [];
+        }
+
+        const currentColumnIndex = currentPageBirds.length % columnCount;
+        currentPageBirds.push(entry.bird);
+
+        if (currentColumnIndex === 0) {
+          currentRowHeights.push(entry.height);
+        } else {
+          currentRowHeights[currentRowHeights.length - 1] = Math.max(
+            currentRowHeights[currentRowHeights.length - 1],
+            entry.height
+          );
+        }
+      });
+
+      if (currentPageBirds.length > 0) {
+        pages.push(currentPageBirds);
+      }
+
+      return pages.length > 0 ? pages : [sortedBirds];
+    }
+
     // List every species in alphabetical order with its image and habitat.
     function renderBestiaryView() {
-      const entriesPerPage = 10;
       const sortedBirds = [...BIRD_LIBRARY].sort(function (leftBird, rightBird) {
         return leftBird.species.localeCompare(rightBird.species);
       });
-      const totalPages = Math.ceil(sortedBirds.length / entriesPerPage);
-      const startingIndex = (bestiaryPage - 1) * entriesPerPage;
-      const visibleBirds = sortedBirds.slice(startingIndex, startingIndex + entriesPerPage);
+      const bestiaryPages = buildBestiaryPages(sortedBirds);
+      const totalPages = bestiaryPages.length;
+      bestiaryPage = Math.min(Math.max(1, bestiaryPage), totalPages);
+      const visibleBirds = bestiaryPages[bestiaryPage - 1] || [];
 
       activeCompendiumTab = "bestiary";
       compendiumContent.innerHTML = "";
@@ -414,91 +577,7 @@
       bestiaryGrid.className = "compendium-bestiary-grid";
 
       visibleBirds.forEach(function (bird) {
-        const birdEntry = document.createElement("div");
-        birdEntry.className = "compendium-entry compendium-bestiary-entry";
-        const birdAbilityNames = getBirdAbilityNames(bird);
-        const metaBlock = document.createElement("div");
-        metaBlock.className = "compendium-bestiary-meta";
-        const actionRow = document.createElement("div");
-        actionRow.className = "compendium-bestiary-actions";
-
-        const birdName = document.createElement("h3");
-        birdName.textContent = bird.species;
-        birdEntry.appendChild(birdName);
-
-        const habitatLine = document.createElement("p");
-        habitatLine.textContent = "Native Habitat: " + bird.nativeHabitat;
-        metaBlock.appendChild(habitatLine);
-
-        const scientificNameLine = document.createElement("p");
-        scientificNameLine.textContent = "Scientific Name: " + bird.scientificName;
-        metaBlock.appendChild(scientificNameLine);
-
-        const rarityLine = document.createElement("p");
-        const rarityClassName = getRarityClassName(bird.rarity);
-        rarityLine.innerHTML = "Rarity: <span class='" + rarityClassName + "'>" + bird.rarity + "</span>";
-        metaBlock.appendChild(rarityLine);
-
-        const abilityLine = document.createElement("p");
-        abilityLine.textContent = "Ability: " + (birdAbilityNames.length > 0 ? birdAbilityNames.join(", ") : "None");
-        metaBlock.appendChild(abilityLine);
-
-        birdEntry.appendChild(metaBlock);
-
-        const imageWrap = document.createElement("div");
-        imageWrap.className = "compendium-bestiary-image-wrap";
-
-        if (bird.variantImages) {
-          const variantKeys = Object.keys(bird.variantImages);
-          let activeVariantIndex = 0;
-
-          const toggleButton = document.createElement("button");
-          toggleButton.className = "compendium-toggle-button";
-          toggleButton.type = "button";
-          toggleButton.textContent = "Toggle Sex";
-          actionRow.appendChild(toggleButton);
-
-          const bestiaryImage = document.createElement("img");
-          bestiaryImage.className = "compendium-bestiary-image";
-          bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
-          bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
-          imageWrap.appendChild(bestiaryImage);
-
-          toggleButton.addEventListener("click", function () {
-            activeVariantIndex = (activeVariantIndex + 1) % variantKeys.length;
-            bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
-            bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
-          });
-        } else {
-          const bestiaryImage = document.createElement("img");
-          bestiaryImage.className = "compendium-bestiary-image";
-          bestiaryImage.src = getBirdPrimaryImage(bird);
-          bestiaryImage.alt = bird.species;
-          imageWrap.appendChild(bestiaryImage);
-        }
-
-        const baseStatsTooltip = document.createElement("div");
-        baseStatsTooltip.className = "compendium-tooltip";
-        baseStatsTooltip.innerHTML =
-          "<button class='compendium-tooltip-trigger' type='button'>Base Stats</button>" +
-          "<div class='compendium-tooltip-box'>" +
-            "<p>Visitors Per Day: +" + (bird.visitorsPerDay || 0) + "</p>" +
-            (typeof bird.grubsPerSecond === "number"
-              ? "<p>Grubs Per Second: +" + bird.grubsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
-              : "") +
-            (typeof bird.twigsPerSecond === "number"
-              ? "<p>Twigs Per Second: +" + bird.twigsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
-              : "") +
-            (typeof bird.seedsPerSecond === "number"
-              ? "<p>Seeds Per Second: +" + bird.seedsPerSecond.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
-              : "") +
-          "</div>";
-        actionRow.appendChild(baseStatsTooltip);
-
-        birdEntry.appendChild(actionRow);
-        birdEntry.appendChild(imageWrap);
-
-        bestiaryGrid.appendChild(birdEntry);
+        bestiaryGrid.appendChild(createBestiaryEntry(bird));
       });
 
       compendiumContent.appendChild(bestiaryGrid);
@@ -562,6 +641,7 @@
 
     renderTopBar(topBar, gameState);
     initButtonAudio();
+    initViewportAwareTooltips();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });
@@ -575,6 +655,12 @@
     abilityDescriptionsButton.addEventListener("click", function () {
       abilitiesPage = 1;
       renderAbilityDescriptionsView();
+    });
+
+    window.addEventListener("resize", function () {
+      if (activeCompendiumTab === "bestiary") {
+        renderBestiaryView();
+      }
     });
   </script>
 </body>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flockmaster Inventory</title>
+  <style>
+    body {
+      background-color: #b8b8b8;
+      font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+      margin: 0;
+      color: #1f2a36;
+    }
+
+    .top-bar {
+      background: #2c3e50;
+      color: #f7f1e6;
+      padding: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-sizing: border-box;
+    }
+
+    .top-bar-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .top-bar-stats {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex: 1 1 auto;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .top-bar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .top-bar-link,
+    .top-bar-link:visited,
+    .top-bar-link:hover,
+    .top-bar-link:active {
+      color: #f7f1e6;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .top-bar-tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: default;
+    }
+
+    .top-bar-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+      letter-spacing: 0;
+      pointer-events: none;
+    }
+
+    .top-bar-tooltip:hover .top-bar-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .page-title {
+      color: #2c3e50;
+      letter-spacing: 2px;
+      margin: 28px 0 8px;
+      text-align: center;
+      text-shadow: 1px 1px 0 #d9d9d9;
+    }
+
+    .page-layout {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 24px 32px 40px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 24px;
+      box-sizing: border-box;
+      margin-bottom: 22px;
+    }
+
+    .card:last-child {
+      margin-bottom: 0;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .menu-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 12px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    .menu-button.is-locked {
+      background: #6f7780;
+      color: #d7dde4;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .nav-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .nav-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .nav-tooltip:hover .nav-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .inventory-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: flex-start;
+      min-height: 360px;
+    }
+
+    .inventory-empty {
+      margin: 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .inventory-item-figure {
+      margin: 0;
+      text-align: center;
+      position: relative;
+      width: 220px;
+    }
+
+    .inventory-item-visual {
+      width: 220px;
+      height: 220px;
+      border: 2px dashed #7f8c8d;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #5f6f7f;
+      font-weight: bold;
+      cursor: pointer;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .inventory-item-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      display: block;
+    }
+
+    .inventory-item-tooltip {
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-width: 200px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+      text-align: left;
+    }
+
+    .inventory-item-figure:hover .inventory-item-tooltip,
+    .inventory-item-figure.is-open .inventory-item-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .inventory-item-tooltip p {
+      margin: 0;
+    }
+
+    .inventory-item-count {
+      margin: 12px 0 6px;
+      font-weight: bold;
+      color: #17311e;
+    }
+
+    .inventory-item-name {
+      margin: 0;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar" id="topBar"></div>
+
+  <h1 class="page-title">INVENTORY</h1>
+
+  <div class="page-layout">
+    <div class="card">
+      <a class="menu-button" href="index.html">Home</a>
+      <a class="menu-button" href="aviary.html">Aviary</a>
+      <a class="menu-button" href="birdCatching.html">Bird Catching</a>
+      <span class="nav-tooltip" id="earthworksNavWrapper"></span>
+    </div>
+
+    <div class="card">
+      <h2>Inventory</h2>
+      <div class="inventory-grid" id="inventoryGrid"></div>
+    </div>
+  </div>
+
+  <script src="birds.js"></script>
+  <script src="abilities.js"></script>
+  <script src="items.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const gameState = loadGameState();
+    const topBar = document.querySelector("#topBar");
+    const inventoryGrid = document.querySelector("#inventoryGrid");
+    const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
+
+    function renderEarthworksNav() {
+      earthworksNavWrapper.innerHTML = "";
+
+      if (isEarthworksUnlocked(gameState)) {
+        earthworksNavWrapper.innerHTML = "<a class='menu-button' href='earthworks.html'>Earthworks</a>";
+        return;
+      }
+
+      earthworksNavWrapper.innerHTML =
+        "<span class='menu-button is-locked'>Earthworks</span>" +
+        "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+    }
+
+    // Rebuild the inventory grid only when item ownership actually changes.
+    function renderInventory() {
+      inventoryGrid.innerHTML = "";
+      const visibleItems = getInventoryItems(gameState).filter(function (item) {
+        return item.count > 0;
+      });
+
+      if (visibleItems.length === 0) {
+        inventoryGrid.innerHTML = "<p class='inventory-empty'>No items collected yet</p>";
+        return;
+      }
+
+      visibleItems.forEach(function (item) {
+        const itemFigure = document.createElement("figure");
+        itemFigure.className = "inventory-item-figure";
+
+        const tooltipBox = document.createElement("div");
+        tooltipBox.className = "inventory-item-tooltip";
+        tooltipBox.innerHTML = "<p>" + item.description + "</p>";
+
+        const itemVisual = document.createElement("div");
+        itemVisual.className = "inventory-item-visual";
+        itemVisual.tabIndex = 0;
+
+        if (item.image) {
+          const itemImage = document.createElement("img");
+          itemImage.src = item.image;
+          itemImage.alt = item.name;
+          itemVisual.appendChild(itemImage);
+        } else {
+          itemVisual.textContent = "No Art Yet";
+        }
+
+        itemVisual.addEventListener("click", function (event) {
+          event.stopPropagation();
+          document.querySelectorAll(".inventory-item-figure.is-open").forEach(function (openFigure) {
+            if (openFigure !== itemFigure) {
+              openFigure.classList.remove("is-open");
+            }
+          });
+          itemFigure.classList.toggle("is-open");
+        });
+
+        const countLine = document.createElement("p");
+        countLine.className = "inventory-item-count";
+        countLine.textContent = "x" + formatLargeNumber(item.count);
+
+        const nameLine = document.createElement("p");
+        nameLine.className = "inventory-item-name";
+        nameLine.textContent = item.name;
+
+        itemFigure.appendChild(tooltipBox);
+        itemFigure.appendChild(itemVisual);
+        itemFigure.appendChild(countLine);
+        itemFigure.appendChild(nameLine);
+        inventoryGrid.appendChild(itemFigure);
+      });
+    }
+
+    document.addEventListener("click", function () {
+      document.querySelectorAll(".inventory-item-figure.is-open").forEach(function (openFigure) {
+        openFigure.classList.remove("is-open");
+      });
+    });
+
+    updateCoinsFromElapsedTime(gameState, Date.now());
+    renderTopBar(topBar, gameState);
+    initButtonAudio();
+    initViewportAwareTooltips();
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
+    renderEarthworksNav();
+    renderInventory();
+  </script>
+</body>
+</html>

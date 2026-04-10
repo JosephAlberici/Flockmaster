@@ -182,9 +182,24 @@
     }
 
     .habitat-header {
-      margin-top: 0;
+      margin: 0;
       color: #17311e;
       letter-spacing: 1px;
+    }
+
+    .habitat-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .habitat-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .habitat-bird-list {
@@ -212,6 +227,7 @@
       margin: 0;
       text-align: center;
       position: relative;
+      width: 280px;
     }
 
     .habitat-bird-figure img {
@@ -228,9 +244,33 @@
       flex-wrap: wrap;
     }
 
-    .habitat-bird-image-group img {
+    .habitat-bird-image-shell {
+      position: relative;
+      display: inline-flex;
+      align-items: flex-end;
+      justify-content: center;
       width: 220px;
       max-width: 46%;
+      flex: 0 1 46%;
+    }
+
+    .habitat-image-frame {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      background: var(--habitat-frame-bg, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+      box-sizing: border-box;
+    }
+
+    .habitat-bird-image-group img {
+      width: 220px;
+      max-width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     .habitat-bird-figure img[data-bird-id="cardinal"][data-variant="male"] {
@@ -269,20 +309,65 @@
       margin-top: 8px;
     }
 
+    .habitat-bird-controls {
+      position: absolute;
+      bottom: 38px;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 10px;
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .habitat-parasite-button {
+      min-width: 56px;
+      max-width: 68px;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: bold;
+      line-height: 1.05;
+      cursor: pointer;
+      white-space: normal;
+      text-align: center;
+      word-break: break-word;
+      flex: 0 0 auto;
+      pointer-events: auto;
+    }
+
+    .habitat-parasite-button.is-selected {
+      background: #6d8f4e;
+    }
+
     .stat-line {
       margin: 12px 0;
       font-size: 18px;
     }
 
     #birdOverviewList.overview-two-column {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-auto-flow: column;
-      column-gap: 24px;
-      align-items: start;
       margin-top: 18px;
       padding-top: 14px;
       border-top: 1px solid #b9b2a8;
+    }
+
+    .overview-column-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 24px;
+      align-items: start;
+    }
+
+    .overview-column {
+      min-width: 0;
     }
 
     .bird-summary {
@@ -311,20 +396,45 @@
       margin-bottom: 10px;
     }
 
-    .bird-summary .upgrade-tooltip {
-      display: block;
+    .bird-ability-shell {
       position: relative;
-      margin-top: 0;
-      margin-bottom: 0;
+      margin: 4px 0 0;
+      line-height: 1.2;
     }
 
-    .bird-summary .upgrade-tooltip-box {
+    .bird-ability-button {
+      display: block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 9px;
+      padding: 4px 8px;
+      font-weight: bold;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .bird-ability-tooltip-box {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
       white-space: normal;
       min-width: 220px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
     }
 
-    .bird-summary .upgrade-tooltip .stat-line {
-      margin: 12px 0;
+    .bird-ability-shell.is-open .bird-ability-tooltip-box {
+      visibility: visible;
+      opacity: 1;
     }
 
     .habitat-bird-figure figcaption {
@@ -335,13 +445,177 @@
 
     .bird-count-badge {
       display: inline-block;
-      margin-left: 8px;
       padding: 2px 8px;
       border-radius: 999px;
       background: #2c3e50;
       color: #f7f1e6;
       font-size: 14px;
       vertical-align: middle;
+      pointer-events: auto;
+    }
+
+    .habitat-variant-count-badge {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      z-index: 2;
+    }
+
+    .parasite-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+      z-index: 60;
+    }
+
+    .parasite-overlay.is-visible {
+      display: flex;
+    }
+
+    .parasite-overlay-card {
+      width: min(760px, 100%);
+      max-height: min(80vh, 720px);
+      overflow-y: auto;
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 22px;
+      box-sizing: border-box;
+    }
+
+    .parasite-overlay-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .parasite-overlay-header h3 {
+      margin: 0 0 6px;
+      color: #2c3e50;
+    }
+
+    .parasite-overlay-header p {
+      margin: 0;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .parasite-overlay-close {
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-weight: bold;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .parasite-target-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .parasite-target-card {
+      background: rgba(255, 255, 255, 0.55);
+      border: 2px solid black;
+      border-radius: 14px;
+      padding: 14px;
+      box-sizing: border-box;
+      text-align: center;
+      position: relative;
+    }
+
+    .selector-image-shell {
+      position: relative;
+      height: 190px;
+      border: 2px solid black;
+      border-radius: 12px;
+      background: #f7f1e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .selector-image-shell img {
+      width: 100%;
+      height: 100%;
+      max-height: 170px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .selector-image-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 180px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      text-align: left;
+      z-index: 10;
+    }
+
+    .selector-image-shell:hover .selector-image-tooltip,
+    .selector-image-shell.is-open .selector-image-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .selector-image-tooltip p {
+      margin: 0;
+    }
+
+    .selector-image-tooltip p + p {
+      margin-top: 8px;
+    }
+
+    .parasite-target-name {
+      margin: 0 0 10px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .parasite-target-button {
+      width: 100%;
+      background: #2c3e50;
+      color: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .parasite-target-button.is-active {
+      background: #6d8f4e;
+    }
+
+    .parasite-target-empty {
+      margin: 0;
+      font-weight: bold;
+      color: #2c3e50;
     }
 
     .upgrade-section-title {
@@ -419,6 +693,38 @@
       opacity: 1;
     }
 
+    .shop-row {
+      display: inline-block;
+      vertical-align: top;
+      margin-right: 12px;
+      margin-bottom: 12px;
+    }
+
+    .shop-count {
+      margin: 0 0 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .shop-max {
+      margin: -8px 0 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .shop-divider {
+      width: 100%;
+      margin: 8px 0 14px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .sapling-shop-content.is-hidden {
+      display: none;
+    }
+
     .nav-tooltip {
       position: relative;
       display: inline-block;
@@ -483,12 +789,10 @@
           <h2>Flock Overview</h2>
           <div class="overview-controls">
             <button class="overview-button is-active" id="overviewMinimizeButton" type="button">Minimize</button>
-            <button class="overview-button" id="overviewCityLivingButton" type="button">City Living</button>
-            <button class="overview-button" id="overviewAllBirdsButton" type="button">Urban Waters</button>
+            <div class="overview-controls" id="overviewHabitatButtons"></div>
           </div>
         </div>
         <p class="stat-line">Species Count: <span id="speciesCount"></span></p>
-        <p class="stat-line">Max Offline Duration: <span id="maxOfflineDuration"></span> hours</p>
         <p class="stat-line">Grubs Per Second: <span id="grubsPerSecond"></span></p>
         <p class="stat-line">Twigs Per Second: <span id="twigsPerSecond"></span></p>
         <div id="birdOverviewList"></div>
@@ -501,6 +805,7 @@
             <p class="stat-line">Visitors Per Day: <span id="visPerDay"></span></p>
             <p class="stat-line">Coins Per Visitor: <span id="coinsPerVisitor"></span></p>
             <p class="stat-line">Habitats Owned: <span id="habitatsOwned"></span></p>
+            <p class="stat-line">Max Offline Duration: <span id="maxOfflineDuration"></span> hours</p>
           </div>
           <div class="overview-stat-column">
             <p class="stat-line">Coins Per Second: <span id="coinsPerSecond"></span></p>
@@ -520,23 +825,38 @@
         </div>
         <div id="upgradesOverviewList"></div>
       </div>
+
+      <div class="card">
+        <div class="overview-header">
+          <h2>Sapling Shop</h2>
+          <div class="overview-controls">
+            <button class="overview-button is-active" id="saplingShopMinimizeButton" type="button">Minimize</button>
+            <button class="overview-button" id="saplingShopExpandButton" type="button">Expand</button>
+          </div>
+        </div>
+        <div class="sapling-shop-content is-hidden" id="saplingShopList"></div>
+      </div>
     </div>
 
-    <div class="aviary-habitats">
-      <div class="aviary-panel">
-        <h2 class="habitat-header" id="cityLivingHeader">City Living</h2>
-        <div class="habitat-bird-list" id="cityLivingBirdList"></div>
-      </div>
+    <div class="aviary-habitats" id="habitatPanels"></div>
+  </div>
 
-      <div class="aviary-panel">
-        <h2 class="habitat-header" id="urbanWatersHeader">Urban Waters</h2>
-        <div class="habitat-bird-list" id="urbanWatersBirdList"></div>
+  <div class="parasite-overlay" id="parasiteOverlay">
+    <div class="parasite-overlay-card">
+      <div class="parasite-overlay-header">
+        <div>
+          <h3 id="parasiteOverlayTitle">Parasite Target</h3>
+          <p id="parasiteOverlaySubtitle">Choose a species from the same habitat</p>
+        </div>
+        <button class="parasite-overlay-close" id="parasiteOverlayClose" type="button">Close</button>
       </div>
+      <div class="parasite-target-grid" id="parasiteTargetGrid"></div>
     </div>
   </div>
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the main UI elements this screen updates.
@@ -552,21 +872,31 @@
     const coinsPerSecondDisplay = document.querySelector("#coinsPerSecond");
     const seedsPerSecondDisplay = document.querySelector("#seedsPerSecond");
     const birdOverviewList = document.querySelector("#birdOverviewList");
+    const overviewHabitatButtons = document.querySelector("#overviewHabitatButtons");
     const upgradesOverviewList = document.querySelector("#upgradesOverviewList");
-    const cityLivingBirdList = document.querySelector("#cityLivingBirdList");
-    const urbanWatersBirdList = document.querySelector("#urbanWatersBirdList");
-    const cityLivingHeader = document.querySelector("#cityLivingHeader");
-    const urbanWatersHeader = document.querySelector("#urbanWatersHeader");
+    const saplingShopList = document.querySelector("#saplingShopList");
+    const habitatPanels = document.querySelector("#habitatPanels");
     const overviewMinimizeButton = document.querySelector("#overviewMinimizeButton");
-    const overviewCityLivingButton = document.querySelector("#overviewCityLivingButton");
-    const overviewAllBirdsButton = document.querySelector("#overviewAllBirdsButton");
     const upgradesMinimizeButton = document.querySelector("#upgradesMinimizeButton");
     const flockUpgradesButton = document.querySelector("#flockUpgradesButton");
     const aviaryUpgradesButton = document.querySelector("#aviaryUpgradesButton");
+    const saplingShopMinimizeButton = document.querySelector("#saplingShopMinimizeButton");
+    const saplingShopExpandButton = document.querySelector("#saplingShopExpandButton");
     const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
+    const parasiteOverlay = document.querySelector("#parasiteOverlay");
+    const parasiteOverlayTitle = document.querySelector("#parasiteOverlayTitle");
+    const parasiteOverlaySubtitle = document.querySelector("#parasiteOverlaySubtitle");
+    const parasiteOverlayClose = document.querySelector("#parasiteOverlayClose");
+    const parasiteTargetGrid = document.querySelector("#parasiteTargetGrid");
+    const AVIARY_HABITAT_DISPLAY_ORDER = ["City Living", "Urban Waters", "The Hollow"];
+    const INACTIVE_AVIARY_HABITATS = ["The Hollow"];
     let activeOverviewMode = "minimize";
     let activeUpgradesMode = "minimize";
+    let activeSaplingShopMode = "minimize";
+    let activeParasiteBirdId = null;
+    const habitatPanelModes = {};
 
+    // Build the Earthworks nav button and its locked-state tooltip from current flock progress.
     function renderEarthworksNav() {
       earthworksNavWrapper.innerHTML = "";
 
@@ -584,13 +914,211 @@
       return getAcquiredBirds(gameState);
     }
 
-    // Refresh the summary cards and habitat headers from current save data.
-    function refreshAviarySummary() {
-      const cityLivingTotals = getHabitatBirdTotals(gameState, "City Living");
-      const urbanWatersTotals = getHabitatBirdTotals(gameState, "Urban Waters");
+    // Return the habitat names that should drive overview tabs and habitat panels.
+    function getAviaryHabitatNames() {
+      return getAllHabitatNames(gameState)
+        .filter(function (habitatName) {
+          return !INACTIVE_AVIARY_HABITATS.includes(habitatName);
+        })
+        .sort(function (leftHabitatName, rightHabitatName) {
+          const leftOrderIndex = AVIARY_HABITAT_DISPLAY_ORDER.indexOf(leftHabitatName);
+          const rightOrderIndex = AVIARY_HABITAT_DISPLAY_ORDER.indexOf(rightHabitatName);
+          const normalizedLeftOrderIndex = leftOrderIndex === -1 ? Number.MAX_SAFE_INTEGER : leftOrderIndex;
+          const normalizedRightOrderIndex = rightOrderIndex === -1 ? Number.MAX_SAFE_INTEGER : rightOrderIndex;
 
-      cityLivingHeader.textContent = "City Living (" + cityLivingTotals.acquiredSpecies + "/" + cityLivingTotals.totalSpecies + ")";
-      urbanWatersHeader.textContent = "Urban Waters (" + urbanWatersTotals.acquiredSpecies + "/" + urbanWatersTotals.totalSpecies + ")";
+          if (normalizedLeftOrderIndex !== normalizedRightOrderIndex) {
+            return normalizedLeftOrderIndex - normalizedRightOrderIndex;
+          }
+
+          return leftHabitatName.localeCompare(rightHabitatName);
+        });
+    }
+
+    // Open the parasite target selector for one parasitic bird species.
+    function openParasiteOverlay(parasiticBirdId) {
+      activeParasiteBirdId = parasiticBirdId;
+      renderParasiteOverlay();
+      parasiteOverlay.classList.add("is-visible");
+    }
+
+    // Close the parasite target selector and clear the currently focused bird id.
+    function closeParasiteOverlay() {
+      parasiteOverlay.classList.remove("is-visible");
+      activeParasiteBirdId = null;
+    }
+
+    // Build the target-selection overlay for the currently active parasitic bird.
+    function renderParasiteOverlay() {
+      const parasiticBird = getBirdById(gameState, activeParasiteBirdId);
+      parasiteTargetGrid.innerHTML = "";
+
+      if (!parasiticBird) {
+        parasiteOverlayTitle.textContent = "Parasite Target";
+        parasiteOverlaySubtitle.textContent = "Choose a species from the same habitat";
+        parasiteTargetGrid.innerHTML = "<p class='parasite-target-empty'>No parasite bird selected</p>";
+        return;
+      }
+
+      const parasiteTargetBird = getParasiteTargetBird(parasiticBird, gameState);
+      const eligibleTargetBirds = getParasiteEligibleTargetBirds(parasiticBird, gameState);
+      parasiteOverlayTitle.textContent = parasiticBird.species + " Target";
+      parasiteOverlaySubtitle.textContent = "Choose a Common species from " + parasiticBird.nativeHabitat;
+
+      if (eligibleTargetBirds.length === 0) {
+        parasiteTargetGrid.innerHTML = "<p class='parasite-target-empty'>No eligible targets in this habitat yet</p>";
+        return;
+      }
+
+      eligibleTargetBirds.forEach(function (targetBird) {
+        const isSelectedTarget = parasiteTargetBird && parasiteTargetBird.id === targetBird.id;
+        const targetCard = document.createElement("div");
+        targetCard.className = "parasite-target-card";
+
+        const targetImageShell = document.createElement("div");
+        targetImageShell.className = "selector-image-shell";
+        targetImageShell.tabIndex = 0;
+
+        const targetImage = document.createElement("img");
+        targetImage.src = getBirdPrimaryImage(targetBird);
+        targetImage.alt = targetBird.species;
+
+        const targetTooltip = document.createElement("div");
+        targetTooltip.className = "selector-image-tooltip";
+        targetTooltip.innerHTML = getBirdResourceLinesHtml(targetBird, gameState, { multiplyByCount: true });
+
+        targetImageShell.addEventListener("click", function (event) {
+          event.stopPropagation();
+          parasiteTargetGrid.querySelectorAll(".selector-image-shell.is-open").forEach(function (openShell) {
+            if (openShell !== targetImageShell) {
+              openShell.classList.remove("is-open");
+            }
+          });
+          targetImageShell.classList.toggle("is-open");
+        });
+
+        const targetName = document.createElement("p");
+        targetName.className = "parasite-target-name";
+        targetName.textContent = targetBird.species;
+
+        const targetButton = document.createElement("button");
+        targetButton.className = "parasite-target-button";
+        targetButton.type = "button";
+        targetButton.dataset.requiresSuccess = "true";
+        targetButton.textContent = isSelectedTarget ? "Selected" : "Select";
+        targetButton.classList.toggle("is-active", isSelectedTarget);
+
+        if (isSelectedTarget) {
+          targetButton.addEventListener("mouseenter", function () {
+            targetButton.textContent = "Unselect";
+          });
+
+          targetButton.addEventListener("mouseleave", function () {
+            targetButton.textContent = "Selected";
+          });
+
+          targetButton.addEventListener("focus", function () {
+            targetButton.textContent = "Unselect";
+          });
+
+          targetButton.addEventListener("blur", function () {
+            targetButton.textContent = "Selected";
+          });
+        }
+
+        targetButton.addEventListener("click", function () {
+          if (getParasiteTargetId(gameState, parasiticBird.id) === targetBird.id) {
+            setParasiteTargetId(gameState, parasiticBird.id, null);
+          } else {
+            setParasiteTargetId(gameState, parasiticBird.id, targetBird.id);
+          }
+
+          playButtonSound();
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          renderParasiteOverlay();
+          renderHabitatPanels();
+          renderOverview();
+        });
+
+        targetImageShell.appendChild(targetTooltip);
+        targetImageShell.appendChild(targetImage);
+        targetCard.appendChild(targetImageShell);
+        targetCard.appendChild(targetName);
+        targetCard.appendChild(targetButton);
+        parasiteTargetGrid.appendChild(targetCard);
+      });
+    }
+
+    // Track whether one habitat panel is minimized or showing birds.
+    function getHabitatPanelMode(habitatName) {
+      if (!habitatPanelModes[habitatName]) {
+        habitatPanelModes[habitatName] = "show";
+      }
+
+      return habitatPanelModes[habitatName];
+    }
+
+    // Build one flock-overview tab button for a habitat.
+    function createOverviewHabitatButton(habitatName) {
+      const habitatButton = document.createElement("button");
+      habitatButton.className = "overview-button";
+      habitatButton.type = "button";
+      habitatButton.textContent = habitatName;
+      habitatButton.addEventListener("click", function () {
+        activeOverviewMode = habitatName;
+        renderOverview();
+      });
+      return habitatButton;
+    }
+
+    // Rebuild the flock-overview habitat tabs from the current habitat list.
+    function renderOverviewHabitatButtons() {
+      overviewHabitatButtons.innerHTML = "";
+      const habitatNames = getAviaryHabitatNames();
+
+      if (activeOverviewMode !== "minimize" && !habitatNames.includes(activeOverviewMode)) {
+        activeOverviewMode = "minimize";
+      }
+
+      habitatNames.forEach(function (habitatName) {
+        overviewHabitatButtons.appendChild(createOverviewHabitatButton(habitatName));
+      });
+
+      setActiveOverviewButton();
+    }
+
+    // Build the per-habitat minimize/show controls used on the right-side habitat panels.
+    function renderHabitatPanelControls(habitatName, habitatPanel) {
+      const habitatControls = habitatPanel.querySelector(".habitat-controls");
+      const currentMode = getHabitatPanelMode(habitatName);
+      habitatControls.innerHTML = "";
+
+      const minimizeButton = document.createElement("button");
+      minimizeButton.className = "overview-button";
+      minimizeButton.type = "button";
+      minimizeButton.textContent = "Minimize";
+      minimizeButton.classList.toggle("is-active", currentMode === "minimize");
+      minimizeButton.addEventListener("click", function () {
+        habitatPanelModes[habitatName] = "minimize";
+        renderHabitatPanels();
+      });
+
+      const showBirdsButton = document.createElement("button");
+      showBirdsButton.className = "overview-button";
+      showBirdsButton.type = "button";
+      showBirdsButton.textContent = "Show Birds";
+      showBirdsButton.classList.toggle("is-active", currentMode === "show");
+      showBirdsButton.addEventListener("click", function () {
+        habitatPanelModes[habitatName] = "show";
+        renderHabitatPanels();
+      });
+
+      habitatControls.appendChild(minimizeButton);
+      habitatControls.appendChild(showBirdsButton);
+    }
+
+    // Refresh the summary cards from current save data.
+    function refreshAviarySummary() {
       speciesCount.textContent = getFlockDiversity(gameState);
       maxOfflineDurationDisplay.textContent = getMaxOfflineDurationLabel(gameState);
       visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
@@ -605,8 +1133,9 @@
     // Toggle which flock-overview button is visually active.
     function setActiveOverviewButton() {
       overviewMinimizeButton.classList.toggle("is-active", activeOverviewMode === "minimize");
-      overviewCityLivingButton.classList.toggle("is-active", activeOverviewMode === "city-living");
-      overviewAllBirdsButton.classList.toggle("is-active", activeOverviewMode === "urban-waters");
+      overviewHabitatButtons.querySelectorAll(".overview-button").forEach(function (habitatButton) {
+        habitatButton.classList.toggle("is-active", habitatButton.textContent === activeOverviewMode);
+      });
     }
 
     // Toggle which upgrades-tab button is visually active.
@@ -616,8 +1145,161 @@
       aviaryUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "aviary");
     }
 
+    // Toggle which sapling-shop button is visually active.
+    function setActiveSaplingShopButton() {
+      saplingShopMinimizeButton.classList.toggle("is-active", activeSaplingShopMode === "minimize");
+      saplingShopExpandButton.classList.toggle("is-active", activeSaplingShopMode === "expand");
+      saplingShopList.classList.toggle("is-hidden", activeSaplingShopMode !== "expand");
+    }
+
+    // Build one sapling purchase button with owned/max counters.
+    function createSaplingButton(config) {
+      const shopRow = document.createElement("div");
+      shopRow.className = "shop-row";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+
+      const button = document.createElement("button");
+      button.className = "upgrade-action-button";
+      button.type = "button";
+      button.dataset.requiresSuccess = "true";
+      const treeMaxCount = getTreeMaxCount(gameState, config.countKey);
+
+      if (gameState[config.countKey] >= treeMaxCount) {
+        button.textContent = config.label + " (Maxed)";
+      } else {
+        button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Coins)";
+      }
+
+      button.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState[config.countKey] >= getTreeMaxCount(gameState, config.countKey)) {
+          return;
+        }
+
+        if (gameState.coins < config.cost) {
+          return;
+        }
+
+        gameState.coins -= config.cost;
+        gameState[config.countKey] += 1;
+        playButtonSound();
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = config.rateText + " | Max owned: " + formatLargeNumber(treeMaxCount);
+
+      const countLine = document.createElement("p");
+      countLine.className = "shop-count";
+      countLine.textContent = "Owned: " + formatLargeNumber(gameState[config.countKey]);
+
+      const maxLine = document.createElement("p");
+      maxLine.className = "shop-max";
+      maxLine.textContent = "Max: " + formatLargeNumber(treeMaxCount);
+
+      tooltipWrapper.appendChild(button);
+      tooltipWrapper.appendChild(tooltipBox);
+      shopRow.appendChild(tooltipWrapper);
+      shopRow.appendChild(countLine);
+      shopRow.appendChild(maxLine);
+
+      return shopRow;
+    }
+
+    // Rebuild the sapling shop from current save data.
+    function renderSaplingShop() {
+      saplingShopList.innerHTML = "";
+      setActiveSaplingShopButton();
+
+      if (activeSaplingShopMode !== "expand") {
+        return;
+      }
+
+      const treesTitle = document.createElement("p");
+      treesTitle.className = "upgrade-section-title";
+      treesTitle.textContent = "Trees";
+      saplingShopList.appendChild(treesTitle);
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Apple Tree",
+        cost: 100,
+        countKey: "appleTrees",
+        rateText: "Provides 1.0 seeds/sec"
+      }));
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Pear Tree",
+        cost: 500,
+        countKey: "pearTrees",
+        rateText: "Provides 3.0 seeds/sec"
+      }));
+
+      saplingShopList.appendChild(createSaplingButton({
+        label: "Peach Tree",
+        cost: 2000,
+        countKey: "peachTrees",
+        rateText: "Provides 5.0 seeds/sec"
+      }));
+
+      const acreageTitle = document.createElement("p");
+      acreageTitle.className = "upgrade-section-title";
+      acreageTitle.textContent = "Acreage";
+      saplingShopList.appendChild(acreageTitle);
+
+      const newPlotUpgrade = document.createElement("div");
+      newPlotUpgrade.className = "shop-row";
+
+      const tooltipWrapper = document.createElement("div");
+      tooltipWrapper.className = "upgrade-tooltip";
+
+      const newPlotButton = document.createElement("button");
+      newPlotButton.className = "upgrade-action-button";
+      newPlotButton.type = "button";
+      newPlotButton.dataset.requiresSuccess = "true";
+      newPlotButton.textContent = gameState.newPlotPurchased
+        ? "New Plot (Owned)"
+        : "New Plot (" + formatLargeNumber(2000) + " Coins)";
+
+      newPlotButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.newPlotPurchased) {
+          return;
+        }
+
+        if (getFlockDiversity(gameState) < 5 || gameState.coins < 2000) {
+          return;
+        }
+
+        gameState.coins -= 2000;
+        gameState.newPlotPurchased = true;
+        playButtonSound();
+        saveGameState(gameState);
+        rerenderAviary();
+      });
+
+      const tooltipBox = document.createElement("div");
+      tooltipBox.className = "upgrade-tooltip-box";
+      tooltipBox.textContent = "Increases number of trees you can own";
+
+      const countLine = document.createElement("p");
+      countLine.className = "shop-count";
+      countLine.textContent = "Requirement: 5 Species";
+
+      tooltipWrapper.appendChild(newPlotButton);
+      tooltipWrapper.appendChild(tooltipBox);
+      newPlotUpgrade.appendChild(tooltipWrapper);
+      newPlotUpgrade.appendChild(countLine);
+      saplingShopList.appendChild(newPlotUpgrade);
+    }
+
     // Build one bird summary row for the flock overview panel.
-    function appendBirdSummary(bird) {
+    function createBirdSummaryElement(bird) {
       const birdSummary = document.createElement("div");
       birdSummary.className = "bird-summary";
       const birdAbilityNames = getBirdAbilityNames(bird);
@@ -625,37 +1307,95 @@
       const rarityClassName = getRarityClassName(bird.rarity);
       birdSummary.innerHTML =
         "<h3>" + bird.species + "</h3>" +
-        "<p class='stat-line'>Diet: " + bird.diet + "</p>" +
-        (typeof bird.visitorsPerDay === "number"
-          ? "<p class='stat-line'>Visitors Per Day: +" + getBirdVisitorRatePerDay(bird, gameState) + "</p>"
-          : "") +
-        (typeof bird.grubsPerSecond === "number"
-          ? "<p class='stat-line'>Grubs Per Second: +" + getBirdGrubRatePerSecond(bird).toFixed(2) + "</p>"
-          : "") +
-        (typeof bird.twigsPerSecond === "number"
-          ? "<p class='stat-line'>Twigs Per Second: +" + getBirdTwigRatePerSecond(bird, gameState).toFixed(2) + "</p>"
-          : "") +
-        (typeof bird.seedsPerSecond === "number"
-          ? "<p class='stat-line'>Seeds Per Second: +" + getBirdSeedRatePerSecond(bird, gameState).toFixed(2) + "</p>"
-          : "") +
-        (birdAbilityNames.length > 0
-          ? "<div class='upgrade-tooltip'><p class='stat-line'>Ability: " + birdAbilityNames.join(", ") + "</p><div class='upgrade-tooltip-box'>" + birdAbilityDescriptions.join("<br><br>") + "</div></div>"
-          : "") +
+        "<p class='stat-line'>Diet: " + formatBirdDietLabel(bird) + "</p>" +
+        getBirdResourceLinesHtml(bird, gameState, { lineClassName: "stat-line" }) +
         "<p class='stat-line'>Rarity: <span class='" + rarityClassName + "'>" + bird.rarity + "</span></p>";
-      birdOverviewList.appendChild(birdSummary);
+
+      if (birdAbilityNames.length > 0) {
+        const abilityShell = document.createElement("div");
+        abilityShell.className = "bird-ability-shell";
+
+        const abilityButton = document.createElement("button");
+        abilityButton.className = "bird-ability-button";
+        abilityButton.type = "button";
+        abilityButton.textContent = "Ability: " + birdAbilityNames.join(", ");
+
+        const abilityTooltipBox = document.createElement("div");
+        abilityTooltipBox.className = "bird-ability-tooltip-box";
+        abilityTooltipBox.innerHTML = birdAbilityDescriptions.join("<br><br>");
+
+        abilityButton.addEventListener("click", function (event) {
+          event.stopPropagation();
+          document.querySelectorAll(".bird-ability-shell.is-open").forEach(function (openShell) {
+            if (openShell !== abilityShell) {
+              openShell.classList.remove("is-open");
+            }
+          });
+          abilityShell.classList.toggle("is-open");
+        });
+
+        abilityShell.appendChild(abilityButton);
+        abilityShell.appendChild(abilityTooltipBox);
+        birdSummary.appendChild(abilityShell);
+      }
+
+      return birdSummary;
     }
 
-    // Decide when a habitat overview should split into two vertical columns.
-    function getOverviewSplitPointForMode(mode) {
-      if (mode === "city-living") {
-        return Math.ceil(getHabitatBirdTotals(gameState, "City Living").totalSpecies / 2);
+    // Measure each summary so the overview can split by content height instead of bird count.
+    function getMeasuredSummaryHeights(birdsToShow) {
+      const measurementColumn = document.createElement("div");
+      measurementColumn.className = "overview-column";
+      measurementColumn.style.position = "absolute";
+      measurementColumn.style.visibility = "hidden";
+      measurementColumn.style.pointerEvents = "none";
+      measurementColumn.style.left = "-9999px";
+      measurementColumn.style.top = "0";
+      measurementColumn.style.width = Math.max(260, Math.floor((birdOverviewList.clientWidth - 24) / 2)) + "px";
+      document.body.appendChild(measurementColumn);
+
+      const heights = birdsToShow.map(function (bird) {
+        const summaryElement = createBirdSummaryElement(bird);
+        measurementColumn.appendChild(summaryElement);
+        const summaryHeight = summaryElement.offsetHeight;
+        measurementColumn.removeChild(summaryElement);
+        return summaryHeight;
+      });
+
+      document.body.removeChild(measurementColumn);
+      return heights;
+    }
+
+    // Split overview birds into two independent columns using measured summary height.
+    function splitOverviewBirdsByHeight(birdsToShow) {
+      const summaryHeights = getMeasuredSummaryHeights(birdsToShow);
+      const totalHeight = summaryHeights.reduce(function (runningTotal, height) {
+        return runningTotal + height;
+      }, 0);
+      const targetLeftHeight = Math.ceil(totalHeight / 2);
+      const leftColumnBirds = [];
+      const rightColumnBirds = [];
+      let leftColumnHeight = 0;
+
+      birdsToShow.forEach(function (bird, index) {
+        const birdHeight = summaryHeights[index];
+        const birdsRemainingAfterThis = birdsToShow.length - index - 1;
+        const canFitLeftColumn = leftColumnHeight + birdHeight <= targetLeftHeight;
+
+        if (rightColumnBirds.length === 0 && (leftColumnBirds.length === 0 || canFitLeftColumn || birdsRemainingAfterThis === 0)) {
+          leftColumnBirds.push(bird);
+          leftColumnHeight += birdHeight;
+          return;
+        }
+
+        rightColumnBirds.push(bird);
+      });
+
+      if (rightColumnBirds.length === 0) {
+        return [leftColumnBirds];
       }
 
-      if (mode === "urban-waters") {
-        return Math.ceil(getHabitatBirdTotals(gameState, "Urban Waters").totalSpecies / 2);
-      }
-
-      return Math.ceil(gameState.birds.length / 2);
+      return [leftColumnBirds, rightColumnBirds];
     }
 
     // Render the flock overview in compact or expanded mode.
@@ -663,53 +1403,86 @@
       const acquiredBirds = getAcquiredBirdsSnapshot();
       birdOverviewList.innerHTML = "";
       birdOverviewList.classList.remove("overview-two-column");
+      birdOverviewList.style.gridTemplateRows = "";
       setActiveOverviewButton();
 
       if (activeOverviewMode === "minimize") {
         return;
       }
 
-      const birdsToShow = activeOverviewMode === "city-living"
-        ? acquiredBirds.filter(function (bird) {
-            return bird.nativeHabitat === "City Living";
-          })
-        : acquiredBirds.filter(function (bird) {
-            return bird.nativeHabitat === "Urban Waters";
+      const birdsToShow = acquiredBirds.filter(function (bird) {
+        return bird.nativeHabitat === activeOverviewMode;
+      }).sort(function (leftBird, rightBird) {
+        return leftBird.species.localeCompare(rightBird.species);
+      });
+
+      if (birdsToShow.length > 1) {
+        const overviewColumns = splitOverviewBirdsByHeight(birdsToShow);
+
+        if (overviewColumns.length > 1) {
+          birdOverviewList.classList.add("overview-two-column");
+          const overviewColumnGrid = document.createElement("div");
+          overviewColumnGrid.className = "overview-column-grid";
+
+          overviewColumns.forEach(function (columnBirds) {
+            const overviewColumn = document.createElement("div");
+            overviewColumn.className = "overview-column";
+
+            columnBirds.forEach(function (bird, index) {
+              const birdSummary = createBirdSummaryElement(bird);
+              if (index === 0) {
+                birdSummary.classList.add("is-first-summary");
+              }
+              overviewColumn.appendChild(birdSummary);
+            });
+
+            overviewColumnGrid.appendChild(overviewColumn);
           });
 
-      const overviewSplitPoint = getOverviewSplitPointForMode(activeOverviewMode);
+          birdOverviewList.appendChild(overviewColumnGrid);
+          return;
+        }
+      }
 
-      if (birdsToShow.length > overviewSplitPoint) {
-        birdOverviewList.classList.add("overview-two-column");
-        birdOverviewList.style.gridTemplateRows = "repeat(" + overviewSplitPoint + ", auto)";
-      } else {
+      if (birdsToShow.length > 0) {
         birdOverviewList.style.gridTemplateRows = "";
         const divider = document.createElement("div");
         divider.className = "overview-divider";
         birdOverviewList.appendChild(divider);
-      }
 
-      birdsToShow.forEach(function (bird, index) {
-        appendBirdSummary(bird);
-        const latestSummary = birdOverviewList.lastElementChild;
-        if (
-          latestSummary &&
-          latestSummary.classList.contains("bird-summary") &&
-          (index === 0 || (birdsToShow.length > overviewSplitPoint && index === overviewSplitPoint))
-        ) {
-          latestSummary.classList.add("is-first-summary");
-        }
-      });
+        birdsToShow.forEach(function (bird, index) {
+          const birdSummary = createBirdSummaryElement(bird);
+          if (index === 0) {
+            birdSummary.classList.add("is-first-summary");
+          }
+          birdOverviewList.appendChild(birdSummary);
+        });
+      }
     }
 
     // Render one habitat panel, including its empty or unconstructed state.
-    function renderHabitatPanel(habitatName, habitatBirdList) {
+    function renderHabitatPanel(habitatName, habitatPanel) {
       const acquiredBirds = getAcquiredBirdsSnapshot();
-      const birdsInHabitat = acquiredBirds.filter(function (bird) {
-        return bird.nativeHabitat === habitatName;
-      });
+      const birdsInHabitat = acquiredBirds
+        .filter(function (bird) {
+          return bird.nativeHabitat === habitatName;
+        })
+        .sort(compareBirdsByRarityThenSpecies);
+      const habitatTotals = getHabitatBirdTotals(gameState, habitatName);
+      const habitatHeader = habitatPanel.querySelector(".habitat-header");
+      const currentHabitatMode = getHabitatPanelMode(habitatName);
+      const habitatBirdList = habitatPanel.querySelector(".habitat-bird-list");
+      const habitatFrameBackground = window.getComputedStyle(habitatPanel).backgroundColor;
+
+      habitatHeader.textContent = habitatName + " (" + habitatTotals.acquiredSpecies + "/" + habitatTotals.totalSpecies + ")";
+      renderHabitatPanelControls(habitatName, habitatPanel);
 
       habitatBirdList.innerHTML = "";
+
+      if (currentHabitatMode === "minimize") {
+        habitatBirdList.classList.add("is-empty");
+        return;
+      }
 
       if (!gameState.ownedHabitats.includes(habitatName)) {
         habitatBirdList.classList.add("is-empty");
@@ -728,40 +1501,46 @@
       birdsInHabitat.forEach(function (bird) {
         const habitatFigure = document.createElement("figure");
         habitatFigure.className = "habitat-bird-figure";
+        habitatFigure.style.setProperty("--habitat-frame-bg", habitatFrameBackground);
         const birdAbilityNames = getBirdAbilityNames(bird);
+        const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
+        const visibleVariantKeys = getOwnedBirdVariantKeys(bird);
         const habitatImages = getBirdHabitatImages(bird);
         const imageMarkup = habitatImages.length > 1
           ? "<div class='habitat-bird-image-group'>" + habitatImages.map(function (imageEntry) {
-              return "<img src='" + imageEntry.src + "' alt='" + imageEntry.alt + "' data-bird-id='" + bird.id + "' data-variant='" + (imageEntry.variantKey || "") + "'>";
+              const variantCount = bird.variantCounts && imageEntry.variantKey
+                ? bird.variantCounts[imageEntry.variantKey] || 0
+                : 0;
+
+              return "<span class='habitat-bird-image-shell'>" +
+                "<span class='habitat-image-frame'>" +
+                  "<img src='" + imageEntry.src + "' alt='" + imageEntry.alt + "' data-bird-id='" + bird.id + "' data-variant='" + (imageEntry.variantKey || "") + "'>" +
+                "</span>" +
+                (variantCount > 0 ? "<span class='bird-count-badge habitat-variant-count-badge'>x" + variantCount + "</span>" : "") +
+              "</span>";
             }).join("") + "</div>"
-          : "<img src='" + habitatImages[0].src + "' alt='" + habitatImages[0].alt + "' data-bird-id='" + bird.id + "' data-variant='" + (habitatImages[0].variantKey || "") + "'>";
-        const totalVisitors = getBirdVisitorRatePerDay(bird, gameState) * bird.count;
-        const totalGrubs = getBirdGrubRatePerSecond(bird) * bird.count;
-        const totalTwigs = getBirdTwigRatePerSecond(bird, gameState) * bird.count;
-        const totalSeeds = getBirdSeedRatePerSecond(bird, gameState) * bird.count;
+          : "<span class='habitat-image-frame'>" +
+              "<img src='" + habitatImages[0].src + "' alt='" + habitatImages[0].alt + "' data-bird-id='" + bird.id + "' data-variant='" + (habitatImages[0].variantKey || "") + "'>" +
+            "</span>";
 
         habitatFigure.innerHTML =
           "<div class='habitat-bird-tooltip'>" +
-            (typeof bird.visitorsPerDay === "number"
-              ? "<p>Visitors Per Day: +" + totalVisitors + "</p>"
-              : "") +
-            (typeof bird.grubsPerSecond === "number"
-              ? "<p>Grubs Per Second: +" + totalGrubs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
-              : "") +
-            (typeof bird.twigsPerSecond === "number"
-              ? "<p>Twigs Per Second: +" + totalTwigs.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
-              : "") +
-            (typeof bird.seedsPerSecond === "number"
-              ? "<p>Seeds Per Second: +" + totalSeeds.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1') + "</p>"
+            getBirdResourceLinesHtml(bird, gameState, { multiplyByCount: true }) +
+            (parasiteTargetBird
+              ? "<p>Target: " + parasiteTargetBird.species + "</p>"
               : "") +
             (birdAbilityNames.length > 0
               ? "<p>Ability: " + birdAbilityNames.join(", ") + "</p>"
               : "") +
           "</div>" +
           imageMarkup +
-          "<figcaption>" + bird.species +
-            (bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
-          "</figcaption>";
+          "<div class='habitat-bird-controls'>" +
+            (birdHasAbility(bird, "parasite")
+              ? "<button class='habitat-parasite-button" + (parasiteTargetBird ? " is-selected" : "") + "' type='button' data-parasite-bird-id='" + bird.id + "'>" + (parasiteTargetBird ? "Reset<br>Target" : "Set<br>Target") + "</button>"
+              : "<span></span>") +
+            (habitatImages.length === 1 && bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
+          "</div>" +
+          "<figcaption>" + bird.species + "</figcaption>";
 
         habitatBirdList.appendChild(habitatFigure);
 
@@ -772,17 +1551,44 @@
             birdCall.play();
           });
         });
+
+        const parasiteButton = habitatFigure.querySelector(".habitat-parasite-button");
+
+        if (parasiteButton) {
+          parasiteButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            openParasiteOverlay(bird.id);
+          });
+        }
+      });
+    }
+
+    // Rebuild the right-side habitat panels from the habitat library.
+    function renderHabitatPanels() {
+      habitatPanels.innerHTML = "";
+
+      getAviaryHabitatNames().forEach(function (habitatName) {
+        const habitatPanel = document.createElement("div");
+        habitatPanel.className = "aviary-panel";
+        habitatPanel.innerHTML =
+          "<div class='habitat-header-row'>" +
+            "<h2 class='habitat-header'></h2>" +
+            "<div class='habitat-controls'></div>" +
+          "</div>" +
+          "<div class='habitat-bird-list'></div>";
+        habitatPanels.appendChild(habitatPanel);
+        renderHabitatPanel(habitatName, habitatPanel);
       });
     }
 
     // Refresh all Aviary-specific UI after an upgrade or state change.
     function rerenderAviary() {
       refreshAviarySummary();
+      renderOverviewHabitatButtons();
       renderTopBar(topBar, gameState);
       renderOverview();
       renderUpgradesOverview();
-      renderHabitatPanel("City Living", cityLivingBirdList);
-      renderHabitatPanel("Urban Waters", urbanWatersBirdList);
+      renderHabitatPanels();
     }
 
     // Render the active upgrades tab for either flock or aviary upgrades.
@@ -815,7 +1621,7 @@
         murderPartyButton.type = "button";
         murderPartyButton.dataset.requiresSuccess = "true";
         murderPartyButton.textContent = gameState.murderPartyPurchased
-          ? "Murder Party (Active)"
+          ? "Murder Party (" + (isMurderPartyActive(gameState) ? "Active" : "Inactive") + ")"
           : "Murder Party";
 
         murderPartyButton.addEventListener("click", function () {
@@ -862,7 +1668,7 @@
         turtleWakeButton.type = "button";
         turtleWakeButton.dataset.requiresSuccess = "true";
         turtleWakeButton.textContent = gameState.turtleWakePurchased
-          ? "Turtle Wake (Active)"
+          ? "Turtle Wake (" + (isTurtleWakeActive(gameState) ? "Active" : "Inactive") + ")"
           : "Turtle Wake";
 
         turtleWakeButton.addEventListener("click", function () {
@@ -906,6 +1712,54 @@
         const flockResourceRow = document.createElement("div");
         flockResourceRow.className = "upgrade-row upgrade-row-three";
         upgradesOverviewList.appendChild(flockResourceRow);
+
+        const seedDispersalEntry = document.createElement("div");
+        seedDispersalEntry.className = "upgrade-entry";
+
+        const seedDispersalTooltip = document.createElement("div");
+        seedDispersalTooltip.className = "upgrade-tooltip";
+
+        const seedDispersalButton = document.createElement("button");
+        seedDispersalButton.className = "upgrade-action-button";
+        seedDispersalButton.type = "button";
+        seedDispersalButton.dataset.requiresSuccess = "true";
+        seedDispersalButton.textContent = gameState.seedDispersalPurchased
+          ? "Seed Dispersal (Active)"
+          : "Seed Dispersal";
+
+        seedDispersalButton.addEventListener("click", function () {
+          const mourningDoveInFlock = gameState.birds.find(function (bird) {
+            return bird.id === "mourningdove";
+          });
+
+          if (gameState.seedDispersalPurchased) {
+            return;
+          }
+
+          if (!mourningDoveInFlock || mourningDoveInFlock.count < 2) {
+            return;
+          }
+
+          gameState.seedDispersalPurchased = true;
+          gameState.pearTrees += 1;
+          playButtonSound();
+          saveGameState(gameState);
+          rerenderAviary();
+        });
+
+        const seedDispersalTooltipBox = document.createElement("div");
+        seedDispersalTooltipBox.className = "upgrade-tooltip-box";
+        seedDispersalTooltipBox.textContent = "Grants a free Pear Tree and increases the Pear Tree max by 1";
+
+        const seedDispersalRequirement = document.createElement("p");
+        seedDispersalRequirement.className = "upgrade-requirement";
+        seedDispersalRequirement.textContent = "Requires: 2 Mourning Doves";
+
+        seedDispersalTooltip.appendChild(seedDispersalButton);
+        seedDispersalTooltip.appendChild(seedDispersalTooltipBox);
+        seedDispersalEntry.appendChild(seedDispersalTooltip);
+        seedDispersalEntry.appendChild(seedDispersalRequirement);
+        flockResourceRow.appendChild(seedDispersalEntry);
 
         const flockForestryEntry = document.createElement("div");
         flockForestryEntry.className = "upgrade-entry";
@@ -987,6 +1841,7 @@
 
         gameState.coins -= 10000;
         gameState.ownedHabitats.push("Urban Waters");
+        grantHabitatConstructionRewards(gameState, "Urban Waters");
         playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
@@ -1154,9 +2009,7 @@
         gameState.twigs -= 100;
         gameState.coinMax = 100000;
         gameState.basketPurchased = true;
-        if (gameState.coins > gameState.coinMax) {
-          gameState.coins = gameState.coinMax;
-        }
+        clampGameStateResources(gameState);
         playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
@@ -1199,9 +2052,7 @@
         gameState.hardwood -= 10;
         gameState.coinMax = 1000000;
         gameState.depositBoxPurchased = true;
-        if (gameState.coins > gameState.coinMax) {
-          gameState.coins = gameState.coinMax;
-        }
+        clampGameStateResources(gameState);
         playButtonSound();
         saveGameState(gameState);
         rerenderAviary();
@@ -1234,16 +2085,6 @@
       renderOverview();
     });
 
-    overviewCityLivingButton.addEventListener("click", function () {
-      activeOverviewMode = "city-living";
-      renderOverview();
-    });
-
-    overviewAllBirdsButton.addEventListener("click", function () {
-      activeOverviewMode = "urban-waters";
-      renderOverview();
-    });
-
     upgradesMinimizeButton.addEventListener("click", function () {
       activeUpgradesMode = "minimize";
       renderUpgradesOverview();
@@ -1259,19 +2100,57 @@
       renderUpgradesOverview();
     });
 
+    saplingShopMinimizeButton.addEventListener("click", function () {
+      activeSaplingShopMode = "minimize";
+      renderSaplingShop();
+    });
+
+    saplingShopExpandButton.addEventListener("click", function () {
+      activeSaplingShopMode = "expand";
+      renderSaplingShop();
+    });
+
+    parasiteOverlayClose.addEventListener("click", function () {
+      closeParasiteOverlay();
+    });
+
+    parasiteOverlay.addEventListener("click", function (event) {
+      if (event.target === parasiteOverlay) {
+        closeParasiteOverlay();
+      }
+    });
+
+    parasiteTargetGrid.addEventListener("click", function (event) {
+      if (event.target.closest(".selector-image-shell")) {
+        return;
+      }
+
+      parasiteTargetGrid.querySelectorAll(".selector-image-shell.is-open").forEach(function (openShell) {
+        openShell.classList.remove("is-open");
+      });
+    });
+
+    document.addEventListener("click", function () {
+      document.querySelectorAll(".bird-ability-shell.is-open").forEach(function (openShell) {
+        openShell.classList.remove("is-open");
+      });
+    });
+
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
     initButtonAudio();
+    initViewportAwareTooltips();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
       refreshAviarySummary();
     });
     renderEarthworksNav();
     refreshAviarySummary();
+    renderOverviewHabitatButtons();
     renderOverview();
     renderUpgradesOverview();
-    renderHabitatPanel("City Living", cityLivingBirdList);
-    renderHabitatPanel("Urban Waters", urbanWatersBirdList);
+    renderSaplingShop();
+    renderHabitatPanels();
   </script>
 </body>
 </html>

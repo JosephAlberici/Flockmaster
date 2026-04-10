@@ -1,4 +1,6 @@
-// Central bird catalog. Add new species here and the rest of the game reads from it.
+// Central bird catalog
+// Each object here is one species template, not one individual bird.
+// The save system clones this library, then tracks player-specific fields like count and variantCounts separately.
 const BIRD_LIBRARY = [
   {
     id: "crow",
@@ -81,7 +83,7 @@ const BIRD_LIBRARY = [
   {
     id: "cardinal",
     species: "Northern Cardinal",
-    visitorsPerDay: 10,
+    visitorsPerDay: 5,
     abilities: ["dimorphic"],
     diet: "seeds",
     rarity: "Rare",
@@ -118,5 +120,55 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/screechowl.wav",
     nativeHabitat: "City Living",
     scientificName: "Megascops asio",
+  },
+  {
+    id: "nighthawk",
+    species: "Common Nighthawk",
+    grubsPerSecond: 0.03,
+    abilities: ["nocturnal"],
+    diet: "grubs",
+    rarity: "Common",
+    acquired: false,
+    image: "/Resources/Bird Images/nighthawk.png",
+    call: "/Resources/Calls/nighthawk.wav",
+    nativeHabitat: "City Living",
+    scientificName: "Chordeiles minor",
+  },
+  {
+    id: "shrike",
+    species: "Loggerhead Shrike",
+    diet: "mice",
+    rarity: "Legendary",
+    acquired: false,
+    image:"/Resources/Bird Images/shrike.png",
+    call: "/Resources/Calls/shrike.mp3",
+    nativeHabitat: "The Hollow",
+    scientificName: "Lanius ludovicianus",
+  },
+  {
+    id: "cowbird",
+    species: "Brown-Headed Cowbird",
+    diet: "seeds",
+    abilities: ["parasite"],
+    rarity: "Uncommon",
+    acquired: false,
+    image: "/Resources/Bird Images/cowbird.png",
+    call: "/Resources/Calls/cowbird.mp3",
+    nativeHabitat: "City Living",
+    scientificName: "Molothrus ater",
+  },
+  {
+    id: "redTailedHawk",
+    species: "Red-Tailed Hawk",
+    twigsPerSecond: 0.4,
+    bonusPeachTree: 2,
+    diet: "mice",
+    rarity: "Epic",
+    abilities: ["predator"],
+    acquired: false,
+    image: "/Resources/Bird Images/redTailedHawk.png",
+    call: "/Resources/Calls/redTailedHawk.wav",
+    nativeHabitat: "City Living",
+    scientificName: "Buteo jamaicensis",
   }
 ];

@@ -1,4 +1,6 @@
-// Central ability catalog. Shared abilities can define reusable handlers here.
+// Central ability catalog
+// Each key is an ability id that birds can reference in birds.js.
+// The metadata here is used for UI text, and optional handler functions are called by game.js when that ability matters.
 const ABILITIES = {
   dimorphic: {
     name: "Dimorphic",
@@ -18,6 +20,16 @@ const ABILITIES = {
   nocturnal: {
     name: "Nocturnal",
     description: "Increases max offline duration by 10 minutes per individual, up to 24 hours"
+  },
+  parasite: {
+    name: "Parasite",
+    description: "Can inherit the current stats of a target species from the same habitat. Starts limited to Common targets"
+  },
+  predator: {
+    name: "Predator",
+    description: "Improves catch rate when using seed bait by 2% per individual. Max bonus starts at 10% and increases by 5% per Predator upgrade",
+    baseMaxBonus: 0.1,
+    upgradeBonusStep: 0.05
   },
   overseer: {
     name: "Overseer",

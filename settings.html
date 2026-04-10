@@ -246,6 +246,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the settings controls used on this screen.
@@ -264,10 +265,12 @@
     const codeToast = document.querySelector("#codeToast");
     let toastTimeoutId = null;
 
+    // Settings mostly manipulates saved data directly, so the top bar stays minimal here.
     // Keep the shared top bar current while this page is open.
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
     initButtonAudio();
+    initViewportAwareTooltips();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });
@@ -375,8 +378,18 @@
         return;
       }
 
-      // Temporarily disabled patch code kept in place for later reactivation.
-      if (false && submittedCode === "screechtest") {
+      if (submittedCode === "winner1") {
+        addItemCount(gameState, "seedbaitticket", 5);
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: 5 Seed Bait Tickets added";
+        codeInput.value = "";
+        return;
+      }
+
+      if (submittedCode === "screechtest") {
         const screechOwlInFlock = gameState.birds.find(function (bird) {
           return bird.id === "screechowl";
         });

@@ -163,9 +163,11 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
     // Load the save and refresh the simple friends overview.
+    // This page is intentionally light and just mirrors the live point formula from game.js.
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const pointsDisplay = document.querySelector("#pointsDisplay");
@@ -177,6 +179,7 @@
 
     updateCoinsFromElapsedTime(gameState, Date.now());
     initButtonAudio();
+    initViewportAwareTooltips();
     renderFriendsPage();
     startIncomeSystem(gameState, function () {
       renderFriendsPage();
