@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Flockmaster Earthworks</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
+    :root {
+      --action-panel-bg: #8b6a4f;
+    }
+
     body {
       background-color: #b8b8b8;
       font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
@@ -89,20 +94,11 @@
     .earthworks-panel {
       width: 100%;
       min-height: 420px;
-      background: #8b6a4f;
-      border: 3px solid #2c3e50;
-      border-radius: 18px;
-      padding: 24px;
-      box-sizing: border-box;
       margin-bottom: 22px;
     }
 
     .earthworks-panel:last-child {
       margin-bottom: 0;
-    }
-
-    .lumber-panel {
-      background: #8b6a4f;
     }
 
     .card {
@@ -232,6 +228,7 @@
       position: relative;
       margin-top: 24px;
       text-align: center;
+      width: 100%;
     }
 
     .grubs-panel-content {
@@ -515,15 +512,26 @@
     }
 
     .log-button {
-      background: transparent;
-      border: none;
+      display: block;
+      width: 100%;
+      max-width: none;
+      margin: 0 auto;
       padding: 0;
+      border: none;
+      background: transparent;
       cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
     }
 
     .log-button img {
+      pointer-events: none;
+    }
+
+    .log-image {
       width: 100%;
-      max-width: 760px;
+      max-width: none;
       display: block;
       margin: 0 auto;
     }
@@ -585,6 +593,7 @@
       <div class="card">
         <a class="menu-button" href="aviary.html">Return To Aviary</a>
         <a class="menu-button" href="birdCatching.html">Bird Catching</a>
+        <span class="nav-tooltip" id="dockyardNavWrapper"></span>
       </div>
 
       <div class="card">
@@ -604,7 +613,15 @@
       <div class="card">
         <h2>Grub Upgrades</h2>
         <p class="upgrade-subtitle">Grubs Per Click</p>
-        <button class="menu-button" type="button" id="pheromonesButton" data-requires-success="true">Pheromones (100k Coins)</button>
+        <div class="upgrade-tooltip">
+          <button class="menu-button" type="button" id="pheromonesButton" data-requires-success="true">Pheromones (100k Coins)</button>
+          <div class="upgrade-tooltip-box" id="pheromonesTooltip"></div>
+        </div>
+        <p class="upgrade-subtitle">Grub Storage</p>
+        <div class="upgrade-tooltip">
+          <button class="menu-button" type="button" id="grubBarnButton" data-requires-success="true">Grub Barn (50 Hardwood)</button>
+          <div class="upgrade-tooltip-box" id="grubBarnTooltip"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -619,7 +636,7 @@
     </div>
 
     <div class="earthworks-main">
-      <div class="earthworks-panel">
+      <div class="earthworks-panel action-panel">
         <div class="overview-header">
           <h2 class="panel-header">Grubs</h2>
           <div class="overview-controls">
@@ -634,7 +651,7 @@
         <div class="grubs-panel-content" id="grubsPanelContent"></div>
       </div>
 
-      <div class="earthworks-panel lumber-panel" id="sawmillPanel">
+      <div class="earthworks-panel action-panel lumber-panel" id="sawmillPanel">
         <div class="overview-header">
           <h2 class="panel-header">Sawmill</h2>
           <div class="overview-controls">
@@ -652,6 +669,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
   <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
@@ -667,10 +685,14 @@
     const hardwoodYieldDisplay = document.querySelector("#hardwoodYield");
     const twigProcessingTimeDisplay = document.querySelector("#twigProcessingTime");
     const pheromonesButton = document.querySelector("#pheromonesButton");
+    const pheromonesTooltip = document.querySelector("#pheromonesTooltip");
+    const grubBarnButton = document.querySelector("#grubBarnButton");
+    const grubBarnTooltip = document.querySelector("#grubBarnTooltip");
     const grubsMinimizeButton = document.querySelector("#grubsMinimizeButton");
     const grubHuntingButton = document.querySelector("#grubHuntingButton");
     const grubFarmButton = document.querySelector("#grubFarmButton");
     const grubFarmTooltip = document.querySelector("#grubFarmTooltip");
+    const dockyardNavWrapper = document.querySelector("#dockyardNavWrapper");
     const sawmillMinimizeButton = document.querySelector("#sawmillMinimizeButton");
     const sawmillTabButton = document.querySelector("#sawmillTabButton");
     const sawmillTabTooltip = document.querySelector("#sawmillTabTooltip");
@@ -695,12 +717,32 @@
       grubsPerSecondDisplay.textContent = "+" + getGrubsPerSecond(gameState).toFixed(2);
       hardwoodYieldDisplay.textContent = "+10";
       twigProcessingTimeDisplay.textContent = formatDurationLabel(gameState.sawmillProcessingDurationMs);
-      pheromonesButton.textContent = gameState.pheromonesPurchased
+      pheromonesButton.textContent = hasUpgrade(gameState, "pheromones")
         ? "Pheromones (Owned)"
         : "Pheromones (100k Coins)";
+      syncOwnedUpgradeButtonState(pheromonesButton, gameState, "pheromones");
+      pheromonesTooltip.textContent = getUpgradeDefinition("pheromones").description;
+      grubBarnButton.textContent = hasUpgrade(gameState, "grubBarn")
+        ? "Grub Barn (Owned)"
+        : "Grub Barn (50 Hardwood)";
+      syncOwnedUpgradeButtonState(grubBarnButton, gameState, "grubBarn");
+      grubBarnTooltip.textContent = getUpgradeDefinition("grubBarn").description;
       thresholdStatus.textContent = gameState.sawmillTwigThreshold > 0
         ? "Current threshold: " + formatLargeNumber(gameState.sawmillTwigThreshold) + " twigs"
         : "Current threshold: none";
+    }
+
+    function renderDockyardNav() {
+      dockyardNavWrapper.innerHTML = "";
+
+      if (isDockyardUnlocked(gameState)) {
+        dockyardNavWrapper.innerHTML = "<a class='menu-button' href='dockyard.html'>Dockyard</a>";
+        return;
+      }
+
+      dockyardNavWrapper.innerHTML =
+        "<span class='menu-button is-locked'>Dockyard</span>" +
+        "<span class='nav-tooltip-box'>Construct Urban Waters to Unlock</span>";
     }
 
     // Keep the grubs panel tab buttons visually in sync with the active mode.
@@ -728,7 +770,7 @@
 
     // Return whether the player can currently pay to unlock the grub farm.
     function canUnlockGrubFarm() {
-      return gameState.pheromonesPurchased && gameState.grubs >= 200;
+      return hasUpgrade(gameState, "pheromones") && gameState.grubs >= 200;
     }
 
     // Return whether the player can currently pay to construct the sawmill.
@@ -754,6 +796,8 @@
       grubsPanel.classList.remove("is-minimized");
 
       if (activeGrubsMode === "farm") {
+        // The farm view is the passive conversion mode, so everything here is
+        // about explaining the running trade rather than manual clicking.
         const farmNote = document.createElement("p");
         farmNote.className = "panel-note";
         farmNote.textContent = "Spend twigs/sec and seeds/sec to generate grubs/sec";
@@ -797,6 +841,7 @@
         return;
       }
 
+      // The hunting view is the active-clicking branch of the same panel.
       const huntingNote = document.createElement("p");
       huntingNote.className = "panel-note";
       huntingNote.textContent = "Click the log to hunt grubs";
@@ -808,27 +853,52 @@
       huntingButton.className = "log-button";
       huntingButton.type = "button";
       huntingButton.id = "logButton";
+      huntingButton.setAttribute("aria-label", "Log for grub hunting");
+
+      huntingShell.appendChild(huntingButton);
+      grubsPanelContent.appendChild(huntingNote);
+      grubsPanelContent.appendChild(huntingShell);
 
       const huntingImage = document.createElement("img");
-      huntingImage.src = "/Resources/Misc%20Images/log.png";
+      huntingImage.className = "log-image";
+      huntingImage.src = "Resources/Misc%20Images/log.png";
       huntingImage.alt = "Log for grub hunting";
+      huntingImage.style.marginBottom = "0";
 
       huntingButton.appendChild(huntingImage);
-      huntingButton.addEventListener("click", function (event) {
+
+      function performGrubHunt(clickX, clickY) {
         gameState.grubs += gameState.grubsPerClick;
         clampGameStateResources(gameState);
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderEarthworksOverview();
-        renderGrubsPanel();
         grubSplatSound.currentTime = 0;
-        grubSplatSound.play();
-        spawnGrubFloat(event.clientX, event.clientY, gameState.grubsPerClick);
-      });
+        playGameSound(grubSplatSound);
+        spawnGrubFloat(clickX, clickY, gameState.grubsPerClick);
+      }
 
-      huntingShell.appendChild(huntingButton);
-      grubsPanelContent.appendChild(huntingNote);
-      grubsPanelContent.appendChild(huntingShell);
+      huntingButton.addEventListener("click", function (event) {
+          const huntingButtonBounds = huntingButton.getBoundingClientRect();
+          const clickX = typeof event.clientX === "number" && event.clientX > 0
+            ? event.clientX
+            : huntingButtonBounds.left + (huntingButtonBounds.width / 2);
+          const clickY = typeof event.clientY === "number" && event.clientY > 0
+            ? event.clientY
+            : huntingButtonBounds.top + (huntingButtonBounds.height / 2);
+
+          performGrubHunt(clickX, clickY);
+      });
+      attachHoldToClick(huntingButton, gameState, {
+        startDelayMs: 300,
+        intervalMs: 333,
+        repeatAction: function () {
+          const huntingButtonBounds = huntingButton.getBoundingClientRect();
+          const clickX = huntingButtonBounds.left + (huntingButtonBounds.width / 2);
+          const clickY = huntingButtonBounds.top + (huntingButtonBounds.height / 2);
+          performGrubHunt(clickX, clickY);
+        }
+      });
     }
 
     // Rebuild the Sawmill panel for the active tab.
@@ -854,6 +924,8 @@
         return;
       }
 
+      // The fixed header notes explain the manual conversion and the extra
+      // requirement for overseer-driven automation.
       const sawmillNote = document.createElement("p");
       sawmillNote.className = "panel-note";
       sawmillNote.textContent = "Process stored twigs into hardwood";
@@ -910,6 +982,8 @@
 
       updateSawmillProcessingState(gameState, Date.now());
 
+      // The process button and progress bar share one state machine:
+      // idle -> processing -> ready to collect.
       if (gameState.sawmillProcessingReady) {
         processTwigsButton.textContent = "Collect";
         processTwigsTooltipBox.textContent = "Ready to collect " + formatLargeNumber(gameState.sawmillProcessingPendingHardwood) + " hardwood";
@@ -955,6 +1029,8 @@
         }
 
         if (gameState.sawmillProcessingActive) {
+          // While already processing, clicking just reveals the live countdown
+          // tooltip instead of starting a second overlapping batch.
           processTwigsTooltipBox.classList.add("is-visible");
 
           if (processTooltipTimeoutId !== null) {
@@ -977,7 +1053,7 @@
         gameState.sawmillProcessingActive = true;
         gameState.sawmillProcessingReady = false;
         sawmillSound.currentTime = 0;
-        sawmillSound.play();
+        playGameSound(sawmillSound);
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderEarthworksOverview();
@@ -1123,6 +1199,8 @@
         return false;
       }
 
+      // Automation still uses the same real mill costs as manual play, it just
+      // presses the existing process action for the player.
       gameState.twigs -= 10000;
       gameState.sawmillProcessingStart = Date.now();
       gameState.sawmillProcessingPendingHardwood = 10;
@@ -1143,6 +1221,8 @@
       updateSawmillProcessingState(gameState, Date.now());
 
       if (gameState.sawmillProcessingReady) {
+        // Collection always happens before trying to start another batch so the
+        // hardwood payout is never stranded in the ready state.
         gameState.hardwood += gameState.sawmillProcessingPendingHardwood;
         gameState.sawmillProcessingPendingHardwood = 0;
         gameState.sawmillProcessingStart = null;
@@ -1181,14 +1261,16 @@
     renderTopBar(topBar, gameState);
     initButtonAudio();
     initViewportAwareTooltips();
+    ensureSharedUpgradeUi();
+    syncUpgradeInteractionPreference(gameState);
     renderEarthworksOverview();
+    renderDockyardNav();
     renderOverseerOverlay();
     renderGrubsPanel();
     renderSawmillPanel();
     startIncomeSystem(gameState, function () {
       runSawmillAutomation();
       renderTopBar(topBar, gameState);
-      renderGrubsPanel();
       renderSawmillPanel();
       renderEarthworksOverview();
     });
@@ -1197,6 +1279,8 @@
       grubsPanelContent.innerHTML = "<p class='locked-note'>Unlock Earthworks by reaching 4 species in your aviary</p>";
       pheromonesButton.disabled = true;
       pheromonesButton.classList.add("is-locked");
+      grubBarnButton.disabled = true;
+      grubBarnButton.classList.add("is-locked");
       grubsMinimizeButton.disabled = true;
       grubsMinimizeButton.classList.add("is-locked");
       grubHuntingButton.disabled = true;
@@ -1302,24 +1386,28 @@
       });
 
       pheromonesButton.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
+        handleUpgradePurchaseRequest(gameState, "pheromones", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderEarthworksOverview();
+            renderGrubsPanel();
+          }
+        });
+      });
 
-        if (gameState.pheromonesPurchased) {
-          return;
-        }
-
-        if (gameState.coins < 100000) {
-          return;
-        }
-
-        gameState.coins -= 100000;
-        gameState.grubsPerClick += 2;
-        gameState.pheromonesPurchased = true;
-        clampGameStateResources(gameState);
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        renderEarthworksOverview();
+      grubBarnButton.addEventListener("click", function () {
+        handleUpgradePurchaseRequest(gameState, "grubBarn", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderEarthworksOverview();
+          }
+        });
       });
     }
   </script>

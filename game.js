@@ -9,6 +9,62 @@ const RARITY_WEIGHTS = {
   Epic: 4,
   Legendary: 1
 };
+const DOCKYARD_TREASURE_REWARD_TABLE = [
+  {
+    type: "item",
+    itemId: "seedbaitticket",
+    amount: 5,
+    weight: 1
+  },
+  {
+    type: "currency",
+    resourceKey: "coins",
+    amount: 10000,
+    weight: 1
+  },
+  {
+    type: "currency",
+    resourceKey: "coins",
+    amount: 25000,
+    weight: 1
+  },
+  {
+    type: "currency",
+    resourceKey: "coins",
+    amount: 50000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "grubs",
+    amount: 1000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "grubs",
+    amount: 2000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "grubs",
+    amount: 5000,
+    weight: 1
+  },
+  {
+    type: "item",
+    itemId: "voyageticket",
+    amount: 1,
+    weight: 1
+  }
+];
+const TREE_BONUS_KEY_BY_TREE_KEY = {
+  appleTrees: "bonusAppleTree",
+  pearTrees: "bonusPearTree",
+  peachTrees: "bonusPeachTree",
+  orangeTrees: "bonusOrangeTree"
+};
 
 // Shared save-schema defaults
 // Add new saved primitive values here first so loading, importing, and new saves stay aligned.
@@ -36,13 +92,31 @@ const GAME_STATE_DEFAULTS = {
   sawmillConstructed: false,
   sawmillOverseerId: null,
   sawmillTwigThreshold: 0,
+  dockyardVoyageDurationMs: 60 * 60 * 1000,
+  dockyardVoyageStart: null,
+  dockyardVoyagePendingFish: 0,
+  dockyardVoyagePendingScrap: 0,
+  dockyardVoyagePendingTreasureRewards: {},
+  dockyardVoyageActive: false,
+  dockyardVoyageReady: false,
+  dockyardHarborGiftPending: false,
+  dockyardCoinThreshold: 0,
+  dockyardFishPerVoyage: 20,
+  dockyardScrapPerVoyage: 0,
+  dockyardTreasureChance: 0.05,
   overseerAssignments: {
-    sawmill: null
+    sawmill: null,
+    dockyard: null
   },
   coins: 50,
   coinMax: 10000,
+  fish: 0,
+  scrap: 0,
   twigs: 0,
+  twigMax: 100000,
   trapPurchased: false,
+  upgradeConfirmationEnabled: false,
+  holdToClickEnabled: false,
   trapLoaded: false,
   trapPulled: false,
   trapBaitType: null,
@@ -51,6 +125,7 @@ const GAME_STATE_DEFAULTS = {
   catchRate: 0.5,
   lastTrapResult: "",
   items: {},
+  upgrades: {},
   ownedHabitats: ["City Living"],
   redeemedCodes: [],
   parasiteTargets: {},
@@ -73,7 +148,8 @@ const GAME_STATE_DEFAULTS = {
   newSubstratePurchased: false,
   appleTrees: 0,
   pearTrees: 0,
-  peachTrees: 0
+  peachTrees: 0,
+  orangeTrees: 0
 };
 
 // Validate number-like save fields before keeping them.
@@ -130,11 +206,28 @@ const GAME_STATE_VALIDATORS = {
   sawmillConstructed: isBoolean,
   sawmillOverseerId: isNullableString,
   sawmillTwigThreshold: isFiniteNumber,
+  dockyardVoyageDurationMs: isFiniteNumber,
+  dockyardVoyageStart: isNullableNumber,
+  dockyardVoyagePendingFish: isFiniteNumber,
+  dockyardVoyagePendingScrap: isFiniteNumber,
+  dockyardVoyagePendingTreasureRewards: isPlainObject,
+  dockyardVoyageActive: isBoolean,
+  dockyardVoyageReady: isBoolean,
+  dockyardHarborGiftPending: isBoolean,
+  dockyardCoinThreshold: isFiniteNumber,
+  dockyardFishPerVoyage: isFiniteNumber,
+  dockyardScrapPerVoyage: isFiniteNumber,
+  dockyardTreasureChance: isFiniteNumber,
   overseerAssignments: isPlainObject,
   coins: isFiniteNumber,
   coinMax: isFiniteNumber,
+  fish: isFiniteNumber,
+  scrap: isFiniteNumber,
   twigs: isFiniteNumber,
+  twigMax: isFiniteNumber,
   trapPurchased: isBoolean,
+  upgradeConfirmationEnabled: isBoolean,
+  holdToClickEnabled: isBoolean,
   trapLoaded: isBoolean,
   trapPulled: isBoolean,
   trapBaitType: isNullableString,
@@ -143,6 +236,7 @@ const GAME_STATE_VALIDATORS = {
   catchRate: isFiniteNumber,
   lastTrapResult: isString,
   items: isPlainObject,
+  upgrades: isPlainObject,
   ownedHabitats: Array.isArray,
   redeemedCodes: Array.isArray,
   parasiteTargets: isPlainObject,
@@ -165,7 +259,8 @@ const GAME_STATE_VALIDATORS = {
   newSubstratePurchased: isBoolean,
   appleTrees: isFiniteNumber,
   pearTrees: isFiniteNumber,
-  peachTrees: isFiniteNumber
+  peachTrees: isFiniteNumber,
+  orangeTrees: isFiniteNumber
 };
 
 // Shared save-schema helpers
@@ -223,6 +318,49 @@ function mergeItemCounts(savedItems) {
   });
 
   return mergedItemCounts;
+}
+
+// Build the default owned-upgrade map so new saves and repaired saves share
+// the same shape even before every upgrade has been purchased once.
+function createDefaultUpgradeOwnership() {
+  return Object.keys(UPGRADE_LIBRARY).reduce(function (ownedUpgrades, upgradeId) {
+    ownedUpgrades[upgradeId] = false;
+    return ownedUpgrades;
+  }, {});
+}
+
+// Merge saved upgrade ownership with the current catalogue and backfill from
+// older top-level booleans while the project transitions to the new system.
+function mergeUpgradeOwnership(savedUpgrades, gameState) {
+  const mergedUpgradeOwnership = createDefaultUpgradeOwnership();
+
+  Object.keys(UPGRADE_LIBRARY).forEach(function (upgradeId) {
+    const upgradeDefinition = UPGRADE_LIBRARY[upgradeId];
+
+    if (savedUpgrades && typeof savedUpgrades[upgradeId] === "boolean") {
+      mergedUpgradeOwnership[upgradeId] = savedUpgrades[upgradeId];
+      return;
+    }
+
+    if (
+      upgradeDefinition &&
+      typeof upgradeDefinition.legacyPurchasedKey === "string" &&
+      gameState[upgradeDefinition.legacyPurchasedKey] === true
+    ) {
+      mergedUpgradeOwnership[upgradeId] = true;
+      return;
+    }
+
+    if (
+      upgradeDefinition &&
+      typeof upgradeDefinition.deriveOwned === "function" &&
+      upgradeDefinition.deriveOwned(gameState) === true
+    ) {
+      mergedUpgradeOwnership[upgradeId] = true;
+    }
+  });
+
+  return mergedUpgradeOwnership;
 }
 
 // Fill one save field with its default when validation fails.
@@ -351,40 +489,66 @@ function importGameProgress(saveText) {
 
 // Normalize imported or legacy save data against the current schema.
 function normalizeGameState(parsedGameState) {
+  const normalizedGameState = isPlainObject(parsedGameState) ? parsedGameState : {};
+
+  // First repair every top-level field against the shared save schema so the
+  // rest of the normalization logic can safely assume the field exists.
   Object.keys(GAME_STATE_DEFAULTS).forEach(function (key) {
-    applyValidatedDefault(parsedGameState, key);
+    applyValidatedDefault(normalizedGameState, key);
   });
 
-  if (!isFiniteNumber(parsedGameState.lastCoinUpdate)) {
-    parsedGameState.lastCoinUpdate = Date.now();
+  if (!isFiniteNumber(normalizedGameState.lastCoinUpdate)) {
+    normalizedGameState.lastCoinUpdate = Date.now();
   }
 
-  if (!isNullableString(parsedGameState.overseerAssignments.sawmill)) {
-    parsedGameState.overseerAssignments.sawmill = parsedGameState.sawmillOverseerId || null;
+  // Preserve the older single-field sawmill overseer save by copying it into
+  // the newer per-process assignment object the rest of the game now uses.
+  if (!isNullableString(normalizedGameState.overseerAssignments.sawmill)) {
+    normalizedGameState.overseerAssignments.sawmill = normalizedGameState.sawmillOverseerId || null;
   }
 
+  if (!isNullableString(normalizedGameState.overseerAssignments.dockyard)) {
+    normalizedGameState.overseerAssignments.dockyard = null;
+  }
+
+  // The Dockyard shipped with a placeholder five-minute cycle before the real
+  // one-hour voyage timing was chosen, so normalize old placeholder saves.
+  if (normalizedGameState.dockyardVoyageDurationMs === 5 * 60 * 1000) {
+    normalizedGameState.dockyardVoyageDurationMs = GAME_STATE_DEFAULTS.dockyardVoyageDurationMs;
+  }
+
+  // Older saves may have active sawmill state without the later
+  // "constructed" boolean, so infer that unlock when any sawmill progress exists.
   if (
-    !parsedGameState.sawmillConstructed &&
+    !normalizedGameState.sawmillConstructed &&
     (
-      parsedGameState.sawmillProcessingActive ||
-      parsedGameState.sawmillProcessingReady ||
-      parsedGameState.sawmillProcessingPendingHardwood > 0 ||
-      parsedGameState.sawmillTwigThreshold > 0 ||
-      parsedGameState.overseerAssignments.sawmill !== null
+      normalizedGameState.sawmillProcessingActive ||
+      normalizedGameState.sawmillProcessingReady ||
+      normalizedGameState.sawmillProcessingPendingHardwood > 0 ||
+      normalizedGameState.sawmillTwigThreshold > 0 ||
+      normalizedGameState.overseerAssignments.sawmill !== null
     )
   ) {
-    parsedGameState.sawmillConstructed = true;
+    normalizedGameState.sawmillConstructed = true;
   }
 
-  if (!parsedGameState.grubFarmUnlocked && parsedGameState.grubFarmActive) {
-    parsedGameState.grubFarmUnlocked = true;
+  // Do the same style of recovery for the grub farm so older active saves do
+  // not lose access to the system after importing or loading.
+  if (!normalizedGameState.grubFarmUnlocked && normalizedGameState.grubFarmActive) {
+    normalizedGameState.grubFarmUnlocked = true;
   }
 
-  parsedGameState.items = mergeItemCounts(parsedGameState.items);
-  parsedGameState.birds = mergeBirdProgress(parsedGameState.birds);
-  clampGameStateResources(parsedGameState);
+  // Library-backed collections need to be rebuilt against the current catalog
+  // so new birds and items appear while owned progress is preserved.
+  normalizedGameState.items = mergeItemCounts(normalizedGameState.items);
+  normalizedGameState.upgrades = mergeUpgradeOwnership(normalizedGameState.upgrades, normalizedGameState);
+  normalizedGameState.birds = mergeBirdProgress(normalizedGameState.birds);
 
-  return parsedGameState;
+  // Clamp after every migration step so legacy overflows cannot leak back into
+  // the running game state.
+  clampGameStateResources(normalizedGameState);
+
+  return normalizedGameState;
 }
 
 // Load and repair the saved game so older saves stay compatible.
@@ -407,42 +571,524 @@ function loadGameState() {
 }
 
 // Per-bird stat helpers
-// Apply per-species visitor modifiers from aviary upgrades.
-function getBirdVisitorRatePerDay(bird, gameState, visitedBirdIds) {
+// Return one upgrade definition by id from the shared catalogue.
+function getUpgradeDefinition(upgradeId) {
+  return UPGRADE_LIBRARY[upgradeId] || null;
+}
+
+// Check whether the current save owns one named upgrade.
+function hasUpgrade(gameState, upgradeId) {
+  return Boolean(gameState.upgrades && gameState.upgrades[upgradeId] === true);
+}
+
+// One-time upgrades should look inactive once purchased so players can tell at
+// a glance that the button is informational rather than another action.
+function isOwnedOneTimeUpgrade(gameState, upgradeId) {
+  const upgradeDefinition = getUpgradeDefinition(upgradeId);
+
+  return Boolean(
+    upgradeDefinition &&
+    upgradeDefinition.oneTime !== false &&
+    hasUpgrade(gameState, upgradeId)
+  );
+}
+
+// Apply the shared "owned and no longer clickable" state to upgrade buttons so
+// each page does not need its own copy of the gray-out logic.
+function syncOwnedUpgradeButtonState(button, gameState, upgradeId) {
+  if (!button) {
+    return;
+  }
+
+  const shouldGrayOut = isOwnedOneTimeUpgrade(gameState, upgradeId);
+  button.classList.toggle("is-locked", shouldGrayOut);
+  button.disabled = shouldGrayOut;
+}
+
+// Save or clear one upgrade's owned state while keeping the old boolean fields
+// synced during the migration period.
+function setUpgradeOwned(gameState, upgradeId, isOwned) {
+  const upgradeDefinition = getUpgradeDefinition(upgradeId);
+
+  if (!gameState.upgrades || typeof gameState.upgrades !== "object") {
+    gameState.upgrades = createDefaultUpgradeOwnership();
+  }
+
+  gameState.upgrades[upgradeId] = isOwned === true;
+
+  if (upgradeDefinition && typeof upgradeDefinition.legacyPurchasedKey === "string") {
+    gameState[upgradeDefinition.legacyPurchasedKey] = isOwned === true;
+  }
+}
+
+// Return every currently owned upgrade definition so shared calculation
+// pipelines can scan for modifier hooks instead of hardcoded boolean checks.
+function getOwnedUpgradeDefinitions(gameState) {
+  if (!gameState.upgrades || typeof gameState.upgrades !== "object") {
+    return [];
+  }
+
+  return Object.keys(gameState.upgrades).filter(function (upgradeId) {
+    return gameState.upgrades[upgradeId] === true;
+  }).map(function (upgradeId) {
+    return getUpgradeDefinition(upgradeId);
+  }).filter(Boolean);
+}
+
+// Check generic upgrade requirements stored in the catalogue.
+function meetsUpgradeRequirements(gameState, upgradeDefinition) {
+  const requirements = upgradeDefinition.requirements || {};
+
+  if (
+    typeof requirements.commonIndividuals === "number" &&
+    getCaughtBirdCountByRarity(gameState, "Common") < requirements.commonIndividuals
+  ) {
+    return false;
+  }
+
+  if (
+    typeof requirements.individuals === "number" &&
+    getTotalBirdCount(gameState) < requirements.individuals
+  ) {
+    return false;
+  }
+
+  if (
+    typeof requirements.species === "number" &&
+    getFlockDiversity(gameState) < requirements.species
+  ) {
+    return false;
+  }
+
+  if (requirements.birds && typeof requirements.birds === "object") {
+    const hasEnoughBirds = Object.keys(requirements.birds).every(function (birdId) {
+      return getBirdCountById(gameState, birdId) >= requirements.birds[birdId];
+    });
+
+    if (!hasEnoughBirds) {
+      return false;
+    }
+  }
+
+  if (typeof upgradeDefinition.canPurchase === "function") {
+    return upgradeDefinition.canPurchase(gameState);
+  }
+
+  return true;
+}
+
+// Check whether the player can currently pay the resource cost for one upgrade.
+function canAffordUpgrade(gameState, upgradeDefinition) {
+  const costs = upgradeDefinition.costs || {};
+
+  return Object.keys(costs).every(function (resourceKey) {
+    return gameState[resourceKey] >= costs[resourceKey];
+  });
+}
+
+// Spend the generic resource cost object defined on an upgrade.
+function spendUpgradeCosts(gameState, upgradeDefinition) {
+  const costs = upgradeDefinition.costs || {};
+
+  Object.keys(costs).forEach(function (resourceKey) {
+    gameState[resourceKey] -= costs[resourceKey];
+  });
+}
+
+// Purchase one upgrade from the catalogue and run any one-time side effects it
+// defines, returning true only when the purchase succeeds.
+function purchaseUpgrade(gameState, upgradeId) {
+  const upgradeDefinition = getUpgradeDefinition(upgradeId);
+
+  if (!upgradeDefinition) {
+    return false;
+  }
+
+  if (upgradeDefinition.oneTime !== false && hasUpgrade(gameState, upgradeId)) {
+    return false;
+  }
+
+  if (!meetsUpgradeRequirements(gameState, upgradeDefinition) || !canAffordUpgrade(gameState, upgradeDefinition)) {
+    return false;
+  }
+
+  spendUpgradeCosts(gameState, upgradeDefinition);
+  setUpgradeOwned(gameState, upgradeId, true);
+
+  if (typeof upgradeDefinition.onPurchase === "function") {
+    upgradeDefinition.onPurchase(gameState);
+  }
+
+  clampGameStateResources(gameState);
+  return true;
+}
+
+let sharedUpgradeUiInitialized = false;
+let sharedUpgradeDialogState = null;
+
+// Build shared cost text for upgrade tooltips and confirmation copy.
+function getUpgradeCostSummary(upgradeDefinition) {
+  const costs = upgradeDefinition && upgradeDefinition.costs ? upgradeDefinition.costs : {};
+
+  return Object.keys(costs).map(function (resourceKey) {
+    const resourceLabel = resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1);
+    return formatLargeNumber(costs[resourceKey]) + " " + resourceLabel;
+  }).join(" | ");
+}
+
+// Build shared requirement text for upgrade tooltips and confirmation copy.
+function getUpgradeRequirementSummary(gameState, upgradeDefinition) {
+  const requirements = upgradeDefinition && upgradeDefinition.requirements ? upgradeDefinition.requirements : {};
+  const requirementParts = [];
+
+  if (typeof requirements.commonIndividuals === "number") {
+    requirementParts.push(formatLargeNumber(requirements.commonIndividuals) + " Common Birds");
+  }
+
+  if (typeof requirements.individuals === "number") {
+    requirementParts.push(formatLargeNumber(requirements.individuals) + " Individuals");
+  }
+
+  if (typeof requirements.species === "number") {
+    requirementParts.push(formatLargeNumber(requirements.species) + " Species");
+  }
+
+  if (requirements.birds && typeof requirements.birds === "object") {
+    Object.keys(requirements.birds).forEach(function (birdId) {
+      const bird = getBirdById(gameState, birdId);
+      requirementParts.push(
+        formatLargeNumber(requirements.birds[birdId]) + " " + (bird ? bird.species : birdId)
+      );
+    });
+  }
+
+  return requirementParts.join(" | ");
+}
+
+// Keep upgrade hover tooltips disabled when the mobile-friendly confirmation
+// flow is enabled, without affecting unrelated tooltip systems.
+function syncUpgradeInteractionPreference(gameState) {
+  if (!document || !document.body) {
+    return;
+  }
+
+  document.body.classList.toggle("upgrade-tooltips-disabled", gameState.upgradeConfirmationEnabled === true);
+}
+
+// Create the shared upgrade-confirmation overlay on demand so pages with
+// upgrades can reuse one consistent purchase flow.
+function ensureSharedUpgradeUi() {
+  if (sharedUpgradeUiInitialized || !document || !document.body) {
+    return;
+  }
+
+  sharedUpgradeUiInitialized = true;
+
+  const styleElement = document.createElement("style");
+  styleElement.textContent =
+    ".upgrade-tooltip{position:relative;display:inline-block;}" +
+    ".upgrade-tooltip-box{position:absolute;top:calc(100% + 8px);left:0;background:#f7f1e6;color:#1f2a36;border:2px solid black;border-radius:10px;padding:10px 12px;min-width:220px;white-space:normal;visibility:hidden;opacity:0;transition:opacity 0.15s ease;z-index:10;}" +
+    ".upgrade-tooltip:hover .upgrade-tooltip-box{visibility:visible;opacity:1;}" +
+    ".upgrade-tooltips-disabled .upgrade-tooltip-box{visibility:hidden !important;opacity:0 !important;display:none !important;}" +
+    ".upgrade-confirm-overlay{position:fixed;inset:0;background:rgba(31,42,54,0.82);display:none;align-items:center;justify-content:center;z-index:400;padding:24px;box-sizing:border-box;}" +
+    ".upgrade-confirm-overlay.is-visible{display:flex;}" +
+    ".upgrade-confirm-card{width:100%;max-width:520px;background:#f7f1e6;border:3px solid black;border-radius:20px;padding:24px;box-sizing:border-box;}" +
+    ".upgrade-confirm-title{margin:0 0 12px;color:#2c3e50;}" +
+    ".upgrade-confirm-text{margin:0 0 12px;color:#2c3e50;font-weight:bold;}" +
+    ".upgrade-confirm-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;}";
+  document.head.appendChild(styleElement);
+
+  const overlay = document.createElement("div");
+  overlay.className = "upgrade-confirm-overlay";
+  overlay.innerHTML =
+    "<div class='upgrade-confirm-card'>" +
+      "<h2 class='upgrade-confirm-title' id='sharedUpgradeConfirmTitle'></h2>" +
+      "<p class='upgrade-confirm-text' id='sharedUpgradeConfirmDescription'></p>" +
+      "<p class='upgrade-confirm-text' id='sharedUpgradeConfirmCosts'></p>" +
+      "<p class='upgrade-confirm-text' id='sharedUpgradeConfirmRequirements'></p>" +
+      "<div class='upgrade-confirm-actions'>" +
+        "<button class='action-button' type='button' id='sharedUpgradeConfirmButton'>Confirm Purchase</button>" +
+        "<button class='back-link' type='button' id='sharedUpgradeCancelButton'>Cancel</button>" +
+      "</div>" +
+    "</div>";
+  document.body.appendChild(overlay);
+
+  sharedUpgradeDialogState = {
+    overlay: overlay,
+    title: overlay.querySelector("#sharedUpgradeConfirmTitle"),
+    description: overlay.querySelector("#sharedUpgradeConfirmDescription"),
+    costs: overlay.querySelector("#sharedUpgradeConfirmCosts"),
+    requirements: overlay.querySelector("#sharedUpgradeConfirmRequirements"),
+    confirmButton: overlay.querySelector("#sharedUpgradeConfirmButton"),
+    cancelButton: overlay.querySelector("#sharedUpgradeCancelButton")
+  };
+
+  function closeSharedUpgradeDialog() {
+    overlay.classList.remove("is-visible");
+    sharedUpgradeDialogState.confirmButton.onclick = null;
+  }
+
+  sharedUpgradeDialogState.cancelButton.addEventListener("click", closeSharedUpgradeDialog);
+  overlay.addEventListener("click", function (event) {
+    if (event.target === overlay) {
+      closeSharedUpgradeDialog();
+    }
+  });
+
+  sharedUpgradeDialogState.close = closeSharedUpgradeDialog;
+}
+
+// Route upgrade purchases through an optional confirmation modal for mobile,
+// while keeping desktop hover-tooltips as the default behavior.
+function handleUpgradePurchaseRequest(gameState, upgradeId, options) {
+  const upgradeDefinition = getUpgradeDefinition(upgradeId);
+  const purchaseOptions = options || {};
+
+  if (!upgradeDefinition) {
+    return false;
+  }
+
+  function performPurchase() {
+    if (typeof purchaseOptions.beforePurchase === "function") {
+      purchaseOptions.beforePurchase();
+    }
+
+    if (!purchaseUpgrade(gameState, upgradeId)) {
+      if (typeof purchaseOptions.onFailure === "function") {
+        purchaseOptions.onFailure();
+      }
+      return false;
+    }
+
+    playButtonSound();
+    saveGameState(gameState);
+
+    if (typeof purchaseOptions.onSuccess === "function") {
+      purchaseOptions.onSuccess();
+    }
+
+  return true;
+}
+
+// Allow selected high-frequency action buttons to repeat while held on mobile.
+// This is opt-in per button so purchases and navigation do not accidentally spam.
+function attachHoldToClick(button, gameState, options) {
+  if (!button || button.dataset.holdToClickBound === "true") {
+    return;
+  }
+
+  const holdOptions = options || {};
+  const startDelayMs = typeof holdOptions.startDelayMs === "number" ? holdOptions.startDelayMs : 300;
+  const intervalMs = typeof holdOptions.intervalMs === "number" ? holdOptions.intervalMs : 333;
+  const repeatAction = typeof holdOptions.repeatAction === "function" ? holdOptions.repeatAction : null;
+  let holdTimeoutId = null;
+  let holdIntervalId = null;
+  let repeatedDuringHold = false;
+  let suppressReleaseClick = false;
+  let ignoreMouseUntil = 0;
+
+  button.dataset.holdToClickBound = "true";
+
+  function isHoldToClickEnabled() {
+    if (gameState.holdToClickEnabled === true) {
+      return true;
+    }
+
+    try {
+      return loadGameState().holdToClickEnabled === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function clearHoldTimers() {
+    if (holdTimeoutId !== null) {
+      clearTimeout(holdTimeoutId);
+      holdTimeoutId = null;
+    }
+
+    if (holdIntervalId !== null) {
+      clearInterval(holdIntervalId);
+      holdIntervalId = null;
+    }
+  }
+
+  function stopHold() {
+    clearHoldTimers();
+
+    if (repeatedDuringHold) {
+      suppressReleaseClick = true;
+    }
+
+    repeatedDuringHold = false;
+  }
+
+  function fireRepeatClick() {
+    if (button.disabled) {
+      stopHold();
+      return;
+    }
+
+    repeatedDuringHold = true;
+
+    if (repeatAction) {
+      repeatAction();
+      return;
+    }
+
+    button.click();
+  }
+
+  function startHold() {
+    clearHoldTimers();
+    repeatedDuringHold = false;
+    suppressReleaseClick = false;
+
+    holdTimeoutId = setTimeout(function () {
+      fireRepeatClick();
+      holdIntervalId = setInterval(fireRepeatClick, intervalMs);
+    }, startDelayMs);
+  }
+
+  button.addEventListener("click", function (event) {
+    if (!suppressReleaseClick) {
+      return;
+    }
+
+    suppressReleaseClick = false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  button.addEventListener("mousedown", function (event) {
+    if (!isHoldToClickEnabled() || button.disabled) {
+      return;
+    }
+
+    if (Date.now() < ignoreMouseUntil || event.button !== 0) {
+      return;
+    }
+
+    startHold();
+  });
+
+  button.addEventListener("touchstart", function () {
+    if (!isHoldToClickEnabled() || button.disabled) {
+      return;
+    }
+
+    ignoreMouseUntil = Date.now() + 1000;
+    startHold();
+  }, { passive: true });
+
+  function stopHoldFromEvent() {
+    stopHold();
+  }
+
+  button.addEventListener("mouseup", stopHoldFromEvent);
+  button.addEventListener("mouseleave", stopHoldFromEvent);
+  button.addEventListener("touchend", stopHoldFromEvent);
+  button.addEventListener("touchcancel", stopHoldFromEvent);
+  button.addEventListener("blur", stopHold);
+}
+
+  if (gameState.upgradeConfirmationEnabled !== true) {
+    return performPurchase();
+  }
+
+  ensureSharedUpgradeUi();
+  syncUpgradeInteractionPreference(gameState);
+
+  sharedUpgradeDialogState.title.textContent = upgradeDefinition.name;
+  sharedUpgradeDialogState.description.textContent = upgradeDefinition.description || "No description available";
+  sharedUpgradeDialogState.costs.textContent = getUpgradeCostSummary(upgradeDefinition)
+    ? "Cost: " + getUpgradeCostSummary(upgradeDefinition)
+    : "Cost: None";
+  sharedUpgradeDialogState.requirements.textContent = getUpgradeRequirementSummary(gameState, upgradeDefinition)
+    ? "Requires: " + getUpgradeRequirementSummary(gameState, upgradeDefinition)
+    : "Requires: None";
+
+  sharedUpgradeDialogState.confirmButton.onclick = function () {
+    performPurchase();
+    sharedUpgradeDialogState.close();
+  };
+
+  sharedUpgradeDialogState.overlay.classList.add("is-visible");
+  return false;
+}
+
+// Read one numeric bird field, defaulting to zero when the species does not
+// naturally define that property in birds.js.
+function getBirdNumericPropertyValue(bird, propertyKey) {
+  return typeof bird[propertyKey] === "number" ? bird[propertyKey] : 0;
+}
+
+// Resolve one bird stat while honoring parasite targeting and guarding against
+// circular target chains if future content ever points two parasite birds at
+// each other.
+function getResolvedBirdNumericProperty(bird, gameState, propertyKey, visitedBirdIds, applyModifiers) {
   const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
   const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
 
   if (parasiteTargetBird) {
     if (visitedIds.includes(bird.id)) {
-      return bird.visitorsPerDay || 0;
+      return getBirdNumericPropertyValue(bird, propertyKey);
     }
 
-    return getBirdVisitorRatePerDay(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
+    return getResolvedBirdNumericProperty(
+      parasiteTargetBird,
+      gameState,
+      propertyKey,
+      visitedIds.concat(bird.id),
+      applyModifiers
+    );
   }
 
-  let visitorRate = bird.visitorsPerDay || 0;
+  let resolvedValue = getBirdNumericPropertyValue(bird, propertyKey);
 
-  if (isMurderPartyActive(gameState) && bird.id === "crow") {
-    visitorRate *= 2;
+  if (typeof applyModifiers === "function") {
+    resolvedValue = applyModifiers(resolvedValue, bird, gameState);
   }
 
-  if (Array.isArray(bird.abilities)) {
-    bird.abilities.forEach(function (abilityId) {
-      const ability = ABILITIES[abilityId];
+  return resolvedValue;
+}
 
-      if (!ability || typeof ability.modifyVisitorsPerDay !== "function") {
-        return;
+// Apply per-species visitor modifiers from aviary upgrades.
+function getBirdVisitorRatePerDay(bird, gameState, visitedBirdIds) {
+  return getResolvedBirdNumericProperty(
+    bird,
+    gameState,
+    "visitorsPerDay",
+    visitedBirdIds,
+    function (visitorRate, resolvedBird, resolvedGameState) {
+      if (Array.isArray(resolvedBird.abilities)) {
+        resolvedBird.abilities.forEach(function (abilityId) {
+          const ability = ABILITIES[abilityId];
+
+          if (!ability || typeof ability.modifyVisitorsPerDay !== "function") {
+            return;
+          }
+
+          visitorRate = ability.modifyVisitorsPerDay(visitorRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState,
+            totalIndividuals: resolvedBird.count
+          });
+        });
       }
 
-      visitorRate = ability.modifyVisitorsPerDay(visitorRate, {
-        bird: bird,
-        gameState: gameState,
-        totalIndividuals: bird.count
+      getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
+        if (typeof upgrade.modifyVisitorsPerDay === "function") {
+          visitorRate = upgrade.modifyVisitorsPerDay(visitorRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
       });
-    });
-  }
 
-  return visitorRate;
+      return visitorRate;
+    }
+  );
 }
 
 // Return only birds the player currently owns.
@@ -471,6 +1117,11 @@ function getFlockDiversity(gameState) {
 // Earthworks unlocks once the flock reaches four unique species.
 function isEarthworksUnlocked(gameState) {
   return getFlockDiversity(gameState) >= 4;
+}
+
+// Dockyard unlocks once Urban Waters has been constructed.
+function isDockyardUnlocked(gameState) {
+  return Array.isArray(gameState.ownedHabitats) && gameState.ownedHabitats.includes("Urban Waters");
 }
 
 // Build the current catch pool from birds tied to owned habitats.
@@ -754,118 +1405,74 @@ function getPoints(gameState) {
 
 // Apply per-species twig modifiers from aviary upgrades.
 function getBirdTwigRatePerSecond(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
+  return getResolvedBirdNumericProperty(
+    bird,
+    gameState,
+    "twigsPerSecond",
+    visitedBirdIds,
+    function (twigRate, resolvedBird, resolvedGameState) {
+      getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
+        if (typeof upgrade.modifyTwigRatePerSecond === "function") {
+          twigRate = upgrade.modifyTwigRatePerSecond(twigRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
+      });
 
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.twigsPerSecond || 0;
+      return twigRate;
     }
-
-    return getBirdTwigRatePerSecond(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  let twigRate = bird.twigsPerSecond || 0;
-
-  if (gameState.indoorGardenPurchased && bird.id === "kestrel") {
-    twigRate *= 2;
-  }
-
-  if (isTurtleWakeActive(gameState) && bird.id === "mourningdove") {
-    twigRate += 0.04;
-  }
-
-  if (gameState.flockForestryPurchased) {
-    twigRate *= 2;
-  }
-
-  return twigRate;
+  );
 }
 
 // Return a bird's passive seed income, defaulting to zero when absent.
 function getBirdSeedRatePerSecond(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
+  return getResolvedBirdNumericProperty(
+    bird,
+    gameState,
+    "seedsPerSecond",
+    visitedBirdIds,
+    function (seedRate, resolvedBird, resolvedGameState) {
+      getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
+        if (typeof upgrade.modifySeedRatePerSecond === "function") {
+          seedRate = upgrade.modifySeedRatePerSecond(seedRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
+      });
 
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.seedsPerSecond || 0;
+      return seedRate;
     }
-
-    return getBirdSeedRatePerSecond(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  let seedRate = bird.seedsPerSecond || 0;
-
-  if (gameState && gameState.flockForestryPurchased) {
-    seedRate *= 2;
-  }
-
-  return seedRate;
+  );
 }
 
 // Return a bird's passive grub income, defaulting to zero when absent.
 function getBirdGrubRatePerSecond(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
-
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.grubsPerSecond || 0;
-    }
-
-    return getBirdGrubRatePerSecond(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  return bird.grubsPerSecond || 0;
+  return getResolvedBirdNumericProperty(bird, gameState, "grubsPerSecond", visitedBirdIds);
 }
 
-// Return a bird's apple-tree cap bonus, defaulting to zero when absent.
+// Return one bird's orchard-cap bonus for the requested tree type.
+function getBirdTreeBonusValue(bird, gameState, treeBonusKey, visitedBirdIds) {
+  return getResolvedBirdNumericProperty(bird, gameState, treeBonusKey, visitedBirdIds);
+}
+
+// Keep explicit wrappers for readability at call sites that are naturally tied
+// to one orchard type.
 function getBirdBonusAppleTree(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
-
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.bonusAppleTree || 0;
-    }
-
-    return getBirdBonusAppleTree(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  return bird.bonusAppleTree || 0;
+  return getBirdTreeBonusValue(bird, gameState, "bonusAppleTree", visitedBirdIds);
 }
 
-// Return a bird's pear-tree cap bonus, defaulting to zero when absent.
 function getBirdBonusPearTree(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
-
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.bonusPearTree || 0;
-    }
-
-    return getBirdBonusPearTree(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  return bird.bonusPearTree || 0;
+  return getBirdTreeBonusValue(bird, gameState, "bonusPearTree", visitedBirdIds);
 }
 
-// Return a bird's peach-tree cap bonus, defaulting to zero when absent.
 function getBirdBonusPeachTree(bird, gameState, visitedBirdIds) {
-  const visitedIds = Array.isArray(visitedBirdIds) ? visitedBirdIds : [];
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
+  return getBirdTreeBonusValue(bird, gameState, "bonusPeachTree", visitedBirdIds);
+}
 
-  if (parasiteTargetBird) {
-    if (visitedIds.includes(bird.id)) {
-      return bird.bonusPeachTree || 0;
-    }
-
-    return getBirdBonusPeachTree(parasiteTargetBird, gameState, visitedIds.concat(bird.id));
-  }
-
-  return bird.bonusPeachTree || 0;
+function getBirdBonusOrangeTree(bird, gameState, visitedBirdIds) {
+  return getBirdTreeBonusValue(bird, gameState, "bonusOrangeTree", visitedBirdIds);
 }
 
 const BIRD_RESOURCE_DEFINITIONS = [
@@ -911,14 +1518,21 @@ const BIRD_RESOURCE_DEFINITIONS = [
       return getBirdBonusPearTree(bird, gameState);
     }
   },
-  {
-    key: "bonusPeachTree",
-    label: "Bonus Peach Trees",
-    getValue: function (bird, gameState) {
-      return getBirdBonusPeachTree(bird, gameState);
+    {
+      key: "bonusPeachTree",
+      label: "Bonus Peach Trees",
+      getValue: function (bird, gameState) {
+        return getBirdBonusPeachTree(bird, gameState);
+      }
+    },
+    {
+      key: "bonusOrangeTree",
+      label: "Bonus Orange Trees",
+      getValue: function (bird, gameState) {
+        return getBirdBonusOrangeTree(bird, gameState);
+      }
     }
-  }
-];
+  ];
 
 // Return the fixed resource trade used by the grub farm when active.
 function getGrubFarmRates(gameState) {
@@ -988,6 +1602,303 @@ function updateSawmillProcessingState(gameState, currentTime) {
   return true;
 }
 
+// Start a new automated sawmill batch when an overseer is assigned and the
+// minimum twig reserve has been met.
+function tryAutoStartSawmill(gameState, currentTime) {
+  if (
+    gameState.sawmillProcessingActive ||
+    gameState.sawmillProcessingReady ||
+    !getAssignedOverseerId(gameState, "sawmill") ||
+    gameState.sawmillTwigThreshold <= 0
+  ) {
+    return false;
+  }
+
+  const minimumTwigRequirement = Math.max(10000, gameState.sawmillTwigThreshold);
+
+  if (gameState.twigs < minimumTwigRequirement) {
+    return false;
+  }
+
+  gameState.twigs -= 10000;
+  gameState.sawmillProcessingStart = currentTime;
+  gameState.sawmillProcessingPendingHardwood = 10;
+  gameState.sawmillProcessingActive = true;
+  gameState.sawmillProcessingReady = false;
+  return true;
+}
+
+// Let the sawmill overseer collect finished hardwood and immediately queue the
+// next batch whenever the saved threshold still allows it.
+function runSawmillAutomation(gameState, currentTime) {
+  let didChange = false;
+
+  if (!getAssignedOverseerId(gameState, "sawmill") || gameState.sawmillTwigThreshold <= 0) {
+    return false;
+  }
+
+  if (gameState.sawmillProcessingReady) {
+    gameState.hardwood += gameState.sawmillProcessingPendingHardwood;
+    gameState.sawmillProcessingPendingHardwood = 0;
+    gameState.sawmillProcessingStart = null;
+    gameState.sawmillProcessingActive = false;
+    gameState.sawmillProcessingReady = false;
+    didChange = true;
+  }
+
+  if (tryAutoStartSawmill(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  return didChange;
+}
+
+// Return how long remains on an active Dockyard voyage.
+function getDockyardRemainingMs(gameState, currentTime) {
+  if (!gameState.dockyardVoyageActive || gameState.dockyardVoyageReady || gameState.dockyardVoyageStart === null) {
+    return 0;
+  }
+
+  const elapsedMs = currentTime - gameState.dockyardVoyageStart;
+  return Math.max(0, gameState.dockyardVoyageDurationMs - elapsedMs);
+}
+
+// Advance Dockyard voyage progress from elapsed real time.
+function updateDockyardVoyageState(gameState, currentTime) {
+  if (!gameState.dockyardVoyageActive || gameState.dockyardVoyageReady || gameState.dockyardVoyageStart === null) {
+    return false;
+  }
+
+  if (getDockyardRemainingMs(gameState, currentTime) > 0) {
+    return false;
+  }
+
+  gameState.dockyardVoyageReady = true;
+  return true;
+}
+
+// Roll one treasure entry from the current Dockyard reward table using its
+// configured weights so the pool can grow later without changing callers.
+function getRandomDockyardTreasureReward() {
+  const totalWeight = DOCKYARD_TREASURE_REWARD_TABLE.reduce(function (weightSum, rewardEntry) {
+    return weightSum + (rewardEntry.weight || 0);
+  }, 0);
+
+  if (totalWeight <= 0) {
+    return null;
+  }
+
+  let remainingWeight = Math.random() * totalWeight;
+
+  for (let index = 0; index < DOCKYARD_TREASURE_REWARD_TABLE.length; index += 1) {
+    const rewardEntry = DOCKYARD_TREASURE_REWARD_TABLE[index];
+    remainingWeight -= rewardEntry.weight || 0;
+
+    if (remainingWeight <= 0) {
+      return rewardEntry;
+    }
+  }
+
+  return DOCKYARD_TREASURE_REWARD_TABLE[DOCKYARD_TREASURE_REWARD_TABLE.length - 1] || null;
+}
+
+// Build the treasure bundle waiting at the end of one Dockyard voyage.
+function rollDockyardTreasureRewards(gameState) {
+  const pendingRewards = {};
+  const treasureChance = gameState.dockyardTreasureChance;
+
+  if (Math.random() >= treasureChance) {
+    return pendingRewards;
+  }
+
+  const rewardCount = Math.floor(Math.random() * 4) + 1;
+
+  for (let rewardIndex = 0; rewardIndex < rewardCount; rewardIndex += 1) {
+    const rewardEntry = getRandomDockyardTreasureReward();
+
+    if (!rewardEntry) {
+      continue;
+    }
+
+    if (rewardEntry.type === "item" && rewardEntry.itemId) {
+      pendingRewards[rewardEntry.itemId] = (pendingRewards[rewardEntry.itemId] || 0) + rewardEntry.amount;
+    } else if ((rewardEntry.type === "resource" || rewardEntry.type === "currency") && rewardEntry.resourceKey) {
+      pendingRewards[rewardEntry.resourceKey] = (pendingRewards[rewardEntry.resourceKey] || 0) + rewardEntry.amount;
+    }
+  }
+
+  return pendingRewards;
+}
+
+// Start one Dockyard voyage and capture its reward bundle up front so the
+// eventual return state is deterministic once the boat leaves harbor.
+function startDockyardVoyage(gameState, currentTime) {
+  if (gameState.coins < 100000) {
+    return false;
+  }
+
+  gameState.coins -= 100000;
+  gameState.dockyardVoyageStart = currentTime;
+  gameState.dockyardVoyageActive = true;
+  gameState.dockyardVoyageReady = false;
+  gameState.dockyardVoyagePendingFish = getEffectiveFishPerVoyage(gameState);
+  gameState.dockyardVoyagePendingScrap = gameState.dockyardScrapPerVoyage;
+  gameState.dockyardVoyagePendingTreasureRewards = rollDockyardTreasureRewards(gameState);
+  return true;
+}
+
+// Pay out all stored Dockyard voyage rewards and clear the finished trip.
+function collectDockyardVoyageRewards(gameState) {
+  gameState.fish += gameState.dockyardVoyagePendingFish || 0;
+  gameState.scrap += gameState.dockyardVoyagePendingScrap || 0;
+
+  if (gameState.dockyardVoyagePendingTreasureRewards && typeof gameState.dockyardVoyagePendingTreasureRewards === "object") {
+    Object.keys(gameState.dockyardVoyagePendingTreasureRewards).forEach(function (rewardId) {
+      const rewardAmount = gameState.dockyardVoyagePendingTreasureRewards[rewardId];
+      const rewardItem = getItemById(rewardId);
+
+      if (rewardItem) {
+        addItemCount(gameState, rewardId, rewardAmount);
+        return;
+      }
+
+      if (typeof gameState[rewardId] === "number") {
+        gameState[rewardId] += rewardAmount;
+      }
+    });
+  }
+
+  gameState.dockyardVoyagePendingFish = 0;
+  gameState.dockyardVoyagePendingScrap = 0;
+  gameState.dockyardVoyagePendingTreasureRewards = {};
+  gameState.dockyardVoyageStart = null;
+  gameState.dockyardVoyageActive = false;
+  gameState.dockyardVoyageReady = false;
+  clampGameStateResources(gameState);
+}
+
+// Instantly finish the current Dockyard voyage while leaving its pre-rolled
+// reward bundle intact for collection.
+function finishDockyardVoyageImmediately(gameState) {
+  if (!gameState.dockyardVoyageActive || gameState.dockyardVoyageReady) {
+    return false;
+  }
+
+  gameState.dockyardVoyageReady = true;
+  return true;
+}
+
+// Summarize the pending Dockyard rewards for button tooltips and ready-state UI.
+function getDockyardPendingRewardSummary(gameState) {
+  const rewardParts = [];
+
+  if (gameState.dockyardVoyagePendingFish > 0) {
+    rewardParts.push(formatLargeNumber(gameState.dockyardVoyagePendingFish) + " fish");
+  }
+
+  if (gameState.dockyardVoyagePendingScrap > 0) {
+    rewardParts.push(formatLargeNumber(gameState.dockyardVoyagePendingScrap) + " scrap");
+  }
+
+  if (gameState.dockyardVoyagePendingTreasureRewards && typeof gameState.dockyardVoyagePendingTreasureRewards === "object") {
+    Object.keys(gameState.dockyardVoyagePendingTreasureRewards).forEach(function (rewardId) {
+      const rewardAmount = gameState.dockyardVoyagePendingTreasureRewards[rewardId];
+      const rewardItem = getItemById(rewardId);
+
+      if (rewardAmount > 0) {
+        if (rewardItem) {
+          rewardParts.push(formatLargeNumber(rewardAmount) + " " + rewardItem.name);
+          return;
+        }
+
+        if (rewardId === "coins") {
+          rewardParts.push(formatCoins(rewardAmount) + " coins");
+          return;
+        }
+
+        rewardParts.push(formatLargeNumber(rewardAmount) + " " + rewardId);
+      }
+    });
+  }
+
+  if (rewardParts.length === 0) {
+    return "No rewards";
+  }
+
+  return rewardParts.join(" | ");
+}
+
+// Start a new automated Dockyard voyage when its overseer and coin minimum are
+// both satisfied.
+function tryAutoStartDockyard(gameState, currentTime) {
+  if (
+    !isDockyardUnlocked(gameState) ||
+    gameState.dockyardVoyageActive ||
+    gameState.dockyardVoyageReady ||
+    !getAssignedOverseerId(gameState, "dockyard") ||
+    gameState.dockyardCoinThreshold <= 0
+  ) {
+    return false;
+  }
+
+  const minimumCoinRequirement = Math.max(100000, gameState.dockyardCoinThreshold);
+
+  if (gameState.coins < minimumCoinRequirement) {
+    return false;
+  }
+
+  return startDockyardVoyage(gameState, currentTime);
+}
+
+// Let the Dockyard overseer close completed voyages and launch the next one if
+// the saved coin reserve still supports automation.
+function runDockyardAutomation(gameState, currentTime) {
+  let didChange = false;
+
+  if (
+    !isDockyardUnlocked(gameState) ||
+    !getAssignedOverseerId(gameState, "dockyard") ||
+    gameState.dockyardCoinThreshold <= 0
+  ) {
+    return false;
+  }
+
+  if (gameState.dockyardVoyageReady) {
+    collectDockyardVoyageRewards(gameState);
+    didChange = true;
+  }
+
+  if (tryAutoStartDockyard(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  return didChange;
+}
+
+// Advance all timer-based automation systems from the shared one-second clock
+// so their progress is not tied to whichever feature page happens to be open.
+function runAutomationSystems(gameState, currentTime) {
+  let didChange = false;
+
+  if (updateSawmillProcessingState(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  if (updateDockyardVoyageState(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  if (runSawmillAutomation(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  if (runDockyardAutomation(gameState, currentTime)) {
+    didChange = true;
+  }
+
+  return didChange;
+}
+
 // Ability, tooltip, and UI-display helpers
 // Count how many owned birds currently carry a given ability.
 function getBirdAbilityCount(gameState, abilityId) {
@@ -996,7 +1907,18 @@ function getBirdAbilityCount(gameState, abilityId) {
       return total;
     }
 
-    return total + bird.count;
+  return total + bird.count;
+  }, 0);
+}
+
+// Count how many owned species carry a given ability, regardless of stack size.
+function getBirdAbilitySpeciesCount(gameState, abilityId) {
+  return getAcquiredBirds(gameState).reduce(function (totalSpecies, bird) {
+    if (!Array.isArray(bird.abilities) || !bird.abilities.includes(abilityId)) {
+      return totalSpecies;
+    }
+
+    return totalSpecies + 1;
   }, 0);
 }
 
@@ -1062,12 +1984,12 @@ function grantHabitatConstructionRewards(gameState, habitatName) {
 
 // Population bonuses only stay active while their flock requirement is still met.
 function isMurderPartyActive(gameState) {
-  return gameState.murderPartyPurchased && getBirdCountById(gameState, "crow") >= 3;
+  return hasUpgrade(gameState, "murderParty") && getBirdCountById(gameState, "crow") >= 3;
 }
 
 // Population bonuses only stay active while their flock requirement is still met.
 function isTurtleWakeActive(gameState) {
-  return gameState.turtleWakePurchased && getBirdCountById(gameState, "mourningdove") >= 5;
+  return hasUpgrade(gameState, "turtleWake") && getBirdCountById(gameState, "mourningdove") >= 5;
 }
 
 // Return owned species that carry a specific ability.
@@ -1113,8 +2035,12 @@ function getAssignedOverseerIdsExcept(gameState, processKey) {
 // Cap how much passive time can be converted into resources after returning.
 function getMaxOfflineDurationMs(gameState) {
   const baseDurationMs = 4 * 60 * 60 * 1000;
-  const bonusDurationMs = getBirdAbilityCount(gameState, "nocturnal") * 10 * 60 * 1000;
-  const cappedDurationMs = Math.min(baseDurationMs + bonusDurationMs, 24 * 60 * 60 * 1000);
+  const effectiveDurationMs = applyGlobalAbilityModifiers(
+    gameState,
+    baseDurationMs,
+    "modifyMaxOfflineDurationMs"
+  );
+  const cappedDurationMs = Math.min(effectiveDurationMs, 24 * 60 * 60 * 1000);
   return cappedDurationMs;
 }
 
@@ -1126,38 +2052,93 @@ function getMaxOfflineDurationLabel(gameState) {
 // Return the effective trap success chance after bedding and bait-specific abilities.
 function getEffectiveCatchRate(gameState, baitType) {
   let catchRate = gameState.catchRate;
+  const resolvedBaitType = baitType || gameState.trapBaitType;
 
-  if (gameState.advancedBeddingPurchased) {
-    catchRate += 0.05;
-  }
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifyCatchRate === "function") {
+      catchRate = upgrade.modifyCatchRate(catchRate, {
+        gameState: gameState,
+        baitType: resolvedBaitType
+      });
+    }
+  });
 
-  catchRate += getPredatorCatchRateBonus(gameState, baitType || gameState.trapBaitType);
+  catchRate = applyGlobalAbilityModifiers(
+    gameState,
+    catchRate,
+    "modifyCatchRate",
+    {
+      baitType: resolvedBaitType
+    }
+  );
 
   return Math.min(1, Math.max(0, catchRate));
 }
 
-// Apply all matching ability handlers for a trap seed bait cost calculation.
-function getEffectiveTrapSeedCost(gameState) {
-  let effectiveCost = gameState.trapLoadCost;
+// Run one shared modifier hook across every acquired global ability.
+function applyGlobalAbilityModifiers(gameState, startingValue, hookName, extraContext) {
+  let currentValue = startingValue;
 
   Object.keys(ABILITIES).forEach(function (abilityId) {
     const ability = ABILITIES[abilityId];
     const totalIndividuals = getBirdAbilityCount(gameState, abilityId);
+    const totalSpecies = getBirdAbilitySpeciesCount(gameState, abilityId);
 
     if (
       totalIndividuals <= 0 ||
-      typeof ability.modifyTrapSeedCost !== "function"
+      typeof ability[hookName] !== "function"
     ) {
       return;
     }
 
-    effectiveCost = ability.modifyTrapSeedCost(effectiveCost, {
+    currentValue = ability[hookName](currentValue, Object.assign({}, extraContext, {
+      abilityId: abilityId,
       gameState: gameState,
-      totalIndividuals: totalIndividuals
-    });
+      totalIndividuals: totalIndividuals,
+      totalSpecies: totalSpecies
+    }));
   });
 
+  return currentValue;
+}
+
+// Apply all matching ability handlers for a trap seed bait cost calculation.
+function getEffectiveTrapSeedCost(gameState) {
+  const effectiveCost = applyGlobalAbilityModifiers(
+    gameState,
+    gameState.trapLoadCost,
+    "modifyTrapSeedCost"
+  );
+
   return Math.max(1, effectiveCost);
+}
+
+// Apply all matching ability handlers for Dockyard fish haul calculations.
+function getEffectiveFishPerVoyage(gameState) {
+  const effectiveFishPerVoyage = applyGlobalAbilityModifiers(
+    gameState,
+    gameState.dockyardFishPerVoyage,
+    "modifyFishPerVoyage"
+  );
+
+  return Math.max(0, effectiveFishPerVoyage);
+}
+
+// Fish bait currently uses one flat price so Harbor progression can set the
+// resource pace without trap-price escalation muddying it.
+function getEffectiveTrapFishCost() {
+  return 5;
+}
+
+// Grow the base seed-bait load cost after a successful catch. The early climb
+// is steeper, then softens once the base price reaches 10k seeds.
+function getNextTrapSeedLoadCost(currentCost) {
+  const safeCurrentCost = isFiniteNumber(currentCost)
+    ? currentCost
+    : GAME_STATE_DEFAULTS.trapLoadCost;
+  const growthRate = safeCurrentCost >= 10000 ? 1.075 : 1.15;
+
+  return safeCurrentCost * growthRate;
 }
 
 // Turn a bird's ability ids into readable ability names for UI display.
@@ -1224,32 +2205,22 @@ function formatRateValue(value) {
   return roundedValue.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 }
 
-// Check whether a resource line should display based on either native or inherited stats.
-function birdHasDisplayableResourceStat(bird, statKey, gameState) {
-  if (typeof bird[statKey] === "number") {
-    return true;
-  }
-
-  const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
-  return Boolean(parasiteTargetBird && typeof parasiteTargetBird[statKey] === "number");
-}
-
 // Collect the resource rows a bird should show in the UI.
 function getBirdResourceEntries(bird, gameState, options) {
   const displayOptions = options || {};
 
   return BIRD_RESOURCE_DEFINITIONS.reduce(function (entries, definition) {
+    let value = displayOptions.baseValues
+      ? bird[definition.key]
+      : definition.getValue(bird, gameState);
+
     const shouldDisplayStat = displayOptions.baseValues
       ? typeof bird[definition.key] === "number"
-      : birdHasDisplayableResourceStat(bird, definition.key, gameState);
+      : (typeof value === "number" && value > 0);
 
     if (!shouldDisplayStat) {
       return entries;
     }
-
-    let value = displayOptions.baseValues
-      ? bird[definition.key]
-      : definition.getValue(bird, gameState);
 
     if (displayOptions.multiplyByCount) {
       value *= (bird.count || 0);
@@ -1432,15 +2403,14 @@ function removeBirdsFromFlock(gameState, birdId, amountToRemove) {
 
 // Start from base rarity odds and apply bedding modifiers.
 function getBaseRarityWeights(gameState) {
-  const baseWeights = { ...RARITY_WEIGHTS };
+  let rarityWeights = { ...RARITY_WEIGHTS };
 
-  if (gameState.basicBeddingPurchased) {
-    baseWeights.Common -= 5;
-    baseWeights.Uncommon += 4;
-    baseWeights.Rare += 1;
-  }
-
-  return baseWeights;
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade){
+    if (typeof upgrade.modifyRarityWeights === "function"){
+      rarityWeights = upgrade.modifyRarityWeights(rarityWeights, gameState);
+    }
+  });
+  return rarityWeights;
 }
 
 // Redistribute rarity odds when a habitat pool is missing some tiers.
@@ -1528,7 +2498,21 @@ function getCoinsPerSecond(gameState) {
 
 // Return how many coins each visitor/day point is worth per second.
 function getCoinsPerVisitorRate(gameState) {
-  return gameState.cafePurchased ? 0.2 : 0.1;
+  let coinsPerVisitorRate = applyGlobalAbilityModifiers(
+    gameState,
+    0.1,
+    "modifyCoinsPerVisitorRate"
+  );
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifyCoinsPerVisitorRate === "function") {
+      coinsPerVisitorRate = upgrade.modifyCoinsPerVisitorRate(coinsPerVisitorRate, {
+        gameState: gameState
+      });
+    }
+  });
+
+  return coinsPerVisitorRate;
 }
 
 // Sum seed production coming specifically from trees.
@@ -1536,7 +2520,8 @@ function getTreeSeedsPerSecond(gameState) {
   return (
     gameState.appleTrees * 1 +
     gameState.pearTrees * 3 +
-    gameState.peachTrees * 5
+    gameState.peachTrees * 5 +
+    gameState.orangeTrees * 10
   );
 }
 
@@ -1579,41 +2564,27 @@ function getGrubsPerSecond(gameState) {
 // Sum the total tree-cap bonus birds currently grant for one orchard type.
 function getBirdTreeBonusTotal(gameState, treeBonusKey) {
   return getAcquiredBirds(gameState).reduce(function (totalBonus, bird) {
-    if (treeBonusKey === "bonusAppleTree") {
-      return totalBonus + (getBirdBonusAppleTree(bird, gameState) * bird.count);
-    }
-
-    if (treeBonusKey === "bonusPearTree") {
-      return totalBonus + (getBirdBonusPearTree(bird, gameState) * bird.count);
-    }
-
-    if (treeBonusKey === "bonusPeachTree") {
-      return totalBonus + (getBirdBonusPeachTree(bird, gameState) * bird.count);
-    }
-
-    return totalBonus;
+    return totalBonus + (getBirdTreeBonusValue(bird, gameState, treeBonusKey) * bird.count);
   }, 0);
 }
 
 // Tree caps start low and expand through sapling and flock upgrades.
 function getTreeMaxCount(gameState, treeKey) {
   let maxCount = 1;
+  const treeBonusKey = TREE_BONUS_KEY_BY_TREE_KEY[treeKey];
 
-  if (gameState.newPlotPurchased) {
-    maxCount += 1;
+  if (treeBonusKey) {
+    maxCount += getBirdTreeBonusTotal(gameState, treeBonusKey);
   }
 
-  if (gameState.seedDispersalPurchased && treeKey === "pearTrees") {
-    maxCount += 1;
-  }
-
-  if (treeKey === "appleTrees") {
-    maxCount += getBirdTreeBonusTotal(gameState, "bonusAppleTree");
-  } else if (treeKey === "pearTrees") {
-    maxCount += getBirdTreeBonusTotal(gameState, "bonusPearTree");
-  } else if (treeKey === "peachTrees") {
-    maxCount += getBirdTreeBonusTotal(gameState, "bonusPeachTree");
-  }
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifyTreeMaxCount === "function") {
+      maxCount = upgrade.modifyTreeMaxCount(maxCount, {
+        gameState: gameState,
+        treeKey: treeKey
+      });
+    }
+  });
 
   return maxCount;
 }
@@ -1633,7 +2604,7 @@ function clampGameStateResources(gameState) {
   gameState.coins = Math.max(0, Math.min(gameState.coins, gameState.coinMax));
   gameState.seeds = Math.max(0, Math.min(gameState.seeds, gameState.seedMax));
   gameState.grubs = Math.max(0, Math.min(gameState.grubs, gameState.grubMax));
-  gameState.twigs = Math.max(0, gameState.twigs);
+  gameState.twigs = Math.max(0, Math.min(gameState.twigs, gameState.twigMax));
   gameState.hardwood = Math.max(0, gameState.hardwood);
   gameState.mice = Math.max(0, gameState.mice);
 }
@@ -1662,7 +2633,6 @@ function formatLargeNumber(value) {
 // Shared top-bar renderer and interaction helpers
 // Render or refresh the shared top bar used across pages.
 function renderTopBar(topBarElement, gameState) {
-  const totalBirds = getTotalBirdCount(gameState);
   const coinsPerSecond = getCoinsPerSecond(gameState);
   const treeSeedsPerSecond = getTreeSeedsPerSecond(gameState);
   const birdSeedsPerSecond = getBirdSeedsPerSecond(gameState);
@@ -1674,27 +2644,29 @@ function renderTopBar(topBarElement, gameState) {
   const twigsPerSecond = getTwigsPerSecond(gameState);
 
   if (!topBarElement.querySelector(".top-bar-content")) {
+    // Build the shared shell once so later refreshes only update text values
+    // instead of replacing the whole top bar and disturbing open tooltips.
     topBarElement.innerHTML =
       "<div class='top-bar-content'>" +
         "<div class='top-bar-stats'>" +
           "<span class='top-bar-tooltip'>" +
             "<span class='top-bar-seeds'></span>" +
             "<span class='top-bar-tooltip-box top-bar-seeds-tooltip'></span>" +
-          "</span>" +
-          "<span class='top-bar-grubs-wrapper' style='display: none;'> | <span class='top-bar-tooltip'><span class='top-bar-grubs'></span><span class='top-bar-tooltip-box top-bar-grubs-tooltip'></span></span></span>" +
-          "<span class='top-bar-hardwood-wrapper' style='display: none;'> | <span class='top-bar-hardwood'></span></span>" +
-          "<span class='top-bar-mice-wrapper' style='display: none;'> | <span class='top-bar-mice'></span></span>" +
-          " | <span class='top-bar-tooltip'>" +
-            "<span class='top-bar-coins'></span>" +
-            "<span class='top-bar-tooltip-box top-bar-coins-tooltip'></span>" +
-          "</span>" +
-          "<span class='top-bar-twigs-wrapper' style='display: none;'> | <span class='top-bar-tooltip'>" +
-            "<span class='top-bar-twigs'></span>" +
-            "<span class='top-bar-tooltip-box top-bar-twigs-tooltip'></span>" +
-          "</span></span>" +
-          " | <span class='top-bar-birds'></span>" +
-          " | <span class='top-bar-species'></span>" +
-        "</div>" +
+            "</span>" +
+            "<span class='top-bar-grubs-wrapper' style='display: none;'> | <span class='top-bar-tooltip'><span class='top-bar-grubs'></span><span class='top-bar-tooltip-box top-bar-grubs-tooltip'></span></span></span>" +
+            "<span class='top-bar-hardwood-wrapper' style='display: none;'> | <span class='top-bar-hardwood'></span></span>" +
+            "<span class='top-bar-mice-wrapper' style='display: none;'> | <span class='top-bar-mice'></span></span>" +
+            "<span class='top-bar-fish-wrapper' style='display: none;'> | <span class='top-bar-fish'></span></span>" +
+            "<span class='top-bar-scrap-wrapper' style='display: none;'> | <span class='top-bar-scrap'></span></span>" +
+            " | <span class='top-bar-tooltip'>" +
+              "<span class='top-bar-coins'></span>" +
+              "<span class='top-bar-tooltip-box top-bar-coins-tooltip'></span>" +
+            "</span>" +
+            "<span class='top-bar-twigs-wrapper' style='display: none;'> | <span class='top-bar-tooltip'>" +
+              "<span class='top-bar-twigs'></span>" +
+              "<span class='top-bar-tooltip-box top-bar-twigs-tooltip'></span>" +
+            "</span></span>" +
+          "</div>" +
         "<div class='top-bar-nav'>" +
           "<a class='top-bar-link' href='inventory.html'>Inventory</a> | " +
           "<a class='top-bar-link' href='compendium.html'>Compendium</a> | " +
@@ -1703,51 +2675,117 @@ function renderTopBar(topBarElement, gameState) {
       "</div>";
   }
 
-  topBarElement.querySelector(".top-bar-seeds").textContent = "Seeds: " + formatSeeds(gameState.seeds);
-  topBarElement.querySelector(".top-bar-grubs").textContent = "Grubs: " + formatLargeNumber(gameState.grubs);
-  topBarElement.querySelector(".top-bar-hardwood").textContent = "Hardwood: " + formatLargeNumber(gameState.hardwood);
-  topBarElement.querySelector(".top-bar-mice").textContent = "Mice: " + formatLargeNumber(gameState.mice);
-  topBarElement.querySelector(".top-bar-coins").textContent = "Coins: " + formatCoins(gameState.coins);
-  topBarElement.querySelector(".top-bar-twigs").textContent = "Twigs: " + Math.floor(gameState.twigs);
-  topBarElement.querySelector(".top-bar-seeds-tooltip").style.left = "0";
-  topBarElement.querySelector(".top-bar-seeds-tooltip").style.transform = "none";
-  topBarElement.querySelector(".top-bar-seeds-tooltip").style.whiteSpace = "normal";
-  topBarElement.querySelector(".top-bar-seeds-tooltip").style.minWidth = "220px";
-  topBarElement.querySelector(".top-bar-seeds-tooltip").style.textAlign = "left";
-  topBarElement.querySelector(".top-bar-seeds-tooltip").innerHTML =
+  const seedsElement = topBarElement.querySelector(".top-bar-seeds");
+  const grubsElement = topBarElement.querySelector(".top-bar-grubs");
+  const hardwoodElement = topBarElement.querySelector(".top-bar-hardwood");
+  const miceElement = topBarElement.querySelector(".top-bar-mice");
+  const fishElement = topBarElement.querySelector(".top-bar-fish");
+  const scrapElement = topBarElement.querySelector(".top-bar-scrap");
+  const coinsElement = topBarElement.querySelector(".top-bar-coins");
+  const twigsElement = topBarElement.querySelector(".top-bar-twigs");
+  const seedsTooltipElement = topBarElement.querySelector(".top-bar-seeds-tooltip");
+  const grubsTooltipElement = topBarElement.querySelector(".top-bar-grubs-tooltip");
+  const coinsTooltipElement = topBarElement.querySelector(".top-bar-coins-tooltip");
+  const twigsTooltipElement = topBarElement.querySelector(".top-bar-twigs-tooltip");
+  const twigsWrapperElement = topBarElement.querySelector(".top-bar-twigs-wrapper");
+  const grubsWrapperElement = topBarElement.querySelector(".top-bar-grubs-wrapper");
+  const hardwoodWrapperElement = topBarElement.querySelector(".top-bar-hardwood-wrapper");
+  const miceWrapperElement = topBarElement.querySelector(".top-bar-mice-wrapper");
+  const fishWrapperElement = topBarElement.querySelector(".top-bar-fish-wrapper");
+  const scrapWrapperElement = topBarElement.querySelector(".top-bar-scrap-wrapper");
+
+  // Update the visible stat text first so every page stays in sync with the
+  // shared resource math coming from game.js.
+  seedsElement.textContent = "Seeds: " + formatSeeds(gameState.seeds);
+  grubsElement.textContent = "Grubs: " + formatLargeNumber(gameState.grubs);
+  hardwoodElement.textContent = "Hardwood: " + formatLargeNumber(gameState.hardwood);
+  miceElement.textContent = "Mice: " + formatLargeNumber(gameState.mice);
+  fishElement.textContent = "Fish: " + formatLargeNumber(gameState.fish);
+  scrapElement.textContent = "Scrap: " + formatLargeNumber(gameState.scrap);
+  coinsElement.textContent = "Coins: " + formatCoins(gameState.coins);
+  twigsElement.textContent = "Twigs: " + formatLargeNumber(gameState.twigs);
+
+  // The seed and grub tooltips use multiline breakdowns because those
+  // resources now come from multiple systems with positive and negative flows.
+  seedsTooltipElement.style.left = "0";
+  seedsTooltipElement.style.transform = "none";
+  seedsTooltipElement.style.whiteSpace = "normal";
+  seedsTooltipElement.style.minWidth = "220px";
+  seedsTooltipElement.style.textAlign = "left";
+  seedsTooltipElement.innerHTML =
     "Seeds from trees: " + treeSeedsPerSecond.toFixed(1) + " seeds/sec<br>" +
     "Seeds from birds: " + birdSeedsPerSecond.toFixed(1) + " seeds/sec<br>" +
     "Seeds from grub farm: -" + grubFarmRates.seedsPerSecond.toFixed(1) + " seeds/sec<br>" +
     "Total: " + seedsPerSecond.toFixed(1) + " seeds/sec | Max seeds: " + formatSeeds(gameState.seedMax);
-  topBarElement.querySelector(".top-bar-grubs-tooltip").style.left = "0";
-  topBarElement.querySelector(".top-bar-grubs-tooltip").style.transform = "none";
-  topBarElement.querySelector(".top-bar-grubs-tooltip").style.whiteSpace = "normal";
-  topBarElement.querySelector(".top-bar-grubs-tooltip").style.minWidth = "220px";
-  topBarElement.querySelector(".top-bar-grubs-tooltip").style.textAlign = "left";
-  topBarElement.querySelector(".top-bar-grubs-tooltip").innerHTML =
+
+  grubsTooltipElement.style.left = "0";
+  grubsTooltipElement.style.transform = "none";
+  grubsTooltipElement.style.whiteSpace = "normal";
+  grubsTooltipElement.style.minWidth = "220px";
+  grubsTooltipElement.style.textAlign = "left";
+  grubsTooltipElement.innerHTML =
     "Grubs from birds: " + birdGrubsPerSecond.toFixed(2) + " grubs/sec<br>" +
     "Grubs from grub farm: " + grubFarmRates.grubsPerSecond.toFixed(2) + " grubs/sec<br>" +
     "Total: " + grubsPerSecond.toFixed(2) + " grubs/sec | Max grubs: " + formatLargeNumber(gameState.grubMax);
-  topBarElement.querySelector(".top-bar-coins-tooltip").textContent =
+
+  coinsTooltipElement.textContent =
     "Coins from visitors: " + coinsPerSecond.toFixed(1) + " coins/sec | Max coins: " + formatCoins(gameState.coinMax);
-  topBarElement.querySelector(".top-bar-twigs-tooltip").textContent =
+
+  twigsTooltipElement.textContent =
     "Twigs from birds: " + birdTwigsPerSecond.toFixed(2) +
     " twigs/sec | Twigs from grub farm: -" + grubFarmRates.twigsPerSecond.toFixed(2) +
-    " twigs/sec | Total: " + twigsPerSecond.toFixed(2) + " twigs/sec";
-  topBarElement.querySelector(".top-bar-twigs-wrapper").style.display =
+    " twigs/sec | Total: " + twigsPerSecond.toFixed(2) + " twigs/sec | Max twigs: " + formatLargeNumber(gameState.twigMax);
+
+  // Hide resources the player has not reached yet so the top bar stays compact
+  // early, then reveal them as soon as they matter.
+  twigsWrapperElement.style.display =
     (gameState.twigs >= 1 || twigsPerSecond > 0) ? "inline" : "none";
-  topBarElement.querySelector(".top-bar-grubs-wrapper").style.display =
+  grubsWrapperElement.style.display =
     (gameState.grubs >= 1 || grubsPerSecond > 0) ? "inline" : "none";
-  topBarElement.querySelector(".top-bar-hardwood-wrapper").style.display =
+  hardwoodWrapperElement.style.display =
     gameState.hardwood >= 1 ? "inline" : "none";
-  topBarElement.querySelector(".top-bar-mice-wrapper").style.display =
+  miceWrapperElement.style.display =
     gameState.mice >= 1 ? "inline" : "none";
-  topBarElement.querySelector(".top-bar-birds").textContent = "Individuals: " + totalBirds;
-  topBarElement.querySelector(".top-bar-species").textContent = "Species: " + getFlockDiversity(gameState);
+  fishWrapperElement.style.display =
+    gameState.fish >= 1 ? "inline" : "none";
+  scrapWrapperElement.style.display =
+    gameState.scrap >= 1 ? "inline" : "none";
 }
 
 let sharedButtonSound = null;
 let tooltipViewportAdjustmentInitialized = false;
+
+// Ask supporting mobile browsers to treat game SFX as ambient audio so they
+// can mix with a user's music instead of taking over the device audio session.
+function configureAmbientGameAudioSession() {
+  if (
+    typeof navigator === "undefined" ||
+    !navigator.audioSession ||
+    !("type" in navigator.audioSession)
+  ) {
+    return;
+  }
+
+  try {
+    navigator.audioSession.type = "ambient";
+  } catch (error) {}
+}
+
+// Play one short game sound effect through the shared ambient-audio setup when
+// the browser supports it.
+function playGameSound(audioElement) {
+  if (!audioElement) {
+    return;
+  }
+
+  configureAmbientGameAudioSession();
+
+  const playPromise = audioElement.play();
+
+  if (playPromise && typeof playPromise.catch === "function") {
+    playPromise.catch(function () {});
+  }
+}
 
 // Play the shared UI click sound on demand after an action succeeds.
 function playButtonSound() {
@@ -1756,11 +2794,13 @@ function playButtonSound() {
   }
 
   sharedButtonSound.currentTime = 0;
-  sharedButtonSound.play();
+  playGameSound(sharedButtonSound);
 }
 
 // Handle automatic sound for navigation and simple ungated controls.
 function initButtonAudio() {
+  configureAmbientGameAudioSession();
+
   document.addEventListener("click", function (event) {
     const linkControl = event.target.closest("a.button, a.back-link, a.menu-button, a.top-bar-link");
 
@@ -1882,6 +2922,7 @@ function initViewportAwareTooltips() {
 // Passive income loop and offline-progress helpers
 // Apply passive resource income based on real elapsed time.
 function updateCoinsFromElapsedTime(gameState, currentTime) {
+  const didAutomationUpdate = runAutomationSystems(gameState, currentTime);
   const coinsPerSecond = getCoinsPerSecond(gameState);
   const passiveTreeSeedsPerSecond = getTreeSeedsPerSecond(gameState);
   const passiveBirdSeedsPerSecond = getBirdSeedsPerSecond(gameState);
@@ -1896,11 +2937,19 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   const elapsedTime = Math.min(rawElapsedTime, getMaxOfflineDurationMs(gameState));
 
   if (elapsedTime <= 0) {
-    return false;
+    if (didAutomationUpdate) {
+      clampGameStateResources(gameState);
+      saveGameState(gameState);
+    }
+
+    return didAutomationUpdate;
   }
 
+  // Even when nothing is producing right now, advance the clock so the next
+  // real income change starts from "now" instead of replaying this dead span.
   if (coinsPerSecond <= 0 && seedsPerSecond <= 0 && grubsPerSecond <= 0 && twigsPerSecond <= 0) {
     gameState.lastCoinUpdate = currentTime;
+    clampGameStateResources(gameState);
     saveGameState(gameState);
     return true;
   }
@@ -1912,10 +2961,14 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   let earnedTwigs = 0;
 
   if (!gameState.grubFarmActive) {
+    // Normal passive flow is straightforward when the grub farm is off.
     earnedSeeds = elapsedTime * (seedsPerSecond / 1000);
     earnedGrubs = elapsedTime * (grubsPerSecond / 1000);
     earnedTwigs = elapsedTime * (twigsPerSecond / 1000);
   } else {
+    // The grub farm is different because it converts seeds and twigs into
+    // grubs, so we need to figure out how long it can actually stay online
+    // before one of its input resources runs dry.
     const elapsedSeconds = elapsedTime / 1000;
     let operableSeconds = elapsedSeconds;
 
@@ -1937,6 +2990,8 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
 
     const inactiveSeconds = Math.max(0, elapsedSeconds - operableSeconds);
 
+    // Earn one set of rates while the farm is supplied, then fall back to the
+    // passive bird/tree-only rates for the remainder of the elapsed time.
     earnedSeeds =
       ((passiveSeedsPerSecond - grubFarmRates.seedsPerSecond) * operableSeconds) +
       (passiveSeedsPerSecond * inactiveSeconds);
@@ -1952,6 +3007,8 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
     }
   }
 
+  // Apply the final totals, clamp to storage caps, and move the save clock
+  // forward so future ticks start from this exact moment.
   gameState.coins += earnedCoins;
   gameState.seeds += earnedSeeds;
   gameState.grubs += earnedGrubs;
@@ -1960,17 +3017,6 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   gameState.lastCoinUpdate = currentTime;
   saveGameState(gameState);
   return true;
-}
-
-// Keep the live income timer simple for now.
-function getIncomeTickLength(gameState) {
-  const coinsPerSecond = getCoinsPerSecond(gameState);
-
-  if (coinsPerSecond <= 0) {
-    return 1000;
-  }
-
-  return BASE_TICK_MS;
 }
 
 // Start the recurring income loop and resync on tab return.
@@ -1985,13 +3031,17 @@ function startIncomeSystem(gameState, onUpdate) {
 
   applyIncomeUpdate();
 
-  let incomeInterval = setInterval(applyIncomeUpdate, getIncomeTickLength(gameState));
+  // The income tick is intentionally fixed at one second, so keep the interval
+  // setup explicit instead of routing through a fake variable-tick helper.
+  let incomeInterval = setInterval(applyIncomeUpdate, BASE_TICK_MS);
 
   function restartIncomeInterval() {
     clearInterval(incomeInterval);
-    incomeInterval = setInterval(applyIncomeUpdate, getIncomeTickLength(gameState));
+    incomeInterval = setInterval(applyIncomeUpdate, BASE_TICK_MS);
   }
 
+  // Re-sync immediately when the tab becomes visible again so offline progress
+  // is granted right away and the one-second loop restarts from a fresh tick.
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") {
       applyIncomeUpdate();
@@ -1999,6 +3049,8 @@ function startIncomeSystem(gameState, onUpdate) {
     }
   });
 
+  // Focus events cover alt-tabbing back into the window even if visibility
+  // listeners were not enough on their own.
   window.addEventListener("focus", function () {
     applyIncomeUpdate();
     restartIncomeInterval();

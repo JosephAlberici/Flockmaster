@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Flockmaster Settings</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body {
       background-color: #b8b8b8;
@@ -156,6 +157,30 @@
       border-top: 1px solid #b9b2a8;
     }
 
+    .settings-option-shell {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .settings-option-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .settings-checkbox {
+      width: 18px;
+      height: 18px;
+    }
+
+    .settings-option-label {
+      margin: 0;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
     .code-label {
       margin: 0 0 12px;
       color: #2c3e50;
@@ -223,6 +248,20 @@
         <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
       </div>
 
+      <div class="settings-option-shell">
+        <div class="settings-option-row">
+          <input class="settings-checkbox" type="checkbox" id="upgradeConfirmationCheckbox">
+          <label class="settings-option-label" for="upgradeConfirmationCheckbox">Upgrade Confirmation (For Mobile Devices)</label>
+        </div>
+      </div>
+
+      <div class="settings-option-shell">
+        <div class="settings-option-row">
+          <input class="settings-checkbox" type="checkbox" id="holdToClickCheckbox">
+          <label class="settings-option-label" for="holdToClickCheckbox">Hold to Click</label>
+        </div>
+      </div>
+
       <div class="code-shell">
         <p class="code-label">Redeem Code</p>
         <div class="code-row">
@@ -246,6 +285,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
   <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
@@ -257,9 +297,11 @@
     const importSaveInput = document.querySelector("#importSaveInput");
     const eraseProgressButton = document.querySelector("#eraseProgressButton");
     const eraseConfirmBox = document.querySelector("#eraseConfirmBox");
-    const confirmEraseButton = document.querySelector("#confirmEraseButton");
-    const cancelEraseButton = document.querySelector("#cancelEraseButton");
-    const codeInput = document.querySelector("#codeInput");
+      const confirmEraseButton = document.querySelector("#confirmEraseButton");
+      const cancelEraseButton = document.querySelector("#cancelEraseButton");
+      const upgradeConfirmationCheckbox = document.querySelector("#upgradeConfirmationCheckbox");
+      const holdToClickCheckbox = document.querySelector("#holdToClickCheckbox");
+      const codeInput = document.querySelector("#codeInput");
     const redeemCodeButton = document.querySelector("#redeemCodeButton");
     const codeResult = document.querySelector("#codeResult");
     const codeToast = document.querySelector("#codeToast");
@@ -270,10 +312,24 @@
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
     initButtonAudio();
-    initViewportAwareTooltips();
-    startIncomeSystem(gameState, function () {
-      renderTopBar(topBar, gameState);
-    });
+      initViewportAwareTooltips();
+      syncUpgradeInteractionPreference(gameState);
+      upgradeConfirmationCheckbox.checked = gameState.upgradeConfirmationEnabled === true;
+      holdToClickCheckbox.checked = gameState.holdToClickEnabled === true;
+      startIncomeSystem(gameState, function () {
+        renderTopBar(topBar, gameState);
+      });
+
+      upgradeConfirmationCheckbox.addEventListener("change", function () {
+        gameState.upgradeConfirmationEnabled = upgradeConfirmationCheckbox.checked;
+        syncUpgradeInteractionPreference(gameState);
+        saveGameState(gameState);
+      });
+
+      holdToClickCheckbox.addEventListener("change", function () {
+        gameState.holdToClickEnabled = holdToClickCheckbox.checked;
+        saveGameState(gameState);
+      });
 
     exportSaveButton.addEventListener("click", function () {
       updateCoinsFromElapsedTime(gameState, Date.now());
@@ -389,7 +445,18 @@
         return;
       }
 
-      if (submittedCode === "screechtest") {
+      if (submittedCode === "voyagefriend") {
+        addItemCount(gameState, "voyageticket", 3);
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: 3 Voyage Tickets added";
+        codeInput.value = "";
+        return;
+      }
+
+      if (false && submittedCode === "screechtest") {
         const screechOwlInFlock = gameState.birds.find(function (bird) {
           return bird.id === "screechowl";
         });

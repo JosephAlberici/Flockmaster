@@ -12,7 +12,8 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/crow_frontpage.png",
     call: "/Resources/Calls/crow.wav",
     nativeHabitat: "City Living",
-    scientificName: "Corvus brachyrhynchos"
+    scientificName: "Corvus brachyrhynchos",
+    habitatScale: 0.8
   },
   {
     id: "pigeon",
@@ -37,13 +38,14 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/kestrel.png",
     call: "/Resources/Calls/kestrel.wav",
     nativeHabitat: "City Living",
-    scientificName: "Falco sparverius"
+    scientificName: "Falco sparverius",
+    habitatScale: 0.8
   },
   {
     id: "bluejay",
     species: "Blue Jay",
     visitorsPerDay: 1,
-    twigsPerSecond: 0.08,
+    twigsPerSecond: 0.06,
     diet: "seeds",
     rarity: "Uncommon",
     acquired: false,
@@ -70,7 +72,7 @@ const BIRD_LIBRARY = [
     species: "Pileated Woodpecker",
     visitorsPerDay: 1,
     twigsPerSecond: 0.06,
-    grubsPerSecond: 0.25,
+    grubsPerSecond: 0.1,
     abilities: ["treePeck"],
     diet: "grubs",
     rarity: "Rare",
@@ -79,6 +81,7 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/pileatedwoodpecker.mp3",
     nativeHabitat: "City Living",
     scientificName: "Dryocopus pileatus",
+    habitatScale: 1.2
   },
   {
     id: "cardinal",
@@ -92,9 +95,14 @@ const BIRD_LIBRARY = [
       male: "/Resources/Bird Images/cardinalMale.png",
       female: "/Resources/Bird Images/cardinalFemale.png"
     },
+    habitatVariantScales: {
+      male: 1.1,
+      female: 1
+    },
     call: "/Resources/Calls/cardinal.mp3",
     nativeHabitat: "City Living",
     scientificName: "Cardinalis cardinalis",
+    habitatScale: 1.2
   },
   {
     id: "nuthatch",
@@ -111,7 +119,7 @@ const BIRD_LIBRARY = [
   {
     id: "screechowl",
     species: "Eastern Screech Owl",
-    grubsPerSecond: 0.25,
+    grubsPerSecond: 0.15,
     abilities: ["overseer"],
     diet: "grubs",
     rarity: "Epic",
@@ -124,7 +132,7 @@ const BIRD_LIBRARY = [
   {
     id: "nighthawk",
     species: "Common Nighthawk",
-    grubsPerSecond: 0.03,
+    grubsPerSecond: 0.02,
     abilities: ["nocturnal"],
     diet: "grubs",
     rarity: "Common",
@@ -160,8 +168,9 @@ const BIRD_LIBRARY = [
   {
     id: "redTailedHawk",
     species: "Red-Tailed Hawk",
-    twigsPerSecond: 0.4,
+    twigsPerSecond: 0.1,
     bonusPeachTree: 2,
+    habitatScale: 1.6,
     diet: "mice",
     rarity: "Epic",
     abilities: ["predator"],
@@ -170,5 +179,83 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/redTailedHawk.wav",
     nativeHabitat: "City Living",
     scientificName: "Buteo jamaicensis",
+  },
+  {
+    id: "mallard",
+    species: "Mallard",
+    diet: "Seeds",
+    rarity: "Common",
+    abilities: ["dimorphic"],
+    acquired: false,
+    visitorsPerDay: 2,
+    variantImages: {
+      male: "/Resources/Bird Images/mallardMale.png",
+      female: "/Resources/Bird Images/mallardFemale.png"
+    },
+    habitatVariantScales: {
+      male: 1.3,
+      female: 1
+    },
+    call: "/Resources/Calls/mallard.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Anas platyrhynchos"
+  },
+  {
+    id: "goose",
+    species: "Canada Goose",
+    diet: "seeds",
+    rarity: "Common",
+    visitorsPerDay: 3,
+    image: "/Resources/Bird Images/goose.png",
+    call: "/Resources/Calls/goose.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Branta canadensis"
+  },
+  {
+    id: "sandpiper",
+    species: "Spotted Sandpiper",
+    diet: "grubs",
+    rarity: "Common",
+    twigsPerSecond: 0.04,
+    image: "/Resources/Bird Images/sandpiper.png",
+    call: "/Resources/Calls/sandpiper.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Actitis macularius"
+  },
+  {
+    id: "nightheron",
+    species: "Black-Crowned Night Heron",
+    diet: ["fish", "grubs"],
+    rarity: "Uncommon",
+    visitorsPerDay: 4,
+    abilities: ["nocturnal"],
+    image: "/Resources/Bird Images/nightHeron.png",
+    call: "/Resources/Calls/nightHeron.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Nycticorax nycticorax"
+  },
+  {
+    id: "greenheron",
+    species: "Green Heron",
+    diet: ["fish", "grubs"],
+    rarity: "Rare",
+    grubsPerSecond: 0.05,
+    abilities: ["baitfisher"],
+    image: "/Resources/Bird Images/greenHeron.png",
+    call: "/Resources/Calls/greenHeron.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Butorides virescens"
+  },
+  {
+    id: "muteswan",
+    species: "Mute Swan",
+    diet: "seeds",
+    rarity: "Epic",
+    visitorsPerDay: 5,
+    abilities: ["mascot"],
+    image: "/Resources/Bird Images/muteSwan.png",
+    call: "/Resources/Calls/muteSwan.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Cygnus olor"
   }
 ];

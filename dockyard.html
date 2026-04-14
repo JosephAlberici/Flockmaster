@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flockmaster Dockyard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --action-panel-bg: #8fc7e8;
+    }
+
+    .page-layout {
+      display: flex;
+      gap: 28px;
+      padding: 24px 32px 40px;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+
+    .dockyard-sidebar {
+      width: 36%;
+    }
+
+    .dockyard-main {
+      width: 64%;
+    }
+
+    .dockyard-panel {
+      width: 100%;
+      min-height: 520px;
+    }
+
+    .dockyard-panel.is-minimized {
+      min-height: 0;
+    }
+
+    .dockyard-panel-content {
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      text-align: center;
+      gap: 18px;
+    }
+
+    .dockyard-panel.is-minimized .dockyard-panel-content {
+      min-height: 0;
+    }
+
+    .dockyard-boat-image {
+      width: 100%;
+      max-width: 760px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .dockyard-image-tooltip-shell {
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .dockyard-image-tooltip-box {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 12;
+    }
+
+    .dockyard-image-tooltip-shell:hover .dockyard-image-tooltip-box,
+    .dockyard-image-tooltip-shell.is-open .dockyard-image-tooltip-box {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .dockyard-stat {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: #2c3e50;
+    }
+
+    .overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .overview-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .dockyard-subtitle {
+      margin: 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #17311e;
+      text-align: center;
+    }
+
+    .dockyard-action-shell {
+      margin-top: 8px;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: center;
+      width: 100%;
+    }
+
+    .dockyard-button-row {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .dockyard-button-row .menu-button {
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+
+    .dockyard-progress-shell {
+      width: 100%;
+      margin-top: auto;
+      padding-top: 22px;
+    }
+
+    .dockyard-progress-bar {
+      width: 100%;
+      height: 18px;
+      background: rgba(247, 241, 230, 0.35);
+      border: 2px solid #2c3e50;
+      border-radius: 999px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .dockyard-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #f7f1e6;
+      transition: width 0.2s linear;
+    }
+
+    .dockyard-progress-label {
+      margin-top: 10px;
+      color: #f7f1e6;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .process-tooltip {
+      position: relative;
+      display: block;
+    }
+
+    .process-tooltip-box {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+
+    .process-tooltip-box.align-right {
+      left: auto;
+      right: 0;
+      transform: none;
+    }
+
+    .process-tooltip:hover .process-tooltip-box,
+    .process-tooltip-box.is-visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 42, 54, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .overlay.is-visible {
+      display: flex;
+    }
+
+    .overlay-card {
+      width: 100%;
+      max-width: 720px;
+      background: #f7f1e6;
+      border: 3px solid black;
+      border-radius: 20px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .overlay-card h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .overlay-subtext {
+      margin: 0 0 16px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overseer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .overseer-card {
+      background: #ffffff;
+      border: 2px solid black;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      position: relative;
+    }
+
+    .selector-image-shell {
+      position: relative;
+      height: 190px;
+      border: 2px solid black;
+      border-radius: 12px;
+      background: #f7f1e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .selector-image-shell img {
+      width: 100%;
+      height: 100%;
+      max-height: 170px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .selector-image-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f7f1e6;
+      color: #1f2a36;
+      border: 2px solid black;
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 180px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      text-align: left;
+      z-index: 10;
+    }
+
+    .selector-image-shell:hover .selector-image-tooltip,
+    .selector-image-shell.is-open .selector-image-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .selector-image-tooltip p {
+      margin: 0;
+    }
+
+    .selector-image-tooltip p + p {
+      margin-top: 8px;
+    }
+
+    .overseer-card-name {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overlay-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .threshold-input {
+      min-width: 240px;
+      padding: 12px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .threshold-helper {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .overlay-status {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+      min-height: 24px;
+    }
+
+    .dockyard-gift-card {
+      text-align: center;
+    }
+
+    .dockyard-gift-image {
+      width: 100%;
+      max-width: 220px;
+      display: block;
+      margin: 18px auto 12px;
+    }
+
+    .dockyard-gift-count {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .dockyard-lock-note {
+      margin: 0;
+      font-size: 20px;
+      font-weight: bold;
+      color: #f7f1e6;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top-bar" id="topBar"></div>
+
+  <div class="overlay" id="dockyardOverseerOverlay">
+    <div class="overlay-card">
+      <h2>Select Overseer</h2>
+      <p class="overlay-subtext">Choose which overseer species will supervise automatic voyages</p>
+      <div class="overseer-grid" id="dockyardOverseerGrid"></div>
+      <button class="menu-button" type="button" id="closeDockyardOverseerOverlay">Close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="dockyardThresholdOverlay">
+    <div class="overlay-card">
+      <h2>Set Overseer Minimum</h2>
+      <p class="overlay-subtext">Set the minimum coin stockpile where the harbor will automatically begin voyaging</p>
+      <div class="overlay-row">
+        <input class="threshold-input" type="text" id="dockyardThresholdInput" placeholder="Enter coin threshold">
+        <button class="menu-button" type="button" id="saveDockyardThresholdButton" data-requires-success="true">Save Threshold</button>
+      </div>
+      <p class="threshold-helper">Use zeroes, i.e 20000 instead of 20k</p>
+      <p class="overlay-status" id="dockyardThresholdStatus"></p>
+      <button class="menu-button" type="button" id="closeDockyardThresholdOverlay">Close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="dockyardGiftOverlay">
+    <div class="overlay-card dockyard-gift-card">
+      <h2>Harbor Constructed</h2>
+      <p class="overlay-subtext">Catching fish can take a long time, here is a gift to get you started:</p>
+      <img class="dockyard-gift-image" id="dockyardGiftImage" src="/Resources/Misc%20Images/voyageTicket.png" alt="Voyage Ticket">
+      <p class="dockyard-gift-count">x2 Voyage Tickets</p>
+      <button class="menu-button" type="button" id="closeDockyardGiftOverlay">Collect Gift</button>
+    </div>
+  </div>
+
+  <h1 class="page-title">DOCKYARD</h1>
+
+  <div class="page-layout">
+    <div class="dockyard-sidebar">
+      <div class="card">
+        <a class="menu-button" href="index.html">Home</a>
+        <a class="menu-button" href="aviary.html">Aviary</a>
+        <a class="menu-button" href="birdCatching.html">Bird Catching</a>
+        <a class="menu-button" href="earthworks.html">Earthworks</a>
+      </div>
+
+      <div class="card">
+        <h2>Dockyard Overview</h2>
+        <p class="dockyard-stat">Voyage Duration: <span id="dockyardVoyageDuration"></span></p>
+        <p class="dockyard-stat">Voyage Cost: <span id="dockyardVoyageCost"></span></p>
+        <p class="dockyard-stat">Fish Per Voyage: <span id="dockyardFishPerVoyage"></span></p>
+        <p class="dockyard-stat">Scrap Per Voyage: <span id="dockyardScrapPerVoyage"></span></p>
+        <p class="dockyard-stat">Treasure Chance: <span id="dockyardTreasureChance"></span></p>
+      </div>
+
+      <div class="card">
+        <h2>Harbor Upgrades</h2>
+        <div id="harborUpgrades"></div>
+      </div>
+    </div>
+
+    <div class="dockyard-main">
+      <div class="dockyard-panel action-panel" id="dockyardPanel">
+        <div class="overview-header">
+          <h2 class="panel-header">Harbor</h2>
+          <div class="overview-controls">
+            <button class="overview-button is-active" type="button" id="dockyardMinimizeButton">Minimize</button>
+            <div class="process-tooltip">
+              <button class="overview-button" type="button" id="dockyardVoyageButton">Voyage</button>
+              <div class="process-tooltip-box align-right" id="dockyardVoyageTooltip"></div>
+            </div>
+          </div>
+        </div>
+        <div class="dockyard-panel-content" id="dockyardPanelContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="birds.js"></script>
+  <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
+  <script src="items.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const gameState = loadGameState();
+    const topBar = document.querySelector("#topBar");
+    const dockyardVoyageDuration = document.querySelector("#dockyardVoyageDuration");
+    const dockyardVoyageCost = document.querySelector("#dockyardVoyageCost");
+    const dockyardFishPerVoyage = document.querySelector("#dockyardFishPerVoyage");
+    const dockyardScrapPerVoyage = document.querySelector("#dockyardScrapPerVoyage");
+    const dockyardTreasureChance = document.querySelector("#dockyardTreasureChance");
+    const harborUpgrades = document.querySelector("#harborUpgrades");
+    const dockyardPanel = document.querySelector("#dockyardPanel");
+    const dockyardPanelContent = document.querySelector("#dockyardPanelContent");
+    const dockyardMinimizeButton = document.querySelector("#dockyardMinimizeButton");
+    const dockyardVoyageButton = document.querySelector("#dockyardVoyageButton");
+    const dockyardVoyageTooltip = document.querySelector("#dockyardVoyageTooltip");
+    const dockyardOverseerOverlay = document.querySelector("#dockyardOverseerOverlay");
+    const dockyardOverseerGrid = document.querySelector("#dockyardOverseerGrid");
+    const closeDockyardOverseerOverlay = document.querySelector("#closeDockyardOverseerOverlay");
+    const dockyardThresholdOverlay = document.querySelector("#dockyardThresholdOverlay");
+    const dockyardThresholdInput = document.querySelector("#dockyardThresholdInput");
+    const dockyardThresholdStatus = document.querySelector("#dockyardThresholdStatus");
+    const saveDockyardThresholdButton = document.querySelector("#saveDockyardThresholdButton");
+    const closeDockyardThresholdOverlay = document.querySelector("#closeDockyardThresholdOverlay");
+    const dockyardGiftOverlay = document.querySelector("#dockyardGiftOverlay");
+    const closeDockyardGiftOverlay = document.querySelector("#closeDockyardGiftOverlay");
+    const dockyardVoyageSound = new Audio("/Resources/Sound%20Effects/foghorn.mp3");
+    let activeDockyardMode = "minimize";
+    let dockyardTooltipTimeoutId = null;
+
+    function playDockyardVoyageSound() {
+      dockyardVoyageSound.currentTime = 0;
+      playGameSound(dockyardVoyageSound);
+    }
+
+    function renderDockyardOverview() {
+      dockyardVoyageDuration.textContent = formatDurationLabel(gameState.dockyardVoyageDurationMs);
+      dockyardVoyageCost.textContent = "100k Coins";
+      dockyardFishPerVoyage.textContent = formatLargeNumber(getEffectiveFishPerVoyage(gameState));
+      dockyardScrapPerVoyage.textContent = formatLargeNumber(gameState.dockyardScrapPerVoyage);
+      dockyardTreasureChance.textContent = (gameState.dockyardTreasureChance * 100).toFixed(0) + "%";
+    }
+
+    function renderHarborUpgrades() {
+      harborUpgrades.innerHTML = "";
+      const harborConstructed = hasUpgrade(gameState, "constructHarbor");
+      const constructHarborDefinition = getUpgradeDefinition("constructHarbor");
+      const dredgerDefinition = getUpgradeDefinition("dredger");
+
+      const constructHarborTooltip = document.createElement("div");
+      constructHarborTooltip.className = "upgrade-tooltip";
+
+      const constructHarborButton = document.createElement("button");
+      constructHarborButton.className = "menu-button";
+      constructHarborButton.type = "button";
+      constructHarborButton.dataset.requiresSuccess = "true";
+      constructHarborButton.textContent = hasUpgrade(gameState, "constructHarbor")
+        ? "Construct Harbor (Owned)"
+        : "Construct Harbor (100 Hardwood, 200k Coins)";
+
+      if (hasUpgrade(gameState, "constructHarbor")) {
+        constructHarborButton.classList.add("is-locked");
+      }
+
+      constructHarborButton.addEventListener("click", function () {
+        handleUpgradePurchaseRequest(gameState, "constructHarbor", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderDockyardOverview();
+            renderHarborUpgrades();
+            renderDockyardPanel();
+            renderDockyardGiftOverlay();
+          }
+        });
+      });
+
+      const constructHarborTooltipBox = document.createElement("div");
+      constructHarborTooltipBox.className = "upgrade-tooltip-box";
+      constructHarborTooltipBox.textContent = constructHarborDefinition.description;
+
+      constructHarborTooltip.appendChild(constructHarborButton);
+      constructHarborTooltip.appendChild(constructHarborTooltipBox);
+      harborUpgrades.appendChild(constructHarborTooltip);
+
+      const dredgerTooltip = document.createElement("div");
+      dredgerTooltip.className = "upgrade-tooltip";
+
+      const dredgerButton = document.createElement("button");
+      dredgerButton.className = "menu-button";
+      dredgerButton.type = "button";
+      dredgerButton.dataset.requiresSuccess = "true";
+      dredgerButton.textContent = hasUpgrade(gameState, "dredger")
+        ? "Dredger (Owned)"
+        : "Dredger (500k Coins)";
+
+      if (!harborConstructed || hasUpgrade(gameState, "dredger")) {
+        dredgerButton.classList.add("is-locked");
+      }
+
+      dredgerButton.addEventListener("click", function () {
+        handleUpgradePurchaseRequest(gameState, "dredger", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderDockyardOverview();
+            renderHarborUpgrades();
+            renderDockyardPanel();
+          }
+        });
+      });
+
+      const dredgerTooltipBox = document.createElement("div");
+      dredgerTooltipBox.className = "upgrade-tooltip-box";
+      dredgerTooltipBox.textContent = dredgerDefinition.description;
+
+      dredgerTooltip.appendChild(dredgerButton);
+      dredgerTooltip.appendChild(dredgerTooltipBox);
+      harborUpgrades.appendChild(dredgerTooltip);
+    }
+
+    function renderDockyardGiftOverlay() {
+      dockyardGiftOverlay.classList.toggle("is-visible", gameState.dockyardHarborGiftPending === true);
+    }
+
+    function refreshDockyardLivePanel() {
+      if (!isDockyardUnlocked(gameState) || activeDockyardMode !== "voyage") {
+        return;
+      }
+
+      const voyageButton = document.querySelector("#dockyardActionButton");
+      const voyageTooltipBox = document.querySelector("#dockyardActionTooltip");
+      const dockyardProgressFill = document.querySelector("#dockyardLiveProgressFill");
+      const dockyardProgressLabel = document.querySelector("#dockyardLiveProgressLabel");
+      const dockyardSkipButton = document.querySelector("#dockyardSkipButton");
+
+      if (!voyageButton || !voyageTooltipBox || !dockyardProgressFill || !dockyardProgressLabel) {
+        return;
+      }
+
+      if (dockyardSkipButton) {
+        dockyardSkipButton.style.display =
+          gameState.dockyardVoyageActive &&
+          !gameState.dockyardVoyageReady &&
+          getItemCount(gameState, "voyageticket") > 0
+            ? "inline-block"
+            : "none";
+      }
+
+      if (gameState.dockyardVoyageReady) {
+        voyageButton.textContent = "Return";
+        voyageTooltipBox.textContent = "Ready to collect " + getDockyardPendingRewardSummary(gameState);
+        dockyardProgressFill.style.width = "100%";
+        dockyardProgressLabel.textContent = "Ready";
+        return;
+      }
+
+      if (gameState.dockyardVoyageActive) {
+        const remainingMs = getDockyardRemainingMs(gameState, Date.now());
+        const completedRatio = Math.max(0, Math.min(1, 1 - (remainingMs / gameState.dockyardVoyageDurationMs)));
+        voyageButton.textContent = "Voyaging...";
+        voyageTooltipBox.textContent = "Voyage completes in " + formatDurationLabel(remainingMs);
+        dockyardProgressFill.style.width = (completedRatio * 100).toFixed(1) + "%";
+        dockyardProgressLabel.textContent = formatDurationLabel(remainingMs) + " Remaining";
+        return;
+      }
+
+      voyageButton.textContent = "Voyage";
+      voyageTooltipBox.textContent = "Voyage costs 100k coins and returns in " + formatDurationLabel(gameState.dockyardVoyageDurationMs);
+      dockyardProgressFill.style.width = "0%";
+      dockyardProgressLabel.textContent = "Idle";
+    }
+
+    function setActiveDockyardButton() {
+      dockyardMinimizeButton.classList.toggle("is-active", activeDockyardMode === "minimize");
+      dockyardVoyageButton.classList.toggle("is-active", activeDockyardMode === "voyage");
+    }
+
+    function renderDockyardPanel() {
+      const dockyardUnlocked = isDockyardUnlocked(gameState);
+      const harborConstructed = hasUpgrade(gameState, "constructHarbor");
+      dockyardPanelContent.innerHTML = "";
+      dockyardMinimizeButton.classList.toggle("is-locked", !dockyardUnlocked);
+      dockyardVoyageButton.classList.toggle("is-locked", !dockyardUnlocked || !harborConstructed);
+
+      if (!harborConstructed && activeDockyardMode === "voyage") {
+        activeDockyardMode = "minimize";
+      }
+
+      setActiveDockyardButton();
+      dockyardVoyageTooltip.textContent = !dockyardUnlocked
+        ? "Construct Urban Waters to unlock"
+        : (harborConstructed ? "Harbor route available" : "Must Construct Harbor");
+      dockyardPanel.classList.toggle("is-minimized", dockyardUnlocked && activeDockyardMode === "minimize");
+
+      if (!dockyardUnlocked) {
+        const lockNote = document.createElement("p");
+        lockNote.className = "dockyard-lock-note";
+        lockNote.textContent = "Construct Urban Waters to Unlock";
+        dockyardPanelContent.appendChild(lockNote);
+        return;
+      }
+
+      if (activeDockyardMode === "minimize") {
+        return;
+      }
+
+      const harborSubtitle = document.createElement("p");
+      harborSubtitle.className = "dockyard-subtitle";
+      harborSubtitle.textContent = "Voyage out to catch fish and dredge up scrap";
+
+      const harborAutomationSubtitle = document.createElement("p");
+      harborAutomationSubtitle.className = "dockyard-subtitle";
+      harborAutomationSubtitle.textContent = "Overseer minimum must be set to begin automation";
+
+      const dockyardActionShell = document.createElement("div");
+      dockyardActionShell.className = "dockyard-action-shell";
+
+      const dockyardButtonRow = document.createElement("div");
+      dockyardButtonRow.className = "dockyard-button-row";
+
+      const voyageTooltip = document.createElement("div");
+      voyageTooltip.className = "process-tooltip";
+
+      const voyageButton = document.createElement("button");
+      voyageButton.id = "dockyardActionButton";
+      voyageButton.className = "menu-button";
+      voyageButton.type = "button";
+      voyageButton.dataset.requiresSuccess = "true";
+
+      const voyageTooltipBox = document.createElement("div");
+      voyageTooltipBox.id = "dockyardActionTooltip";
+      voyageTooltipBox.className = "process-tooltip-box";
+
+      const selectOverseerButton = document.createElement("button");
+      selectOverseerButton.className = "menu-button";
+      selectOverseerButton.type = "button";
+      selectOverseerButton.textContent = getAssignedOverseerId(gameState, "dockyard") ? "Change Overseer" : "Select Overseer";
+
+      const setThresholdButton = document.createElement("button");
+      setThresholdButton.className = "menu-button";
+      setThresholdButton.type = "button";
+      setThresholdButton.textContent = "Set Overseer Minimum";
+
+      const dockyardImage = document.createElement("img");
+      dockyardImage.className = "dockyard-boat-image";
+      dockyardImage.src = "/Resources/Misc%20Images/harborBoat.png";
+      dockyardImage.alt = "Harbor boat at the dockyard";
+
+      const dockyardImageTooltipShell = document.createElement("div");
+      dockyardImageTooltipShell.className = "dockyard-image-tooltip-shell";
+
+      const dockyardImageTooltipBox = document.createElement("div");
+      dockyardImageTooltipBox.className = "dockyard-image-tooltip-box";
+      dockyardImageTooltipBox.textContent =
+        "Fish per voyage: " + formatLargeNumber(getEffectiveFishPerVoyage(gameState)) +
+        " | Scrap per voyage: " + formatLargeNumber(gameState.dockyardScrapPerVoyage);
+
+      const dockyardProgressShell = document.createElement("div");
+      dockyardProgressShell.className = "dockyard-progress-shell";
+
+      const dockyardProgressBar = document.createElement("div");
+      dockyardProgressBar.className = "dockyard-progress-bar";
+
+      const dockyardProgressFill = document.createElement("div");
+      dockyardProgressFill.id = "dockyardLiveProgressFill";
+      dockyardProgressFill.className = "dockyard-progress-fill";
+
+      const dockyardProgressLabel = document.createElement("p");
+      dockyardProgressLabel.id = "dockyardLiveProgressLabel";
+      dockyardProgressLabel.className = "dockyard-progress-label";
+
+      const skipVoyageButton = document.createElement("button");
+      skipVoyageButton.id = "dockyardSkipButton";
+      skipVoyageButton.className = "menu-button";
+      skipVoyageButton.type = "button";
+      skipVoyageButton.dataset.requiresSuccess = "true";
+      skipVoyageButton.textContent = "Skip (1 Voyage Ticket)";
+
+      if (gameState.dockyardVoyageReady) {
+        voyageButton.textContent = "Return";
+        voyageTooltipBox.textContent = "Ready to collect " + getDockyardPendingRewardSummary(gameState);
+        dockyardProgressFill.style.width = "100%";
+        dockyardProgressLabel.textContent = "Ready";
+      } else if (gameState.dockyardVoyageActive) {
+        const remainingMs = getDockyardRemainingMs(gameState, Date.now());
+        const completedRatio = Math.max(0, Math.min(1, 1 - (remainingMs / gameState.dockyardVoyageDurationMs)));
+        voyageButton.textContent = "Voyaging...";
+        voyageTooltipBox.textContent = "Voyage completes in " + formatDurationLabel(remainingMs);
+        dockyardProgressFill.style.width = (completedRatio * 100).toFixed(1) + "%";
+        dockyardProgressLabel.textContent = formatDurationLabel(remainingMs) + " Remaining";
+      } else {
+        voyageButton.textContent = "Voyage";
+        voyageTooltipBox.textContent = "Voyage costs 100k coins and returns in " + formatDurationLabel(gameState.dockyardVoyageDurationMs);
+        dockyardProgressFill.style.width = "0%";
+        dockyardProgressLabel.textContent = "Idle";
+      }
+
+      voyageButton.addEventListener("click", function () {
+        updateCoinsFromElapsedTime(gameState, Date.now());
+
+        if (gameState.dockyardVoyageReady) {
+          collectDockyardVoyageRewards(gameState);
+          playDockyardVoyageSound();
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          renderDockyardOverview();
+          renderDockyardPanel();
+          return;
+        }
+
+        if (gameState.dockyardVoyageActive) {
+          voyageTooltipBox.classList.add("is-visible");
+
+          if (dockyardTooltipTimeoutId !== null) {
+            clearTimeout(dockyardTooltipTimeoutId);
+          }
+
+          dockyardTooltipTimeoutId = setTimeout(function () {
+            voyageTooltipBox.classList.remove("is-visible");
+          }, 1800);
+          return;
+        }
+
+        if (gameState.coins < 100000) {
+          return;
+        }
+
+        startDockyardVoyage(gameState, Date.now());
+        playDockyardVoyageSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderDockyardOverview();
+        renderDockyardPanel();
+      });
+
+      selectOverseerButton.addEventListener("click", function () {
+        renderDockyardOverseerOverlay();
+        dockyardOverseerOverlay.classList.add("is-visible");
+      });
+
+      setThresholdButton.addEventListener("click", function () {
+        dockyardThresholdInput.value = gameState.dockyardCoinThreshold > 0 ? gameState.dockyardCoinThreshold.toString() : "";
+        dockyardThresholdStatus.textContent = gameState.dockyardCoinThreshold > 0
+          ? "Current threshold: " + formatLargeNumber(gameState.dockyardCoinThreshold) + " coins"
+          : "Current threshold: none";
+        dockyardThresholdOverlay.classList.add("is-visible");
+      });
+
+      dockyardImage.addEventListener("click", function (event) {
+        event.stopPropagation();
+        dockyardImageTooltipShell.classList.toggle("is-open");
+      });
+
+      skipVoyageButton.addEventListener("click", function () {
+        if (!spendItemCount(gameState, "voyageticket", 1)) {
+          return;
+        }
+
+        if (!finishDockyardVoyageImmediately(gameState)) {
+          addItemCount(gameState, "voyageticket", 1);
+          return;
+        }
+
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        renderDockyardOverview();
+        renderDockyardPanel();
+      });
+
+      voyageTooltip.appendChild(voyageButton);
+      voyageTooltip.appendChild(voyageTooltipBox);
+      dockyardButtonRow.appendChild(voyageTooltip);
+      dockyardButtonRow.appendChild(selectOverseerButton);
+      dockyardButtonRow.appendChild(setThresholdButton);
+      dockyardProgressBar.appendChild(dockyardProgressFill);
+      dockyardProgressShell.appendChild(dockyardProgressBar);
+      dockyardProgressShell.appendChild(dockyardProgressLabel);
+
+      if (gameState.dockyardVoyageActive && !gameState.dockyardVoyageReady && getItemCount(gameState, "voyageticket") > 0) {
+        dockyardProgressShell.appendChild(skipVoyageButton);
+      }
+
+      dockyardActionShell.appendChild(dockyardButtonRow);
+      dockyardImageTooltipShell.appendChild(dockyardImageTooltipBox);
+      dockyardImageTooltipShell.appendChild(dockyardImage);
+      dockyardActionShell.appendChild(dockyardImageTooltipShell);
+      dockyardActionShell.appendChild(dockyardProgressShell);
+      dockyardPanelContent.appendChild(harborSubtitle);
+      dockyardPanelContent.appendChild(harborAutomationSubtitle);
+      dockyardPanelContent.appendChild(dockyardActionShell);
+    }
+
+    function renderDockyardOverseerOverlay() {
+      const unavailableOverseerIds = getAssignedOverseerIdsExcept(gameState, "dockyard");
+      const overseerBirds = getAcquiredBirdsWithAbility(gameState, "overseer");
+      dockyardOverseerGrid.innerHTML = "";
+
+      if (overseerBirds.length === 0) {
+        dockyardOverseerGrid.innerHTML = "<p class='overlay-subtext'>No overseer species acquired yet</p>";
+        return;
+      }
+
+      overseerBirds.forEach(function (bird) {
+        const isSelectedOverseer = getAssignedOverseerId(gameState, "dockyard") === bird.id;
+        const isUnavailable = unavailableOverseerIds.includes(bird.id) && !isSelectedOverseer;
+        const overseerCard = document.createElement("div");
+        overseerCard.className = "overseer-card";
+
+        const overseerImageShell = document.createElement("div");
+        overseerImageShell.className = "selector-image-shell";
+        overseerImageShell.tabIndex = 0;
+
+        const overseerImage = document.createElement("img");
+        overseerImage.src = getBirdPrimaryImage(bird);
+        overseerImage.alt = bird.species;
+
+        const overseerTooltip = document.createElement("div");
+        overseerTooltip.className = "selector-image-tooltip";
+        overseerTooltip.innerHTML = getBirdResourceLinesHtml(bird, gameState, { multiplyByCount: true });
+
+        overseerImageShell.addEventListener("click", function (event) {
+          event.stopPropagation();
+          dockyardOverseerGrid.querySelectorAll(".selector-image-shell.is-open").forEach(function (openShell) {
+            if (openShell !== overseerImageShell) {
+              openShell.classList.remove("is-open");
+            }
+          });
+          overseerImageShell.classList.toggle("is-open");
+        });
+
+        const overseerName = document.createElement("p");
+        overseerName.className = "overseer-card-name";
+        overseerName.textContent = bird.species;
+
+        const overseerSelectButton = document.createElement("button");
+        overseerSelectButton.className = "menu-button";
+        overseerSelectButton.type = "button";
+        overseerSelectButton.textContent = isUnavailable
+          ? "At Work"
+          : (isSelectedOverseer ? "Selected" : "Select");
+
+        if (isUnavailable) {
+          overseerSelectButton.classList.add("is-locked");
+          overseerSelectButton.title = "This species is already overseeing another process";
+        }
+
+        if (isSelectedOverseer) {
+          overseerSelectButton.addEventListener("mouseenter", function () {
+            overseerSelectButton.textContent = "Unselect";
+          });
+
+          overseerSelectButton.addEventListener("mouseleave", function () {
+            overseerSelectButton.textContent = "Selected";
+          });
+
+          overseerSelectButton.addEventListener("focus", function () {
+            overseerSelectButton.textContent = "Unselect";
+          });
+
+          overseerSelectButton.addEventListener("blur", function () {
+            overseerSelectButton.textContent = "Selected";
+          });
+        }
+
+        overseerSelectButton.addEventListener("click", function () {
+          if (isUnavailable) {
+            return;
+          }
+
+          if (getAssignedOverseerId(gameState, "dockyard") === bird.id) {
+            setAssignedOverseerId(gameState, "dockyard", null);
+          } else {
+            setAssignedOverseerId(gameState, "dockyard", bird.id);
+          }
+
+          playButtonSound();
+          const didAutomationStart = runDockyardAutomation(gameState, Date.now());
+          saveGameState(gameState);
+          if (didAutomationStart) {
+            renderTopBar(topBar, gameState);
+            renderDockyardOverview();
+          }
+          renderHarborUpgrades();
+          renderDockyardOverseerOverlay();
+          renderDockyardPanel();
+        });
+
+        overseerImageShell.appendChild(overseerTooltip);
+        overseerImageShell.appendChild(overseerImage);
+        overseerCard.appendChild(overseerImageShell);
+        overseerCard.appendChild(overseerName);
+        overseerCard.appendChild(overseerSelectButton);
+        dockyardOverseerGrid.appendChild(overseerCard);
+      });
+    }
+
+    renderTopBar(topBar, gameState);
+    initButtonAudio();
+    initViewportAwareTooltips();
+    ensureSharedUpgradeUi();
+    syncUpgradeInteractionPreference(gameState);
+    renderDockyardOverview();
+    renderHarborUpgrades();
+    renderDockyardPanel();
+    renderDockyardGiftOverlay();
+
+    closeDockyardOverseerOverlay.addEventListener("click", function () {
+      dockyardOverseerOverlay.classList.remove("is-visible");
+    });
+
+    dockyardOverseerOverlay.addEventListener("click", function (event) {
+      if (event.target === dockyardOverseerOverlay) {
+        dockyardOverseerOverlay.classList.remove("is-visible");
+      }
+    });
+
+    saveDockyardThresholdButton.addEventListener("click", function () {
+      const parsedValue = parseInt(dockyardThresholdInput.value.replace(/,/g, ""), 10);
+
+      if (Number.isNaN(parsedValue) || parsedValue < 0) {
+        dockyardThresholdStatus.textContent = "Enter a valid non-negative number";
+        return;
+      }
+
+      gameState.dockyardCoinThreshold = parsedValue;
+      dockyardThresholdStatus.textContent = parsedValue > 0
+        ? "Saved threshold: " + formatLargeNumber(parsedValue) + " coins"
+        : "Threshold cleared";
+      playButtonSound();
+      const didAutomationStart = runDockyardAutomation(gameState, Date.now());
+      saveGameState(gameState);
+      if (didAutomationStart) {
+        renderTopBar(topBar, gameState);
+        renderDockyardOverview();
+      }
+      renderHarborUpgrades();
+      renderDockyardPanel();
+    });
+
+    closeDockyardThresholdOverlay.addEventListener("click", function () {
+      dockyardThresholdOverlay.classList.remove("is-visible");
+    });
+
+    dockyardThresholdOverlay.addEventListener("click", function (event) {
+      if (event.target === dockyardThresholdOverlay) {
+        dockyardThresholdOverlay.classList.remove("is-visible");
+      }
+    });
+
+    closeDockyardGiftOverlay.addEventListener("click", function () {
+      gameState.dockyardHarborGiftPending = false;
+      playButtonSound();
+      saveGameState(gameState);
+      renderDockyardGiftOverlay();
+    });
+
+    dockyardGiftOverlay.addEventListener("click", function (event) {
+      if (event.target === dockyardGiftOverlay) {
+        gameState.dockyardHarborGiftPending = false;
+        saveGameState(gameState);
+        renderDockyardGiftOverlay();
+      }
+    });
+
+    document.addEventListener("click", function () {
+      document.querySelectorAll(".dockyard-image-tooltip-shell.is-open").forEach(function (openTooltip) {
+        openTooltip.classList.remove("is-open");
+      });
+    });
+
+    dockyardMinimizeButton.addEventListener("click", function () {
+      if (!isDockyardUnlocked(gameState)) {
+        return;
+      }
+
+      activeDockyardMode = "minimize";
+      renderDockyardPanel();
+    });
+
+    dockyardVoyageButton.addEventListener("click", function () {
+      if (!isDockyardUnlocked(gameState) || !hasUpgrade(gameState, "constructHarbor")) {
+        return;
+      }
+
+      activeDockyardMode = "voyage";
+      renderDockyardPanel();
+    });
+
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+      renderDockyardOverview();
+      refreshDockyardLivePanel();
+    });
+  </script>
+</body>
+</html>

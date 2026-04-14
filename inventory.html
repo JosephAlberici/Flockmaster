@@ -3,142 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Flockmaster Inventory</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
-    body {
-      background-color: #b8b8b8;
-      font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
-      margin: 0;
-      color: #1f2a36;
-    }
-
-    .top-bar {
-      background: #2c3e50;
-      color: #f7f1e6;
-      padding: 12px;
-      font-weight: bold;
-      letter-spacing: 1px;
-      box-sizing: border-box;
-    }
-
-    .top-bar-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .top-bar-stats {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      flex: 1 1 auto;
-      min-width: 0;
-      flex-wrap: wrap;
-    }
-
-    .top-bar-nav {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
-
-    .top-bar-link,
-    .top-bar-link:visited,
-    .top-bar-link:hover,
-    .top-bar-link:active {
-      color: #f7f1e6;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    .top-bar-tooltip {
-      position: relative;
-      display: inline-block;
-      cursor: default;
-    }
-
-    .top-bar-tooltip-box {
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: #f7f1e6;
-      color: #1f2a36;
-      border: 2px solid black;
-      border-radius: 10px;
-      padding: 8px 12px;
-      white-space: nowrap;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-      z-index: 10;
-      letter-spacing: 0;
-      pointer-events: none;
-    }
-
-    .top-bar-tooltip:hover .top-bar-tooltip-box {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    .page-title {
-      color: #2c3e50;
-      letter-spacing: 2px;
-      margin: 28px 0 8px;
-      text-align: center;
-      text-shadow: 1px 1px 0 #d9d9d9;
-    }
-
     .page-layout {
-      max-width: 1260px;
-      margin: 0 auto;
+      display: flex;
+      gap: 28px;
       padding: 24px 32px 40px;
+      align-items: flex-start;
       box-sizing: border-box;
     }
 
-    .card {
-      background: #f7f1e6;
-      border: 2px solid black;
-      border-radius: 18px;
-      padding: 24px;
-      box-sizing: border-box;
-      margin-bottom: 22px;
+    .inventory-sidebar {
+      width: 40%;
     }
 
-    .card:last-child {
-      margin-bottom: 0;
-    }
-
-    .card h2 {
-      margin-top: 0;
-      color: #2c3e50;
-    }
-
-    .menu-button {
-      display: inline-block;
-      background: #2c3e50;
-      color: #f7f1e6;
-      text-decoration: none;
-      padding: 12px 18px;
-      border: 2px solid black;
-      border-radius: 10px;
-      font-weight: bold;
-      cursor: pointer;
-      margin-right: 12px;
-      margin-bottom: 12px;
-      box-sizing: border-box;
-      font-family: inherit;
-      font-size: 16px;
-    }
-
-    .menu-button.is-locked {
-      background: #6f7780;
-      color: #d7dde4;
-      cursor: default;
-      pointer-events: none;
+    .inventory-main {
+      width: 60%;
     }
 
     .nav-tooltip {
@@ -167,12 +47,36 @@
       opacity: 1;
     }
 
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+    }
+
+    .resource-section-title {
+      margin: 0 0 12px;
+      color: #17311e;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+    }
+
+    .resource-line {
+      margin: 0 0 10px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .resource-line:last-child {
+      margin-bottom: 0;
+    }
+
     .inventory-grid {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 220px));
       gap: 24px;
       align-items: flex-start;
       min-height: 360px;
+      justify-content: start;
     }
 
     .inventory-empty {
@@ -180,6 +84,7 @@
       font-size: 18px;
       font-weight: bold;
       color: #2c3e50;
+      grid-column: 1 / -1;
     }
 
     .inventory-item-figure {
@@ -260,28 +165,51 @@
   <h1 class="page-title">INVENTORY</h1>
 
   <div class="page-layout">
-    <div class="card">
-      <a class="menu-button" href="index.html">Home</a>
-      <a class="menu-button" href="aviary.html">Aviary</a>
-      <a class="menu-button" href="birdCatching.html">Bird Catching</a>
-      <span class="nav-tooltip" id="earthworksNavWrapper"></span>
+    <div class="inventory-sidebar">
+      <div class="card">
+        <a class="menu-button" href="index.html">Home</a>
+        <a class="menu-button" href="aviary.html">Aviary</a>
+        <a class="menu-button" href="birdCatching.html">Bird Catching</a>
+        <span class="nav-tooltip" id="earthworksNavWrapper"></span>
+        <span class="nav-tooltip" id="dockyardNavWrapper"></span>
+      </div>
+
+      <div class="card">
+        <h2>Resources</h2>
+        <div class="resource-grid">
+          <div>
+            <h3 class="resource-section-title">Census</h3>
+            <div id="censusResourceList"></div>
+          </div>
+          <div>
+            <h3 class="resource-section-title">Materials</h3>
+            <div id="materialResourceList"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Inventory</h2>
-      <div class="inventory-grid" id="inventoryGrid"></div>
+    <div class="inventory-main">
+      <div class="card">
+        <h2>Items</h2>
+        <div class="inventory-grid" id="inventoryGrid"></div>
+      </div>
     </div>
   </div>
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
   <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const inventoryGrid = document.querySelector("#inventoryGrid");
+    const censusResourceList = document.querySelector("#censusResourceList");
+    const materialResourceList = document.querySelector("#materialResourceList");
     const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
+    const dockyardNavWrapper = document.querySelector("#dockyardNavWrapper");
 
     function renderEarthworksNav() {
       earthworksNavWrapper.innerHTML = "";
@@ -294,6 +222,45 @@
       earthworksNavWrapper.innerHTML =
         "<span class='menu-button is-locked'>Earthworks</span>" +
         "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+    }
+
+    function renderDockyardNav() {
+      dockyardNavWrapper.innerHTML = "";
+
+      if (isDockyardUnlocked(gameState)) {
+        dockyardNavWrapper.innerHTML = "<a class='menu-button' href='dockyard.html'>Dockyard</a>";
+        return;
+      }
+
+      dockyardNavWrapper.innerHTML =
+        "<span class='menu-button is-locked'>Dockyard</span>" +
+        "<span class='nav-tooltip-box'>Construct Urban Waters to Unlock</span>";
+    }
+
+    function renderResources() {
+      const censusRows = [
+        { label: "Species", value: formatLargeNumber(getFlockDiversity(gameState)) },
+        { label: "Individuals", value: formatLargeNumber(getTotalBirdCount(gameState)) }
+      ];
+
+      const materialRows = [
+        { label: "Seeds", value: formatSeeds(gameState.seeds) },
+        { label: "Grubs", value: formatLargeNumber(gameState.grubs) },
+        { label: "Hardwood", value: formatLargeNumber(gameState.hardwood) },
+        { label: "Mice", value: formatLargeNumber(gameState.mice) },
+        { label: "Fish", value: formatLargeNumber(gameState.fish) },
+        { label: "Scrap", value: formatLargeNumber(gameState.scrap) },
+        { label: "Coins", value: formatCoins(gameState.coins) },
+        { label: "Twigs", value: formatLargeNumber(gameState.twigs) }
+      ];
+
+      censusResourceList.innerHTML = censusRows.map(function (row) {
+        return "<p class='resource-line'>" + row.label + ": " + row.value + "</p>";
+      }).join("");
+
+      materialResourceList.innerHTML = materialRows.map(function (row) {
+        return "<p class='resource-line'>" + row.label + ": " + row.value + "</p>";
+      }).join("");
     }
 
     // Rebuild the inventory grid only when item ownership actually changes.
@@ -367,8 +334,12 @@
     initViewportAwareTooltips();
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
+      renderResources();
+      renderInventory();
     });
     renderEarthworksNav();
+    renderDockyardNav();
+    renderResources();
     renderInventory();
   </script>
 </body>

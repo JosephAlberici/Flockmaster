@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Flockmaster Bird Catching</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
+    :root {
+      --action-panel-bg: #8fbc7a;
+    }
+
     body {
       background-color: #b8b8b8;
       font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
@@ -92,11 +97,6 @@
     .catching-panel {
       width: 100%;
       min-height: 360px;
-      background: #8fbc7a;
-      border: 3px solid #2c3e50;
-      border-radius: 18px;
-      padding: 24px;
-      box-sizing: border-box;
     }
 
     .catching-panel.is-collapsed {
@@ -537,6 +537,7 @@
         <div class="card">
           <a class="menu-button" href="aviary.html">Return To Aviary</a>
           <span class="nav-tooltip" id="earthworksNavWrapper"></span>
+          <span class="nav-tooltip" id="dockyardNavWrapper"></span>
         </div>
 
       <div class="card" id="upgradesCard">
@@ -552,7 +553,7 @@
     </div>
 
     <div class="catching-panels">
-      <div class="catching-panel" id="trapPanelShell">
+      <div class="catching-panel action-panel" id="trapPanelShell">
         <div class="panel-header-row">
           <h2 class="panel-header">Check Trap</h2>
           <div class="panel-controls" id="trapPanelControls"></div>
@@ -560,7 +561,7 @@
         <div class="trap-panel-content" id="trapPanelContent"></div>
       </div>
 
-      <div class="catching-panel" id="loggerheadPanelShell">
+      <div class="catching-panel action-panel" id="loggerheadPanelShell">
         <div class="panel-header-row">
           <h2 class="panel-header">The Loggerhead</h2>
           <div class="panel-controls" id="loggerheadPanelControls"></div>
@@ -579,6 +580,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
   <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
@@ -599,6 +601,7 @@
     const catchOverlayText = document.querySelector("#catchOverlayText");
     const catchOverlayClose = document.querySelector("#catchOverlayClose");
     const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
+    const dockyardNavWrapper = document.querySelector("#dockyardNavWrapper");
     const mouseIntroOverlay = document.querySelector("#mouseIntroOverlay");
     const closeMouseIntroButton = document.querySelector("#closeMouseIntroButton");
     const shrikeSound = new Audio("/Resources/Calls/shrike.mp3");
@@ -675,15 +678,31 @@
         "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
     }
 
+    function renderDockyardNav() {
+      dockyardNavWrapper.innerHTML = "";
+
+      if (isDockyardUnlocked(gameState)) {
+        dockyardNavWrapper.innerHTML = "<a class='menu-button' href='dockyard.html'>Dockyard</a>";
+        return;
+      }
+
+      dockyardNavWrapper.innerHTML =
+        "<span class='menu-button is-locked'>Dockyard</span>" +
+        "<span class='nav-tooltip-box'>Construct Urban Waters to Unlock</span>";
+    }
+
     // Keep the shared top bar current while this page is open.
     updateCoinsFromElapsedTime(gameState, Date.now());
     renderTopBar(topBar, gameState);
     initButtonAudio();
     initViewportAwareTooltips();
+    ensureSharedUpgradeUi();
+    syncUpgradeInteractionPreference(gameState);
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });
     renderEarthworksNav();
+    renderDockyardNav();
 
     // Close the one-time catch overlay and return to the normal trap UI.
     // Show the full-screen celebration only for first-time catches.
@@ -695,7 +714,7 @@
 
       const birdCall = new Audio(bird.call);
       birdCall.currentTime = 0;
-      birdCall.play();
+      playGameSound(birdCall);
     }
 
     catchOverlayClose.addEventListener("click", function () {
@@ -790,6 +809,7 @@
 
     // Build a one-time bedding upgrade row with requirements and tooltip text.
     function createBeddingUpgradeButton(config) {
+      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 
@@ -802,70 +822,45 @@
       button.type = "button";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = gameState[config.ownedKey]
-        ? config.label + " (Owned)"
-        : config.label;
+      button.textContent = hasUpgrade(gameState, config.upgradeId)
+        ? upgradeDefinition.name + " (Owned)"
+        : upgradeDefinition.name;
+      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
-
-        if (gameState[config.ownedKey]) {
-          return;
-        }
-
-        if (typeof config.twigCost === "number" && gameState.twigs < config.twigCost) {
-          return;
-        }
-
-        if (typeof config.hardwoodCost === "number" && gameState.hardwood < config.hardwoodCost) {
-          return;
-        }
-
-        if (typeof config.commonRequirement === "number" && getCaughtBirdCountByRarity(gameState, "Common") < config.commonRequirement) {
-          return;
-        }
-
-        if (typeof config.individualRequirement === "number" && getTotalBirdCount(gameState) < config.individualRequirement) {
-          return;
-        }
-
-        if (typeof config.twigCost === "number") {
-          gameState.twigs -= config.twigCost;
-        }
-
-        if (typeof config.hardwoodCost === "number") {
-          gameState.hardwood -= config.hardwoodCost;
-        }
-
-        gameState[config.ownedKey] = true;
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        renderUpgrades();
+        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderUpgrades();
+          }
+        });
       });
 
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = config.tooltipText;
+      tooltipBox.textContent = upgradeDefinition.description;
 
       const requirementLine = document.createElement("p");
       requirementLine.className = "shop-count";
       const requirementParts = [];
 
-      if (typeof config.twigCost === "number") {
-        requirementParts.push(formatLargeNumber(config.twigCost) + " Twigs");
+      if (typeof upgradeDefinition.costs.twigs === "number") {
+        requirementParts.push(formatLargeNumber(upgradeDefinition.costs.twigs) + " Twigs");
       }
 
-      if (typeof config.hardwoodCost === "number") {
-        requirementParts.push(formatLargeNumber(config.hardwoodCost) + " Hardwood");
+      if (typeof upgradeDefinition.costs.hardwood === "number") {
+        requirementParts.push(formatLargeNumber(upgradeDefinition.costs.hardwood) + " Hardwood");
       }
 
-      if (typeof config.commonRequirement === "number") {
-        requirementParts.push(formatLargeNumber(config.commonRequirement) + " Common Birds");
+      if (typeof upgradeDefinition.requirements.commonIndividuals === "number") {
+        requirementParts.push(formatLargeNumber(upgradeDefinition.requirements.commonIndividuals) + " Common Birds");
       }
 
-      if (typeof config.individualRequirement === "number") {
-        requirementParts.push(formatLargeNumber(config.individualRequirement) + " Individuals");
+      if (typeof upgradeDefinition.requirements.individuals === "number") {
+        requirementParts.push(formatLargeNumber(upgradeDefinition.requirements.individuals) + " Individuals");
       }
 
       requirementLine.textContent = "Requires: " + requirementParts.join(" | ");
@@ -880,6 +875,7 @@
 
     // Build a one-time seed storage upgrade button.
     function createStorageUpgradeButton(config) {
+      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
       const tooltipWrapper = document.createElement("div");
       tooltipWrapper.className = "upgrade-tooltip";
 
@@ -888,35 +884,28 @@
       button.type = "button";
       button.dataset.requiresSuccess = "true";
 
-      if (gameState.seedMax >= config.newMax) {
-        button.textContent = config.label + " (Owned)";
+      if (hasUpgrade(gameState, config.upgradeId)) {
+        button.textContent = upgradeDefinition.name + " (Owned)";
       } else {
-        button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Coins)";
+        button.textContent = upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.coins) + " Coins)";
       }
+      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
-
-        if (gameState.seedMax >= config.newMax) {
-          return;
-        }
-
-        if (gameState.coins < config.cost) {
-          return;
-        }
-
-        gameState.coins -= config.cost;
-        gameState.seedMax = config.newMax;
-        clampGameStateResources(gameState);
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        renderUpgrades();
+        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderUpgrades();
+          }
+        });
       });
 
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = config.tooltipText;
+      tooltipBox.textContent = upgradeDefinition.description;
 
       tooltipWrapper.appendChild(button);
       tooltipWrapper.appendChild(tooltipBox);
@@ -926,6 +915,7 @@
 
     // Build a seed-bait reset upgrade button.
     function createTrapSeedResetButton(config) {
+      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 
@@ -939,33 +929,27 @@
       button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = gameState[config.ownedKey]
-        ? config.label + " (Owned)"
-        : config.label + " (" + formatLargeNumber(config.cost) + " Seeds)";
+      button.textContent = hasUpgrade(gameState, config.upgradeId)
+        ? upgradeDefinition.name + " (Owned)"
+        : upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.seeds) + " Seeds)";
+      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
-
-        if (gameState[config.ownedKey]) {
-          return;
-        }
-
-        if (gameState.seeds < config.cost) {
-          return;
-        }
-
-        gameState.seeds -= config.cost;
-        gameState.trapLoadCost = config.resetCost;
-        gameState[config.ownedKey] = true;
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        renderActionPanels();
+        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderActionPanels();
+            renderUpgrades();
+          }
+        });
       });
 
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = "Resets seed bait cost to " + formatLargeNumber(config.resetCost) + " seeds";
+      tooltipBox.textContent = upgradeDefinition.description;
 
       tooltipWrapper.appendChild(button);
       tooltipWrapper.appendChild(tooltipBox);
@@ -976,6 +960,7 @@
 
     // Build a grub-bait reset upgrade button.
     function createTrapGrubResetButton(config) {
+      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 
@@ -989,33 +974,27 @@
       button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = gameState[config.ownedKey]
-        ? config.label + " (Owned)"
-        : config.label + " (" + formatLargeNumber(config.cost) + " Hardwood)";
+      button.textContent = hasUpgrade(gameState, config.upgradeId)
+        ? upgradeDefinition.name + " (Owned)"
+        : upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.hardwood) + " Hardwood)";
+      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
-
-        if (gameState[config.ownedKey]) {
-          return;
-        }
-
-        if (gameState.hardwood < config.cost) {
-          return;
-        }
-
-        gameState.hardwood -= config.cost;
-        gameState.trapGrubLoadCost = config.resetCost;
-        gameState[config.ownedKey] = true;
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        renderActionPanels();
+        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderActionPanels();
+            renderUpgrades();
+          }
+        });
       });
 
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = "Resets grub bait cost to " + formatLargeNumber(config.resetCost) + " grubs";
+      tooltipBox.textContent = upgradeDefinition.description;
 
       tooltipWrapper.appendChild(button);
       tooltipWrapper.appendChild(tooltipBox);
@@ -1058,6 +1037,8 @@
         return;
       }
 
+      // The note and image always reflect the trap's current step so the panel
+      // can swap between baiting, waiting, and resolution without separate views.
       const trapNote = document.createElement("p");
       trapNote.className = "panel-note";
       if (gameState.trapPulled) {
@@ -1079,6 +1060,9 @@
         if (gameState.trapBaitType === "grubs") {
           trapImage.src = "/Resources/Misc%20Images/loadedTrapGrubs.png";
           trapImage.alt = "Loaded bird trap with grub bait";
+        } else if (gameState.trapBaitType === "fish") {
+          trapImage.src = "/Resources/Misc%20Images/loadedTrapFish.png";
+          trapImage.alt = "Loaded bird trap with fish bait";
         } else {
           trapImage.src = "/Resources/Misc%20Images/loadedTrap.png";
           trapImage.alt = "Loaded bird trap with seed bait";
@@ -1092,6 +1076,8 @@
       trapPanelContent.appendChild(trapNote);
 
       if (gameState.trapPulled) {
+        // A pulled trap only needs one action: resolve the catch against the
+        // currently loaded bait pool and then reset the trap state.
         const checkTrapButton = document.createElement("button");
         checkTrapButton.className = "menu-button";
         checkTrapButton.type = "button";
@@ -1112,7 +1098,12 @@
               const alreadyOwned = birdInFlock.count > 0;
 
               addBirdToFlock(birdInFlock);
-              gameState.trapLoadCost *= 1.15;
+
+              // Only seed bait uses the escalating bait-cost formula. Other bait
+              // types manage their costs on load or stay fixed for now.
+              if (gameState.trapBaitType === "seeds") {
+                gameState.trapLoadCost = getNextTrapSeedLoadCost(gameState.trapLoadCost);
+              }
 
               if (alreadyOwned) {
                 gameState.lastTrapResult = "You caught another " + caughtBird.species;
@@ -1131,6 +1122,7 @@
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
           renderEarthworksNav();
+          renderDockyardNav();
           renderActionPanels();
         });
 
@@ -1175,6 +1167,8 @@
         const seedBaitActions = document.createElement("div");
         seedBaitActions.className = "trap-bait-actions";
 
+        // Seed bait keeps every spending option in one row so normal seeds and
+        // ticket items feel like alternate costs for the same action.
         const loadSeedTrapButton = document.createElement("button");
         loadSeedTrapButton.className = "menu-button";
         loadSeedTrapButton.type = "button";
@@ -1250,9 +1244,51 @@
           grubBaitRow.appendChild(grubBaitActions);
           trapPanelContent.appendChild(grubBaitRow);
         }
+
+        if (hasUpgrade(gameState, "constructHarbor")) {
+          const fishBaitRow = document.createElement("div");
+          fishBaitRow.className = "trap-bait-row";
+
+          const fishBaitLabel = document.createElement("p");
+          fishBaitLabel.className = "trap-bait-label";
+          fishBaitLabel.textContent = "Load Fish Bait:";
+
+          const fishBaitActions = document.createElement("div");
+          fishBaitActions.className = "trap-bait-actions";
+
+          const loadFishTrapButton = document.createElement("button");
+          loadFishTrapButton.className = "menu-button";
+          loadFishTrapButton.type = "button";
+          loadFishTrapButton.dataset.requiresSuccess = "true";
+          loadFishTrapButton.textContent = formatLargeNumber(getEffectiveTrapFishCost(gameState)) + " Fish";
+
+          loadFishTrapButton.addEventListener("click", function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+            const currentTrapFishCost = getEffectiveTrapFishCost(gameState);
+
+            if (gameState.fish < currentTrapFishCost) {
+              return;
+            }
+
+            gameState.fish -= currentTrapFishCost;
+            gameState.trapLoaded = true;
+            gameState.trapPulled = false;
+            gameState.trapBaitType = "fish";
+            playButtonSound();
+            saveGameState(gameState);
+            renderTopBar(topBar, gameState);
+            renderActionPanels();
+          });
+
+          fishBaitActions.appendChild(loadFishTrapButton);
+          fishBaitRow.appendChild(fishBaitLabel);
+          fishBaitRow.appendChild(fishBaitActions);
+          trapPanelContent.appendChild(fishBaitRow);
+        }
       }
 
       if (gameState.trapLoaded) {
+        // Once bait is loaded, the only remaining step is to spring the trap.
         const initiateProtocolButton = document.createElement("button");
         initiateProtocolButton.className = "menu-button";
         initiateProtocolButton.type = "button";
@@ -1328,6 +1364,10 @@
       }
 
       if (activeLoggerheadMode === "spendMice") {
+        // The mice ritual is a three-step flow:
+        // 1. load a mouse
+        // 2. commence to roll the species
+        // 3. tame to actually add that rolled bird to the flock
         const ritualTitle = document.createElement("h3");
         ritualTitle.className = "panel-subtitle";
         ritualTitle.textContent = "Use mice wisely";
@@ -1373,6 +1413,8 @@
 
         ritualActionButton.addEventListener("click", function () {
           if (pendingMouseBird) {
+            // Tame is the commit step so the bird is only added after the
+            // player accepts the ritual result.
             const birdInFlock = getBirdById(gameState, pendingMouseBird.id);
             const alreadyOwned = birdInFlock.count > 0;
 
@@ -1384,6 +1426,7 @@
             saveGameState(gameState);
             renderTopBar(topBar, gameState);
             renderEarthworksNav();
+            renderDockyardNav();
             renderUpgrades();
             renderSaplingShop();
             renderLoggerheadPanel();
@@ -1400,6 +1443,8 @@
               return;
             }
 
+            // Loading a mouse spends the resource up front so Commence can be a
+            // guaranteed catch instead of another cost-checking step.
             gameState.mice -= 1;
             gameState.loggerheadMouseLoaded = true;
             gameState.loggerheadMousePendingBirdId = null;
@@ -1441,6 +1486,8 @@
       }
 
       const currentLoggerheadRequest = getLoggerheadCurrentRequest();
+      // The trade tab is intentionally data-driven so later quests only need a
+      // new LOGGERHEAD_REQUESTS entry instead of new panel logic.
       const loggerheadTitle = document.createElement("h3");
       loggerheadTitle.className = "panel-subtitle";
       loggerheadTitle.textContent = "Little Prince of Thorns";
@@ -1461,7 +1508,7 @@
       loggerheadImage.alt = "The Loggerhead";
       loggerheadImage.addEventListener("click", function () {
         shrikeSound.currentTime = 0;
-        shrikeSound.play();
+        playGameSound(shrikeSound);
       });
 
       const loggerheadCostLine = document.createElement("p");
@@ -1511,12 +1558,13 @@
           playButtonSound();
         } else {
           sacrificeCompleteSound.currentTime = 0;
-          sacrificeCompleteSound.play();
+          playGameSound(sacrificeCompleteSound);
         }
 
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderEarthworksNav();
+        renderDockyardNav();
         renderUpgrades();
         renderSaplingShop();
         renderLoggerheadPanel();
@@ -1575,6 +1623,7 @@
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
           renderEarthworksNav();
+          renderDockyardNav();
           renderUpgrades();
           renderActionPanels();
         });
@@ -1592,18 +1641,10 @@
       upgradesList.appendChild(beddingRow);
 
       beddingRow.appendChild(createBeddingUpgradeButton({
-        label: "Basic Bedding",
-        ownedKey: "basicBeddingPurchased",
-        twigCost: 2000,
-        commonRequirement: 10,
-        tooltipText: "-5% Common, +4% Uncommon, +1% Rare"
+        upgradeId: "basicBedding"
       }));
       beddingRow.appendChild(createBeddingUpgradeButton({
-        label: "Advanced Bedding",
-        ownedKey: "advancedBeddingPurchased",
-        hardwoodCost: 20,
-        individualRequirement: 25,
-        tooltipText: "+5% Catch Rate"
+        upgradeId: "advancedBedding"
       }));
 
       const divider = document.createElement("div");
@@ -1617,17 +1658,11 @@
       upgradesList.appendChild(storageLabel);
 
       upgradesList.appendChild(createStorageUpgradeButton({
-        label: "Seed Pouch",
-        cost: 500,
-        newMax: 50000,
-        tooltipText: "Increases maximum seeds to 50,000"
+        upgradeId: "seedPouch"
       }));
 
       upgradesList.appendChild(createStorageUpgradeButton({
-        label: "Seed Bank",
-        cost: 20000,
-        newMax: 1000000,
-        tooltipText: "Increases maximum seeds to 1,000,000"
+        upgradeId: "seedBank"
       }));
 
       const storageDivider = document.createElement("div");
@@ -1644,16 +1679,10 @@
       upgradesList.appendChild(trapSeedRow);
 
       trapSeedRow.appendChild(createTrapSeedResetButton({
-        label: "Avian Repopulation",
-        cost: 100000,
-        resetCost: 1000,
-        ownedKey: "avianRepopulationPurchased"
+        upgradeId: "avianRepopulation"
       }));
       trapSeedRow.appendChild(createTrapSeedResetButton({
-        label: "Wildlife Restoration",
-        cost: 1000000,
-        resetCost: 10000,
-        ownedKey: "wildlifeRestorationPurchased"
+        upgradeId: "wildlifeRestoration"
       }));
 
       const trapGrubLabel = document.createElement("p");
@@ -1666,10 +1695,7 @@
       upgradesList.appendChild(trapGrubRow);
 
       trapGrubRow.appendChild(createTrapGrubResetButton({
-        label: "New Substrate",
-        cost: 20,
-        resetCost: 20,
-        ownedKey: "newSubstratePurchased"
+        upgradeId: "newSubstrate"
       }));
     }
 

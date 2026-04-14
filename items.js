@@ -7,5 +7,12 @@ const ITEM_LIBRARY = [
     image: "/Resources/Misc%20Images/ticketSeed.png",
     startingCount: 5,
     description: "Loads the trap with seed bait for 1 ticket instead of spending seeds"
+  },
+  {
+    id: "voyageticket",
+    name: "Voyage Ticket",
+    image: "/Resources/Misc%20Images/voyageTicket.png",
+    startingCount: 0,
+    description: "Instantly finishes the current Harbor voyage"
   }
 ];

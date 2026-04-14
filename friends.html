@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Flockmaster Friends</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
+    :root {
+      --action-panel-bg: #f7f1e6;
+      --panel-heading: #2c3e50;
+    }
+
     body {
       background-color: #b8b8b8;
       font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
@@ -85,11 +91,6 @@
     .friends-panel {
       width: 60%;
       min-height: 420px;
-      background: #f7f1e6;
-      border: 3px solid #2c3e50;
-      border-radius: 18px;
-      padding: 24px;
-      box-sizing: border-box;
     }
 
     .card {
@@ -155,7 +156,7 @@
       <div class="card"></div>
     </div>
 
-    <div class="friends-panel">
+      <div class="friends-panel action-panel">
       <h2 class="panel-header">Leaderboard</h2>
       <p class="panel-note">Points: <span id="pointsDisplay"></span></p>
     </div>
@@ -163,6 +164,7 @@
 
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
   <script src="items.js"></script>
   <script src="game.js"></script>
   <script>
