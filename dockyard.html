@@ -366,6 +366,18 @@
       font-weight: bold;
     }
 
+    .dockyard-treasure-list {
+      margin: 18px 0;
+      padding-left: 22px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    .dockyard-treasure-list li {
+      margin-bottom: 8px;
+    }
+
     .dockyard-lock-note {
       margin: 0;
       font-size: 20px;
@@ -409,6 +421,15 @@
       <img class="dockyard-gift-image" id="dockyardGiftImage" src="/Resources/Misc%20Images/voyageTicket.png" alt="Voyage Ticket">
       <p class="dockyard-gift-count">x2 Voyage Tickets</p>
       <button class="menu-button" type="button" id="closeDockyardGiftOverlay">Collect Gift</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="dockyardTreasureOverlay">
+    <div class="overlay-card dockyard-gift-card">
+      <h2>Treasure Recovered</h2>
+      <p class="overlay-subtext">Your voyage returned with treasure:</p>
+      <ul class="dockyard-treasure-list" id="dockyardTreasureList"></ul>
+      <button class="menu-button" type="button" id="closeDockyardTreasureOverlay">Collect Treasure</button>
     </div>
   </div>
 
@@ -484,6 +505,9 @@
     const closeDockyardThresholdOverlay = document.querySelector("#closeDockyardThresholdOverlay");
     const dockyardGiftOverlay = document.querySelector("#dockyardGiftOverlay");
     const closeDockyardGiftOverlay = document.querySelector("#closeDockyardGiftOverlay");
+    const dockyardTreasureOverlay = document.querySelector("#dockyardTreasureOverlay");
+    const dockyardTreasureList = document.querySelector("#dockyardTreasureList");
+    const closeDockyardTreasureOverlay = document.querySelector("#closeDockyardTreasureOverlay");
     const dockyardVoyageSound = new Audio("/Resources/Sound%20Effects/foghorn.mp3");
     let activeDockyardMode = "minimize";
     let dockyardTooltipTimeoutId = null;
@@ -491,6 +515,55 @@
     function playDockyardVoyageSound() {
       dockyardVoyageSound.currentTime = 0;
       playGameSound(dockyardVoyageSound);
+    }
+
+    function getDockyardTreasureRewardEntries(treasureRewards) {
+      if (!treasureRewards || typeof treasureRewards !== "object") {
+        return [];
+      }
+
+      return Object.keys(treasureRewards).reduce(function (rewardEntries, rewardId) {
+        const rewardAmount = treasureRewards[rewardId];
+
+        if (!(rewardAmount > 0)) {
+          return rewardEntries;
+        }
+
+        const rewardItem = getItemById(rewardId);
+
+        if (rewardItem) {
+          rewardEntries.push(formatLargeNumber(rewardAmount) + " " + rewardItem.name);
+          return rewardEntries;
+        }
+
+        if (rewardId === "coins") {
+          rewardEntries.push(formatCoins(rewardAmount) + " Coins");
+          return rewardEntries;
+        }
+
+        rewardEntries.push(
+          formatLargeNumber(rewardAmount) + " " + rewardId.charAt(0).toUpperCase() + rewardId.slice(1)
+        );
+        return rewardEntries;
+      }, []);
+    }
+
+    function showDockyardTreasureOverlay(treasureRewards) {
+      const rewardEntries = getDockyardTreasureRewardEntries(treasureRewards);
+
+      if (rewardEntries.length === 0) {
+        return;
+      }
+
+      dockyardTreasureList.innerHTML = "";
+
+      rewardEntries.forEach(function (rewardLabel) {
+        const treasureRewardItem = document.createElement("li");
+        treasureRewardItem.textContent = rewardLabel;
+        dockyardTreasureList.appendChild(treasureRewardItem);
+      });
+
+      dockyardTreasureOverlay.classList.add("is-visible");
     }
 
     function renderDockyardOverview() {
@@ -764,12 +837,14 @@
         updateCoinsFromElapsedTime(gameState, Date.now());
 
         if (gameState.dockyardVoyageReady) {
+          const pendingTreasureRewards = { ...gameState.dockyardVoyagePendingTreasureRewards };
           collectDockyardVoyageRewards(gameState);
           playDockyardVoyageSound();
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
           renderDockyardOverview();
           renderDockyardPanel();
+          showDockyardTreasureOverlay(pendingTreasureRewards);
           return;
         }
 
@@ -1025,6 +1100,17 @@
         gameState.dockyardHarborGiftPending = false;
         saveGameState(gameState);
         renderDockyardGiftOverlay();
+      }
+    });
+
+    closeDockyardTreasureOverlay.addEventListener("click", function () {
+      dockyardTreasureOverlay.classList.remove("is-visible");
+      playButtonSound();
+    });
+
+    dockyardTreasureOverlay.addEventListener("click", function (event) {
+      if (event.target === dockyardTreasureOverlay) {
+        dockyardTreasureOverlay.classList.remove("is-visible");
       }
     });
 

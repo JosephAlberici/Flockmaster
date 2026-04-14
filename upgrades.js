@@ -46,12 +46,12 @@ const BIRD_CATCHING_UPGRADES = {
     order: 1,
     oneTime: true,
     costs: { coins: 500 },
-    description: "Increases maximum seeds to 50,000",
+    description: "Increases maximum seeds to 10,000",
     deriveOwned(gameState) {
-      return gameState.seedMax >= 50000;
+      return gameState.seedMax >= 10000;
     },
     onPurchase(gameState) {
-      gameState.seedMax = Math.max(gameState.seedMax, 50000);
+      gameState.seedMax = Math.max(gameState.seedMax, 10000);
     }
   },
   seedBank: {
@@ -62,12 +62,12 @@ const BIRD_CATCHING_UPGRADES = {
     order: 2,
     oneTime: true,
     costs: { coins: 20000 },
-    description: "Increases maximum seeds to 1,000,000",
+    description: "Increases maximum seeds to 100,000",
     deriveOwned(gameState) {
-      return gameState.seedMax >= 1000000;
+      return gameState.seedMax >= 100000;
     },
     onPurchase(gameState) {
-      gameState.seedMax = Math.max(gameState.seedMax, 1000000);
+      gameState.seedMax = Math.max(gameState.seedMax, 100000);
     }
   },
   avianRepopulation: {
@@ -115,6 +115,41 @@ const BIRD_CATCHING_UPGRADES = {
 };
 
 const EARTHWORKS_UPGRADES = {
+  constructGrubFarm: {
+    id: "constructGrubFarm",
+    name: "Construct Grub Farm",
+    page: "earthworks",
+    section: "construction",
+    order: 1,
+    oneTime: true,
+    costs: { grubs: 1000 },
+    description: "Constructs the grub farm and unlocks passive grub conversion",
+    deriveOwned(gameState) {
+      return gameState.grubFarmUnlocked === true;
+    },
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "pheromones");
+    },
+    onPurchase(gameState) {
+      gameState.grubFarmUnlocked = true;
+    }
+  },
+  constructSawmill: {
+    id: "constructSawmill",
+    name: "Construct Sawmill",
+    page: "earthworks",
+    section: "construction",
+    order: 2,
+    oneTime: true,
+    costs: { twigs: 15000 },
+    description: "Constructs the sawmill and unlocks twig processing",
+    deriveOwned(gameState) {
+      return gameState.sawmillConstructed === true;
+    },
+    onPurchase(gameState) {
+      gameState.sawmillConstructed = true;
+    }
+  },
   pheromones: {
     id: "pheromones",
     legacyPurchasedKey: "pheromonesPurchased",
@@ -144,6 +179,39 @@ const EARTHWORKS_UPGRADES = {
     onPurchase(gameState) {
       gameState.grubMax = Math.max(gameState.grubMax, 100000);
     }
+  },
+  birdPoweredBlades: {
+    id: "birdPoweredBlades",
+    name: "Birdpowered Blades",
+    page: "earthworks",
+    section: "processingTime",
+    order: 1,
+    oneTime: true,
+    costs: { scrap: 5, coins: 80000 },
+    requirements: { individuals: 100 },
+    description: "Reduces sawmill processing time by 20%",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructSawmill");
+    },
+    modifySawmillProcessingDurationMs(processingDurationMs) {
+      return processingDurationMs * 0.8;
+    }
+  },
+  twigCompactor: {
+    id: "twigCompactor",
+    name: "Twig Compactor",
+    page: "earthworks",
+    section: "processingCost",
+    order: 1,
+    oneTime: true,
+    costs: { scrap: 10, coins: 50000 },
+    description: "Reduces twig processing cost by 20%",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructSawmill");
+    },
+    modifySawmillTwigProcessingCost(processingCost) {
+      return processingCost * 0.8;
+    }
   }
 };
 
@@ -157,7 +225,7 @@ const AVIARY_UPGRADES = {
     order: 1,
     oneTime: true,
     costs: { coins: 2000 },
-    requirements: { species: 5 },
+    requirements: { species: 8 },
     description: "Increases number of trees you can own",
     modifyTreeMaxCount(maxTreeCount) {
       return maxTreeCount + 1;
@@ -171,7 +239,7 @@ const AVIARY_UPGRADES = {
     order: 2,
     oneTime: true,
     costs: { coins: 100000 },
-    requirements: { species: 10 },
+    requirements: { species: 16 },
     description: "Increases the maximum of every tree type by 1",
     modifyTreeMaxCount(maxTreeCount) {
       return maxTreeCount + 1;

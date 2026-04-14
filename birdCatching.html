@@ -613,6 +613,22 @@
           { birdId: "nuthatch", amount: 10 }
         ],
         rewardMice: 1
+      },
+      {
+        costs: [
+          { birdId: "kestrel", amount: 5 },
+          { birdId: "bluejay", amount: 5 },
+          { birdId: "cardinal", amount: 5 },
+          { birdId: "mourningdove", amount: 5 },
+          { birdId: "pileatedwoodpecker", amount: 2 }
+        ],
+        rewardMice: 2,
+        rewardItems: {
+          voyageticket: 2
+        },
+        rewardResources: {
+          seeds: 100000
+        }
       }
     ];
     let activeTrapPanelMode = gameState.trapPurchased ? "trap" : "minimize";
@@ -662,6 +678,39 @@
         const costBird = getBirdById(gameState, costEntry.birdId);
         return formatLargeNumber(costEntry.amount) + " " + (costBird ? costBird.species : costEntry.birdId);
       }).join(" | ");
+    }
+
+    function formatLoggerheadRewardText(request) {
+      const rewardParts = [];
+
+      if (request.rewardMice > 0) {
+        rewardParts.push(formatLargeNumber(request.rewardMice) + " Feeder Mice");
+      }
+
+      if (request.rewardItems && typeof request.rewardItems === "object") {
+        Object.keys(request.rewardItems).forEach(function (itemId) {
+          const itemDefinition = getItemById(itemId);
+          const rewardAmount = request.rewardItems[itemId];
+
+          if (rewardAmount > 0 && itemDefinition) {
+            rewardParts.push(formatLargeNumber(rewardAmount) + " " + itemDefinition.name);
+          }
+        });
+      }
+
+      if (request.rewardResources && typeof request.rewardResources === "object") {
+        Object.keys(request.rewardResources).forEach(function (resourceKey) {
+          const rewardAmount = request.rewardResources[resourceKey];
+
+          if (rewardAmount > 0) {
+            rewardParts.push(
+              formatLargeNumber(rewardAmount) + " " + resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1)
+            );
+          }
+        });
+      }
+
+      return rewardParts.join(" | ");
     }
 
     // Build the Earthworks nav button and its locked-state tooltip from current flock progress.
@@ -779,30 +828,6 @@
         tooltipBox.textContent = config.tooltipText;
         tooltipWrapper.appendChild(tooltipBox);
       }
-
-      return tooltipWrapper;
-    }
-
-    // Generic placeholder upgrade button used for not-yet-built upgrades.
-    function createUpgradeTooltipButton(labelText) {
-      const tooltipWrapper = document.createElement("div");
-      tooltipWrapper.className = "upgrade-tooltip";
-      tooltipWrapper.style.display = "block";
-
-      const button = document.createElement("button");
-      button.className = "menu-button";
-      button.type = "button";
-      button.dataset.requiresSuccess = "true";
-      button.style.width = "100%";
-      button.style.marginRight = "0";
-      button.textContent = labelText;
-
-      const tooltipBox = document.createElement("div");
-      tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = "Increases Chance of Catching Rare Birds (-5% to Common Catch Rate)";
-
-      tooltipWrapper.appendChild(button);
-      tooltipWrapper.appendChild(tooltipBox);
 
       return tooltipWrapper;
     }
@@ -1498,7 +1523,7 @@
 
       const loggerheadTradeLine = document.createElement("p");
       loggerheadTradeLine.className = "panel-note";
-      loggerheadTradeLine.textContent = "Trade Birds for Feeder Mice";
+      loggerheadTradeLine.textContent = "Trade Birds for Rewards";
 
       const loggerheadImage = document.createElement("img");
       loggerheadImage.className = "loggerhead-image";
@@ -1519,7 +1544,7 @@
 
       if (currentLoggerheadRequest) {
         loggerheadCostLine.textContent = "Cost: " + formatLoggerheadCostText(currentLoggerheadRequest);
-        loggerheadRewardLine.textContent = "Reward: " + formatLargeNumber(currentLoggerheadRequest.rewardMice) + " Feeder Mice";
+        loggerheadRewardLine.textContent = "Reward: " + formatLoggerheadRewardText(currentLoggerheadRequest);
       } else {
         loggerheadCostLine.textContent = "No more requests for now";
       }
@@ -1545,7 +1570,20 @@
 
         if (isCollecting) {
           gameState.mice += currentRequest.rewardMice;
+          if (currentRequest.rewardItems && typeof currentRequest.rewardItems === "object") {
+            Object.keys(currentRequest.rewardItems).forEach(function (itemId) {
+              addItemCount(gameState, itemId, currentRequest.rewardItems[itemId]);
+            });
+          }
+          if (currentRequest.rewardResources && typeof currentRequest.rewardResources === "object") {
+            Object.keys(currentRequest.rewardResources).forEach(function (resourceKey) {
+              if (typeof gameState[resourceKey] === "number") {
+                gameState[resourceKey] += currentRequest.rewardResources[resourceKey];
+              }
+            });
+          }
           gameState.loggerheadQuestIndex += 1;
+          gameState.shrikeQuestsCompleted += 1;
         } else {
           currentRequest.costs.forEach(function (costEntry) {
             removeBirdsFromFlock(gameState, costEntry.birdId, costEntry.amount);

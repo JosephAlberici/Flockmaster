@@ -125,6 +125,21 @@
       font-size: 16px;
     }
 
+    .action-button {
+      display: inline-block;
+      background: #2c3e50;
+      color: #f7f1e6;
+      text-decoration: none;
+      padding: 12px 18px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
     .panel-header {
       margin-top: 0;
       color: #2c3e50;
@@ -135,6 +150,83 @@
       font-size: 18px;
       color: #2c3e50;
       margin: 0 0 12px;
+    }
+
+    .code-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .code-input {
+      min-width: 240px;
+      padding: 12px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      box-sizing: border-box;
+      background: #ffffff;
+      color: #1f2a36;
+    }
+
+    .code-result {
+      margin: 14px 0 0;
+      color: #2c3e50;
+      font-weight: bold;
+      min-height: 24px;
+    }
+
+    .status-note {
+      margin: 0;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .status-note.is-pending {
+      color: #8a5a1f;
+    }
+
+    .status-note.is-ready {
+      color: #1f5a33;
+    }
+
+    .account-row {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-weight: bold;
+      word-break: break-word;
+    }
+
+    .leaderboard-list {
+      margin: 18px 0 0;
+      padding-left: 22px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .leaderboard-list li {
+      margin-bottom: 10px;
+    }
+
+    .leaderboard-actions {
+      margin: 18px 0 0;
+    }
+
+    .leaderboard-toggle-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 18px 0 0;
+    }
+
+    .leaderboard-tab.is-active {
+      background: #17311e;
+    }
+
+    .friend-add-shell {
+      margin-top: 18px;
     }
   </style>
 </head>
@@ -147,21 +239,50 @@
   <div class="page-layout">
     <div class="friends-sidebar">
       <div class="card">
-        <a class="menu-button" href="index.html">Back To Home</a>
-        <a class="menu-button" href="aviary.html">Back To Aviary</a>
+        <a class="menu-button" href="index.html">Home</a>
+        <a class="menu-button" href="aviary.html">Aviary</a>
       </div>
 
-      <div class="card"></div>
+      <div class="card">
+        <h2>Account</h2>
+        <p class="account-row">Display Name: <span id="playerNameDisplay"></span></p>
+        <p class="account-row">Player ID: <span id="playerIdDisplay"></span></p>
+        <p class="account-row">Friend Code: <span id="friendCodeDisplay"></span></p>
+      </div>
 
-      <div class="card"></div>
+      <div class="card">
+        <h2>Connection</h2>
+        <p class="status-note is-pending" id="supabaseStatus">Supabase is not configured yet</p>
+      </div>
+
+      <div class="card">
+        <h2>Add Friend</h2>
+        <div class="code-row friend-add-shell">
+          <input class="code-input" type="text" id="friendCodeInput" maxlength="12" placeholder="Enter friend code">
+          <button class="action-button" type="button" id="addFriendButton" data-requires-success="true">Add Friend</button>
+        </div>
+        <p class="code-result" id="friendCodeResult"></p>
+      </div>
     </div>
 
-      <div class="friends-panel action-panel">
+    <div class="friends-panel action-panel">
       <h2 class="panel-header">Leaderboard</h2>
       <p class="panel-note">Points: <span id="pointsDisplay"></span></p>
+      <div class="leaderboard-actions">
+        <button class="menu-button" type="button" id="syncProfileButton" data-requires-success="true">Sync My Profile</button>
+        <button class="menu-button" type="button" id="refreshLeaderboardButton">Refresh Leaderboard</button>
+      </div>
+      <div class="leaderboard-toggle-row">
+        <button class="menu-button leaderboard-tab is-active" type="button" id="globalLeaderboardButton">Global</button>
+        <button class="menu-button leaderboard-tab" type="button" id="friendsLeaderboardButton">Friends</button>
+      </div>
+      <p class="panel-note" id="leaderboardStatus">Waiting to test Supabase connection...</p>
+      <ol class="leaderboard-list" id="leaderboardList"></ol>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
@@ -173,18 +294,325 @@
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const pointsDisplay = document.querySelector("#pointsDisplay");
+    const playerNameDisplay = document.querySelector("#playerNameDisplay");
+    const playerIdDisplay = document.querySelector("#playerIdDisplay");
+    const friendCodeDisplay = document.querySelector("#friendCodeDisplay");
+    const supabaseStatus = document.querySelector("#supabaseStatus");
+    const friendCodeInput = document.querySelector("#friendCodeInput");
+    const addFriendButton = document.querySelector("#addFriendButton");
+    const friendCodeResult = document.querySelector("#friendCodeResult");
+    const syncProfileButton = document.querySelector("#syncProfileButton");
+    const refreshLeaderboardButton = document.querySelector("#refreshLeaderboardButton");
+    const globalLeaderboardButton = document.querySelector("#globalLeaderboardButton");
+    const friendsLeaderboardButton = document.querySelector("#friendsLeaderboardButton");
+    const leaderboardStatus = document.querySelector("#leaderboardStatus");
+    const leaderboardList = document.querySelector("#leaderboardList");
+    const PROFILE_SYNC_COOLDOWN_MS = 30000;
+    const LEADERBOARD_REFRESH_COOLDOWN_MS = 10000;
+    let activeLeaderboardView = "global";
+    let lastProfileSyncAt = 0;
+    let lastLeaderboardRefreshAt = 0;
+
+    function setLeaderboardRefreshButtonState() {
+      const remainingCooldownMs = Math.max(0, (lastLeaderboardRefreshAt + LEADERBOARD_REFRESH_COOLDOWN_MS) - Date.now());
+
+      if (remainingCooldownMs <= 0) {
+        refreshLeaderboardButton.disabled = false;
+        refreshLeaderboardButton.textContent = "Refresh Leaderboard";
+        return;
+      }
+
+      refreshLeaderboardButton.disabled = true;
+      refreshLeaderboardButton.textContent = "Refresh (" + Math.ceil(remainingCooldownMs / 1000) + "s)";
+    }
+
+    function renderConnectionStatus() {
+      if (window.SUPABASE_CONFIGURED) {
+        supabaseStatus.textContent = "Supabase client is configured and ready for connection testing";
+        supabaseStatus.classList.remove("is-pending");
+        supabaseStatus.classList.add("is-ready");
+        return;
+      }
+
+      supabaseStatus.textContent = "Paste your Supabase URL and publishable key into supabase.js to continue";
+      supabaseStatus.classList.remove("is-ready");
+      supabaseStatus.classList.add("is-pending");
+    }
+
+    function renderLeaderboardTabs() {
+      globalLeaderboardButton.classList.toggle("is-active", activeLeaderboardView === "global");
+      friendsLeaderboardButton.classList.toggle("is-active", activeLeaderboardView === "friends");
+    }
+
+    function renderLeaderboardRows(playerRows) {
+      leaderboardList.innerHTML = "";
+
+      playerRows.forEach(function (playerRow) {
+        const leaderboardEntry = document.createElement("li");
+        leaderboardEntry.textContent =
+          playerRow.player_name +
+          " | " +
+          formatLargeNumber(playerRow.points) +
+          " pts";
+        leaderboardList.appendChild(leaderboardEntry);
+      });
+    }
+
+    async function loadGlobalLeaderboard() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        leaderboardStatus.textContent = "Supabase test is waiting for a configured client";
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
+      const { data, error } = await window.supabaseClient
+        .from("players")
+        .select("id, player_name, points")
+        .order("points", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        leaderboardStatus.textContent = "Supabase connection failed: " + error.message;
+        return;
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        leaderboardStatus.textContent = "Supabase connected successfully. No player rows exist yet.";
+        return;
+      }
+
+      leaderboardStatus.textContent = "Showing global leaderboard.";
+      renderLeaderboardRows(data);
+    }
+
+    async function loadFriendsLeaderboard() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        leaderboardStatus.textContent = "Supabase test is waiting for a configured client";
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
+      const { data: friendLinks, error: friendLinksError } = await window.supabaseClient
+        .from("friends")
+        .select("friend_player_id")
+        .eq("player_id", gameState.playerId);
+
+      if (friendLinksError) {
+        leaderboardStatus.textContent = "Friends leaderboard failed: " + friendLinksError.message;
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
+      const friendPlayerIds = [gameState.playerId].concat(
+        (friendLinks || []).map(function (friendLink) {
+          return friendLink.friend_player_id;
+        })
+      );
+
+      const uniqueFriendPlayerIds = Array.from(new Set(friendPlayerIds));
+
+      const { data: friendRows, error: friendRowsError } = await window.supabaseClient
+        .from("players")
+        .select("id, player_name, points")
+        .in("id", uniqueFriendPlayerIds)
+        .order("points", { ascending: false });
+
+      if (friendRowsError) {
+        leaderboardStatus.textContent = "Friends leaderboard failed: " + friendRowsError.message;
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
+      if (!Array.isArray(friendRows) || friendRows.length === 0) {
+        leaderboardStatus.textContent = "No friend rows found yet.";
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
+      if (uniqueFriendPlayerIds.length === 1) {
+        leaderboardStatus.textContent = "Showing your friends leaderboard. Add a friend by code to populate it.";
+      } else {
+        leaderboardStatus.textContent = "Showing friends leaderboard.";
+      }
+
+      renderLeaderboardRows(friendRows);
+    }
+
+    async function loadLeaderboard() {
+      renderLeaderboardTabs();
+
+      if (activeLeaderboardView === "friends") {
+        await loadFriendsLeaderboard();
+      } else {
+        await loadGlobalLeaderboard();
+      }
+
+      lastLeaderboardRefreshAt = Date.now();
+      setLeaderboardRefreshButtonState();
+    }
+
+    async function syncCurrentPlayerProfile(options) {
+      const syncOptions = options || {};
+
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        leaderboardStatus.textContent = "Supabase is not configured yet";
+        return;
+      }
+
+      if (!syncOptions.force && (Date.now() - lastProfileSyncAt) < PROFILE_SYNC_COOLDOWN_MS) {
+        if (syncOptions.refreshLeaderboard !== false) {
+          await loadLeaderboard();
+        }
+        return;
+      }
+
+      updateCoinsFromElapsedTime(gameState, Date.now());
+
+      leaderboardStatus.textContent = "Syncing your player profile...";
+
+      const { error } = await window.supabaseClient
+        .from("players")
+        .upsert({
+          id: gameState.playerId,
+          player_name: gameState.playerName,
+          friend_code: gameState.friendCode,
+          points: getPoints(gameState),
+          updated_at: new Date().toISOString()
+        })
+        .select();
+
+      if (error) {
+        leaderboardStatus.textContent = "Profile sync failed: " + error.message;
+        return;
+      }
+
+      lastProfileSyncAt = Date.now();
+
+      if (!syncOptions.skipSound) {
+        playButtonSound();
+      }
+
+      leaderboardStatus.textContent = "Profile synced successfully. Refreshing leaderboard...";
+      await loadLeaderboard();
+    }
+
+    async function addFriendByCode() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        friendCodeResult.textContent = "Supabase is not configured yet";
+        return;
+      }
+
+      const submittedFriendCode = friendCodeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+      if (!submittedFriendCode) {
+        friendCodeResult.textContent = "Enter a friend code first";
+        return;
+      }
+
+      if (submittedFriendCode === gameState.friendCode) {
+        friendCodeResult.textContent = "You cannot add yourself";
+        return;
+      }
+
+      friendCodeResult.textContent = "Looking up friend code...";
+
+      const { data: matchedPlayers, error: lookupError } = await window.supabaseClient
+        .from("players")
+        .select("id, player_name, friend_code")
+        .eq("friend_code", submittedFriendCode)
+        .limit(1);
+
+      if (lookupError) {
+        friendCodeResult.textContent = "Friend lookup failed: " + lookupError.message;
+        return;
+      }
+
+      if (!Array.isArray(matchedPlayers) || matchedPlayers.length === 0) {
+        friendCodeResult.textContent = "No player was found with that friend code";
+        return;
+      }
+
+      const matchedPlayer = matchedPlayers[0];
+
+      if (matchedPlayer.id === gameState.playerId) {
+        friendCodeResult.textContent = "You cannot add yourself";
+        return;
+      }
+
+      const { error: insertError } = await window.supabaseClient
+        .from("friends")
+        .insert({
+          player_id: gameState.playerId,
+          friend_player_id: matchedPlayer.id
+        });
+
+      if (insertError) {
+        if (insertError.message && insertError.message.toLowerCase().indexOf("duplicate") !== -1) {
+          friendCodeResult.textContent = matchedPlayer.player_name + " is already on your friends list";
+          return;
+        }
+
+        friendCodeResult.textContent = "Could not add friend: " + insertError.message;
+        return;
+      }
+
+      playButtonSound();
+      friendCodeResult.textContent = matchedPlayer.player_name + " was added to your friends list";
+      friendCodeInput.value = "";
+
+      if (activeLeaderboardView === "friends") {
+        await loadLeaderboard();
+      }
+    }
 
     function renderFriendsPage() {
+      playerNameDisplay.textContent = gameState.playerName;
+      playerIdDisplay.textContent = gameState.playerId;
+      friendCodeDisplay.textContent = gameState.friendCode;
       pointsDisplay.textContent = formatLargeNumber(getPoints(gameState));
       renderTopBar(topBar, gameState);
+      renderConnectionStatus();
     }
 
     updateCoinsFromElapsedTime(gameState, Date.now());
     initButtonAudio();
     initViewportAwareTooltips();
     renderFriendsPage();
+    setLeaderboardRefreshButtonState();
+    syncCurrentPlayerProfile({ skipSound: true, refreshLeaderboard: true });
+    syncProfileButton.addEventListener("click", function () {
+      syncCurrentPlayerProfile({ force: true, refreshLeaderboard: true });
+    });
+    refreshLeaderboardButton.addEventListener("click", function () {
+      if ((Date.now() - lastLeaderboardRefreshAt) < LEADERBOARD_REFRESH_COOLDOWN_MS) {
+        setLeaderboardRefreshButtonState();
+        return;
+      }
+
+      loadLeaderboard();
+    });
+    addFriendButton.addEventListener("click", function () {
+      addFriendByCode();
+    });
+    friendCodeInput.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.preventDefault();
+      addFriendButton.click();
+    });
+    globalLeaderboardButton.addEventListener("click", function () {
+      activeLeaderboardView = "global";
+      loadLeaderboard();
+    });
+    friendsLeaderboardButton.addEventListener("click", function () {
+      activeLeaderboardView = "friends";
+      loadLeaderboard();
+    });
     startIncomeSystem(gameState, function () {
       renderFriendsPage();
+      setLeaderboardRefreshButtonState();
     });
   </script>
 </body>

@@ -814,6 +814,7 @@
           </div>
         </div>
         <p class="stat-line">Species Count: <span id="speciesCount"></span></p>
+        <p class="stat-line">Individual Count: <span id="individualCount"></span></p>
         <p class="stat-line">Grubs Per Second: <span id="grubsPerSecond"></span></p>
         <p class="stat-line">Twigs Per Second: <span id="twigsPerSecond"></span></p>
         <div id="birdOverviewList"></div>
@@ -885,6 +886,7 @@
     const gameState = loadGameState();
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
+    const individualCount = document.querySelector("#individualCount");
     const maxOfflineDurationDisplay = document.querySelector("#maxOfflineDuration");
     const visitorsPerDayDisplay = document.querySelector("#visPerDay");
     const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
@@ -1160,6 +1162,7 @@
     // Refresh the summary cards from current save data.
     function refreshAviarySummary() {
       speciesCount.textContent = getFlockDiversity(gameState);
+      individualCount.textContent = getTotalBirdCount(gameState);
       maxOfflineDurationDisplay.textContent = getMaxOfflineDurationLabel(gameState);
       visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
       grubsPerSecondDisplay.textContent = getGrubsPerSecond(gameState).toFixed(2);
@@ -1206,6 +1209,8 @@
       button.dataset.requiresSuccess = "true";
       const treeMaxCount = getTreeMaxCount(gameState, config.countKey);
       const isUnlocked = !config.unlockUpgradeId || hasUpgrade(gameState, config.unlockUpgradeId);
+      const treeCost = typeof config.getCost === "function" ? config.getCost(gameState) : config.cost;
+      const rateText = typeof config.getRateText === "function" ? config.getRateText(gameState) : config.rateText;
 
       if (!isUnlocked) {
         button.textContent = config.label + " (Locked)";
@@ -1213,7 +1218,7 @@
       } else if (gameState[config.countKey] >= treeMaxCount) {
         button.textContent = config.label + " (Maxed)";
       } else {
-        button.textContent = config.label + " (" + formatLargeNumber(config.cost) + " Coins)";
+        button.textContent = config.label + " (" + formatLargeNumber(treeCost) + " Coins)";
       }
 
       button.addEventListener("click", function () {
@@ -1227,11 +1232,11 @@
           return;
         }
 
-        if (gameState.coins < config.cost) {
+        if (gameState.coins < treeCost) {
           return;
         }
 
-        gameState.coins -= config.cost;
+        gameState.coins -= treeCost;
         gameState[config.countKey] += 1;
         playButtonSound();
         saveGameState(gameState);
@@ -1243,7 +1248,7 @@
       const tooltipBox = document.createElement("div");
       tooltipBox.className = "upgrade-tooltip-box";
       tooltipBox.textContent = (isUnlocked
-        ? config.rateText
+        ? rateText
         : "Unlock with " + getUpgradeDefinition(config.unlockUpgradeId).name) +
         " | Max owned: " + formatLargeNumber(treeMaxCount);
 
@@ -1277,30 +1282,40 @@
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Apple Tree",
-        cost: 100,
+        getCost: function (gameState) {
+          if (gameState.appleTrees <= 0) {
+            return 100;
+          }
+
+          if (gameState.appleTrees === 1) {
+            return 500;
+          }
+
+          return 1000;
+        },
         countKey: "appleTrees",
-        rateText: "Provides 1.0 seeds/sec"
+        rateText: "Provides 0.5 seeds/sec"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Pear Tree",
-        cost: 500,
+        cost: 5000,
         countKey: "pearTrees",
-        rateText: "Provides 3.0 seeds/sec"
+        rateText: "Provides 1.5 seeds/sec"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Peach Tree",
-        cost: 2000,
+        cost: 20000,
         countKey: "peachTrees",
-        rateText: "Provides 5.0 seeds/sec"
+        rateText: "Provides 3.0 seeds/sec"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Orange Tree",
-        cost: 10000,
+        cost: 100000,
         countKey: "orangeTrees",
-        rateText: "Provides 10.0 seeds/sec",
+        rateText: "Provides 5.0 seeds/sec",
         unlockUpgradeId: "orangeSeeds"
       }));
 
@@ -1623,7 +1638,9 @@
       // rounded panel edges, and never competes with bird buttons or tooltips.
       habitatPanel.style.backgroundImage = habitatBackgroundImage ? "url('" + habitatBackgroundImage + "')" : "none";
       habitatPanel.style.backgroundRepeat = habitatBackgroundImage ? "no-repeat" : "";
-      habitatPanel.style.backgroundPosition = habitatBackgroundImage ? "center bottom" : "";
+      habitatPanel.style.backgroundPosition = habitatBackgroundImage
+        ? (currentHabitatMode === "minimize" ? "center center" : "center bottom")
+        : "";
       habitatPanel.style.backgroundSize = habitatBackgroundImage ? "cover" : "";
       habitatPanel.style.backgroundOrigin = habitatBackgroundImage ? "border-box" : "";
       habitatPanel.style.backgroundClip = habitatBackgroundImage ? "border-box" : "";
@@ -1966,7 +1983,7 @@
           return;
         }
 
-        if (getTotalBirdCount(gameState) < 30 || getFlockDiversity(gameState) < 9 || gameState.coins < 10000) {
+        if (getTotalBirdCount(gameState) < 30 || getFlockDiversity(gameState) < 8 || gameState.coins < 10000) {
           return;
         }
 
@@ -1983,7 +2000,7 @@
 
       const urbanWatersRequirement = document.createElement("p");
       urbanWatersRequirement.className = "upgrade-requirement";
-      urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(30) + " Individuals and " + formatLargeNumber(9) + " Species";
+      urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(30) + " Individuals and " + formatLargeNumber(8) + " Species";
       urbanWatersEntry.appendChild(urbanWatersRequirement);
       upgradesOverviewList.appendChild(urbanWatersEntry);
 

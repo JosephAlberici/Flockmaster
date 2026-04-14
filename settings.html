@@ -157,6 +157,55 @@
       border-top: 1px solid #b9b2a8;
     }
 
+    .account-shell {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .account-label {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .account-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .account-field-label {
+      display: block;
+      margin: 0 0 8px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .account-input,
+    .account-readonly {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid black;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      box-sizing: border-box;
+      background: #ffffff;
+      color: #1f2a36;
+    }
+
+    .account-readonly {
+      background: #ece7de;
+    }
+
+    .account-helper {
+      margin: 10px 0 0;
+      color: #4a5663;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
     .settings-option-shell {
       margin-top: 24px;
       padding-top: 18px;
@@ -240,12 +289,35 @@
   <div class="settings-shell">
     <div class="settings-card">
       <h1 class="page-title">SETTINGS</h1>
-      <a class="back-link" href="index.html">Back To Home</a>
+      <a class="back-link" href="index.html">Home</a>
+      <a class="back-link" href="aviary.html">Aviary</a>
 
       <div class="settings-actions">
         <button class="action-button" type="button" id="exportSaveButton">Export Save</button>
         <button class="action-button" type="button" id="importSaveButton">Import Save</button>
         <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
+      </div>
+
+      <div class="account-shell">
+        <p class="account-label">Account</p>
+        <div class="account-grid">
+          <div>
+            <label class="account-field-label" for="playerNameInput">Display Name</label>
+            <div class="code-row">
+              <input class="account-input" type="text" id="playerNameInput" maxlength="24" placeholder="Enter display name">
+              <button class="action-button" type="button" id="savePlayerNameButton" data-requires-success="true">Save Name</button>
+            </div>
+          </div>
+          <div>
+            <label class="account-field-label" for="playerIdField">Player ID</label>
+            <input class="account-readonly" type="text" id="playerIdField" readonly>
+          </div>
+          <div>
+            <label class="account-field-label" for="friendCodeField">Friend Code</label>
+            <input class="account-readonly" type="text" id="friendCodeField" readonly>
+          </div>
+        </div>
+        <p class="account-helper">Player ID and Friend Code are generated automatically and will be used when we connect the online friends system.</p>
       </div>
 
       <div class="settings-option-shell">
@@ -297,15 +369,25 @@
     const importSaveInput = document.querySelector("#importSaveInput");
     const eraseProgressButton = document.querySelector("#eraseProgressButton");
     const eraseConfirmBox = document.querySelector("#eraseConfirmBox");
-      const confirmEraseButton = document.querySelector("#confirmEraseButton");
-      const cancelEraseButton = document.querySelector("#cancelEraseButton");
-      const upgradeConfirmationCheckbox = document.querySelector("#upgradeConfirmationCheckbox");
-      const holdToClickCheckbox = document.querySelector("#holdToClickCheckbox");
-      const codeInput = document.querySelector("#codeInput");
+    const confirmEraseButton = document.querySelector("#confirmEraseButton");
+    const cancelEraseButton = document.querySelector("#cancelEraseButton");
+    const playerNameInput = document.querySelector("#playerNameInput");
+    const savePlayerNameButton = document.querySelector("#savePlayerNameButton");
+    const playerIdField = document.querySelector("#playerIdField");
+    const friendCodeField = document.querySelector("#friendCodeField");
+    const upgradeConfirmationCheckbox = document.querySelector("#upgradeConfirmationCheckbox");
+    const holdToClickCheckbox = document.querySelector("#holdToClickCheckbox");
+    const codeInput = document.querySelector("#codeInput");
     const redeemCodeButton = document.querySelector("#redeemCodeButton");
     const codeResult = document.querySelector("#codeResult");
     const codeToast = document.querySelector("#codeToast");
     let toastTimeoutId = null;
+
+    function renderAccountFields() {
+      playerNameInput.value = gameState.playerName || "";
+      playerIdField.value = gameState.playerId || "";
+      friendCodeField.value = gameState.friendCode || "";
+    }
 
     // Settings mostly manipulates saved data directly, so the top bar stays minimal here.
     // Keep the shared top bar current while this page is open.
@@ -314,27 +396,44 @@
     initButtonAudio();
       initViewportAwareTooltips();
       syncUpgradeInteractionPreference(gameState);
-      upgradeConfirmationCheckbox.checked = gameState.upgradeConfirmationEnabled === true;
-      holdToClickCheckbox.checked = gameState.holdToClickEnabled === true;
-      startIncomeSystem(gameState, function () {
-        renderTopBar(topBar, gameState);
-      });
+    renderAccountFields();
+    upgradeConfirmationCheckbox.checked = gameState.upgradeConfirmationEnabled === true;
+    holdToClickCheckbox.checked = gameState.holdToClickEnabled === true;
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
 
-      upgradeConfirmationCheckbox.addEventListener("change", function () {
-        gameState.upgradeConfirmationEnabled = upgradeConfirmationCheckbox.checked;
-        syncUpgradeInteractionPreference(gameState);
-        saveGameState(gameState);
-      });
+    savePlayerNameButton.addEventListener("click", function () {
+      gameState.playerName = normalizePlayerName(playerNameInput.value);
+      renderAccountFields();
+      saveGameState(gameState);
+      playButtonSound();
+    });
 
-      holdToClickCheckbox.addEventListener("change", function () {
-        gameState.holdToClickEnabled = holdToClickCheckbox.checked;
-        saveGameState(gameState);
-      });
+    playerNameInput.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.preventDefault();
+      savePlayerNameButton.click();
+    });
+
+    upgradeConfirmationCheckbox.addEventListener("change", function () {
+      gameState.upgradeConfirmationEnabled = upgradeConfirmationCheckbox.checked;
+      syncUpgradeInteractionPreference(gameState);
+      saveGameState(gameState);
+    });
+
+    holdToClickCheckbox.addEventListener("change", function () {
+      gameState.holdToClickEnabled = holdToClickCheckbox.checked;
+      saveGameState(gameState);
+    });
 
     exportSaveButton.addEventListener("click", function () {
       updateCoinsFromElapsedTime(gameState, Date.now());
 
-      const saveText = JSON.stringify(gameState, null, 2);
+      const saveText = serializeGameState(gameState);
       const saveBlob = new Blob([saveText], { type: "text/plain" });
       const downloadUrl = URL.createObjectURL(saveBlob);
       const downloadLink = document.createElement("a");

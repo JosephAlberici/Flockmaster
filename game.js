@@ -1,4 +1,6 @@
 const STORAGE_KEY = "flockmasterSave";
+const SAVE_ENCODING_PREFIX = "FLOCKMASTER_SAVE_V1:";
+const SAVE_ENCODING_KEY = "FlockmasterHarborCipher";
 const BASE_TICK_MS = 1000;
 // Base rarity odds before upgrades or habitat filtering adjust them.
 const RARITY_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
@@ -66,20 +68,28 @@ const TREE_BONUS_KEY_BY_TREE_KEY = {
   orangeTrees: "bonusOrangeTree"
 };
 
+const SAVE_TEXT_ENCODER = typeof TextEncoder === "function" ? new TextEncoder() : null;
+const SAVE_TEXT_DECODER = typeof TextDecoder === "function" ? new TextDecoder() : null;
+
 // Shared save-schema defaults
 // Add new saved primitive values here first so loading, importing, and new saves stay aligned.
 const GAME_STATE_DEFAULTS = {
-  seeds: 100,
-  seedMax: 500,
+  playerId: "",
+  playerName: "",
+  friendCode: "",
+  seeds: 200,
+  seedMax: 1000,
   grubs: 0,
   grubMax: 10000,
   grubsPerClick: 1,
   grubFarmActive: false,
   grubFarmUnlocked: false,
   hardwood: 0,
+  hardwoodMax: 500,
   mice: 0,
   loggerheadShowingBird: false,
   loggerheadQuestIndex: 0,
+  shrikeQuestsCompleted: 0,
   loggerheadMouseLoaded: false,
   loggerheadMouseResult: "",
   loggerheadMousePendingBirdId: null,
@@ -108,7 +118,7 @@ const GAME_STATE_DEFAULTS = {
     sawmill: null,
     dockyard: null
   },
-  coins: 50,
+  coins: 80,
   coinMax: 10000,
   fish: 0,
   scrap: 0,
@@ -183,6 +193,9 @@ function isPlainObject(value) {
 }
 
 const GAME_STATE_VALIDATORS = {
+  playerId: isString,
+  playerName: isString,
+  friendCode: isString,
   seeds: isFiniteNumber,
   seedMax: isFiniteNumber,
   grubs: isFiniteNumber,
@@ -191,9 +204,11 @@ const GAME_STATE_VALIDATORS = {
   grubFarmActive: isBoolean,
   grubFarmUnlocked: isBoolean,
   hardwood: isFiniteNumber,
+  hardwoodMax: isFiniteNumber,
   mice: isFiniteNumber,
   loggerheadShowingBird: isBoolean,
   loggerheadQuestIndex: isFiniteNumber,
+  shrikeQuestsCompleted: isFiniteNumber,
   loggerheadMouseLoaded: isBoolean,
   loggerheadMouseResult: isString,
   loggerheadMousePendingBirdId: isNullableString,
@@ -370,6 +385,163 @@ function applyValidatedDefault(gameState, key) {
   }
 }
 
+// Save encoding helpers
+// This adds a lightweight client-side encoding layer so saves are no longer
+// stored as immediately readable JSON. Because the game must decrypt its own
+// saves in the browser, this is deterrence/obfuscation rather than true secure
+// anti-tamper cryptography.
+function bytesToBase64(bytes) {
+  let binaryString = "";
+
+  bytes.forEach(function (byteValue) {
+    binaryString += String.fromCharCode(byteValue);
+  });
+
+  return btoa(binaryString);
+}
+
+function base64ToBytes(base64Text) {
+  const binaryString = atob(base64Text);
+  const decodedBytes = new Uint8Array(binaryString.length);
+
+  for (let index = 0; index < binaryString.length; index += 1) {
+    decodedBytes[index] = binaryString.charCodeAt(index);
+  }
+
+  return decodedBytes;
+}
+
+function getSaveKeyBytes() {
+  if (SAVE_TEXT_ENCODER) {
+    return SAVE_TEXT_ENCODER.encode(SAVE_ENCODING_KEY);
+  }
+
+  const fallbackBytes = new Uint8Array(SAVE_ENCODING_KEY.length);
+
+  for (let index = 0; index < SAVE_ENCODING_KEY.length; index += 1) {
+    fallbackBytes[index] = SAVE_ENCODING_KEY.charCodeAt(index) & 255;
+  }
+
+  return fallbackBytes;
+}
+
+function encodeSavePayload(saveText) {
+  if (typeof saveText !== "string") {
+    return saveText;
+  }
+
+  const sourceBytes = SAVE_TEXT_ENCODER
+    ? SAVE_TEXT_ENCODER.encode(saveText)
+    : new Uint8Array(saveText.split("").map(function (character) {
+        return character.charCodeAt(0) & 255;
+      }));
+  const keyBytes = getSaveKeyBytes();
+  const encodedBytes = new Uint8Array(sourceBytes.length);
+
+  for (let index = 0; index < sourceBytes.length; index += 1) {
+    const rollingMask = ((index * 31) + 17) & 255;
+    encodedBytes[index] = sourceBytes[index] ^ keyBytes[index % keyBytes.length] ^ rollingMask;
+  }
+
+  return SAVE_ENCODING_PREFIX + bytesToBase64(encodedBytes);
+}
+
+function decodeSavePayload(saveText) {
+  if (typeof saveText !== "string") {
+    throw new Error("Save data must be text");
+  }
+
+  if (!saveText.startsWith(SAVE_ENCODING_PREFIX)) {
+    return saveText;
+  }
+
+  const encodedText = saveText.slice(SAVE_ENCODING_PREFIX.length);
+  const encodedBytes = base64ToBytes(encodedText);
+  const keyBytes = getSaveKeyBytes();
+  const decodedBytes = new Uint8Array(encodedBytes.length);
+
+  for (let index = 0; index < encodedBytes.length; index += 1) {
+    const rollingMask = ((index * 31) + 17) & 255;
+    decodedBytes[index] = encodedBytes[index] ^ keyBytes[index % keyBytes.length] ^ rollingMask;
+  }
+
+  if (SAVE_TEXT_DECODER) {
+    return SAVE_TEXT_DECODER.decode(decodedBytes);
+  }
+
+  let decodedText = "";
+  decodedBytes.forEach(function (byteValue) {
+    decodedText += String.fromCharCode(byteValue);
+  });
+  return decodedText;
+}
+
+function serializeGameState(gameState) {
+  return encodeSavePayload(JSON.stringify(gameState));
+}
+
+function parseSavedGameState(saveText) {
+  return JSON.parse(decodeSavePayload(saveText));
+}
+
+function generateRandomCode(codeLength) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let generatedCode = "";
+  let randomBytes = null;
+
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    randomBytes = new Uint8Array(codeLength);
+    crypto.getRandomValues(randomBytes);
+  }
+
+  for (let index = 0; index < codeLength; index += 1) {
+    const randomValue = randomBytes ? randomBytes[index] : Math.floor(Math.random() * 256);
+    generatedCode += alphabet[randomValue % alphabet.length];
+  }
+
+  return generatedCode;
+}
+
+function generatePlayerId() {
+  return "PLAYER_" + generateRandomCode(16);
+}
+
+function generateFriendCode() {
+  return generateRandomCode(12);
+}
+
+function normalizePlayerName(playerName) {
+  if (typeof playerName !== "string") {
+    return "Player";
+  }
+
+  const trimmedPlayerName = playerName.trim().replace(/\s+/g, " ");
+
+  if (!trimmedPlayerName) {
+    return "Player";
+  }
+
+  return trimmedPlayerName.slice(0, 24);
+}
+
+function ensurePlayerAccountIdentity(gameState) {
+  if (!gameState.playerId) {
+    gameState.playerId = generatePlayerId();
+  }
+
+  gameState.playerName = normalizePlayerName(gameState.playerName);
+
+  if (!gameState.friendCode) {
+    gameState.friendCode = generateFriendCode();
+  } else {
+    gameState.friendCode = gameState.friendCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+
+    if (!gameState.friendCode) {
+      gameState.friendCode = generateFriendCode();
+    }
+  }
+}
+
 // Bird catalog and save-merging helpers
 // Return a fresh copy of the bird catalog so save data can mutate safely.
 function cloneBirdLibrary() {
@@ -463,17 +635,21 @@ function mergeBirdProgress(savedBirds) {
 
 // Define the default save state for a brand new player.
 function createDefaultGameState() {
-  return {
+  const defaultGameState = {
     ...cloneGameStateDefaults(),
     lastCoinUpdate: Date.now(),
     items: createDefaultItemCounts(),
     birds: createDefaultBirdProgress()
   };
+
+  ensurePlayerAccountIdentity(defaultGameState);
+
+  return defaultGameState;
 }
 
 // Persist the current game state to browser storage.
 function saveGameState(gameState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+  localStorage.setItem(STORAGE_KEY, serializeGameState(gameState));
 }
 
 // Wipe the saved game from browser storage.
@@ -483,7 +659,7 @@ function eraseGameProgress() {
 
 // Replace the current save with imported text from an exported file.
 function importGameProgress(saveText) {
-  const parsedGameState = normalizeGameState(JSON.parse(saveText));
+  const parsedGameState = normalizeGameState(parseSavedGameState(saveText));
   saveGameState(parsedGameState);
 }
 
@@ -500,6 +676,12 @@ function normalizeGameState(parsedGameState) {
   if (!isFiniteNumber(normalizedGameState.lastCoinUpdate)) {
     normalizedGameState.lastCoinUpdate = Date.now();
   }
+
+  if (normalizedGameState.shrikeQuestsCompleted < normalizedGameState.loggerheadQuestIndex) {
+    normalizedGameState.shrikeQuestsCompleted = normalizedGameState.loggerheadQuestIndex;
+  }
+
+  ensurePlayerAccountIdentity(normalizedGameState);
 
   // Preserve the older single-field sawmill overseer save by copying it into
   // the newer per-process assignment object the rest of the game now uses.
@@ -562,7 +744,7 @@ function loadGameState() {
   }
 
   try {
-    return normalizeGameState(JSON.parse(savedGameState));
+    return normalizeGameState(parseSavedGameState(savedGameState));
   } catch (error) {
     const defaultGameState = createDefaultGameState();
     saveGameState(defaultGameState);
@@ -867,10 +1049,35 @@ function handleUpgradePurchaseRequest(gameState, upgradeId, options) {
       purchaseOptions.onSuccess();
     }
 
-  return true;
+    return true;
+  }
+
+  if (gameState.upgradeConfirmationEnabled !== true) {
+    return performPurchase();
+  }
+
+  ensureSharedUpgradeUi();
+  syncUpgradeInteractionPreference(gameState);
+
+  sharedUpgradeDialogState.title.textContent = upgradeDefinition.name;
+  sharedUpgradeDialogState.description.textContent = upgradeDefinition.description || "No description available";
+  sharedUpgradeDialogState.costs.textContent = getUpgradeCostSummary(upgradeDefinition)
+    ? "Cost: " + getUpgradeCostSummary(upgradeDefinition)
+    : "Cost: None";
+  sharedUpgradeDialogState.requirements.textContent = getUpgradeRequirementSummary(gameState, upgradeDefinition)
+    ? "Requires: " + getUpgradeRequirementSummary(gameState, upgradeDefinition)
+    : "Requires: None";
+
+  sharedUpgradeDialogState.confirmButton.onclick = function () {
+    performPurchase();
+    sharedUpgradeDialogState.close();
+  };
+
+  sharedUpgradeDialogState.overlay.classList.add("is-visible");
+  return false;
 }
 
-// Allow selected high-frequency action buttons to repeat while held on mobile.
+// Allow selected high-frequency action buttons to repeat while held.
 // This is opt-in per button so purchases and navigation do not accidentally spam.
 function attachHoldToClick(button, gameState, options) {
   if (!button || button.dataset.holdToClickBound === "true") {
@@ -883,9 +1090,8 @@ function attachHoldToClick(button, gameState, options) {
   const repeatAction = typeof holdOptions.repeatAction === "function" ? holdOptions.repeatAction : null;
   let holdTimeoutId = null;
   let holdIntervalId = null;
-  let repeatedDuringHold = false;
-  let suppressReleaseClick = false;
-  let ignoreMouseUntil = 0;
+  let holdActive = false;
+  let suppressClickUntilMs = 0;
 
   button.dataset.holdToClickBound = "true";
 
@@ -915,21 +1121,16 @@ function attachHoldToClick(button, gameState, options) {
 
   function stopHold() {
     clearHoldTimers();
-
-    if (repeatedDuringHold) {
-      suppressReleaseClick = true;
-    }
-
-    repeatedDuringHold = false;
+    holdActive = false;
   }
 
-  function fireRepeatClick() {
+  function runRepeatAction() {
     if (button.disabled) {
       stopHold();
       return;
     }
 
-    repeatedDuringHold = true;
+    suppressClickUntilMs = Date.now() + 500;
 
     if (repeatAction) {
       repeatAction();
@@ -940,81 +1141,67 @@ function attachHoldToClick(button, gameState, options) {
   }
 
   function startHold() {
-    clearHoldTimers();
-    repeatedDuringHold = false;
-    suppressReleaseClick = false;
-
-    holdTimeoutId = setTimeout(function () {
-      fireRepeatClick();
-      holdIntervalId = setInterval(fireRepeatClick, intervalMs);
-    }, startDelayMs);
-  }
-
-  button.addEventListener("click", function (event) {
-    if (!suppressReleaseClick) {
+    if (holdActive || !isHoldToClickEnabled() || button.disabled) {
       return;
     }
 
-    suppressReleaseClick = false;
+    holdActive = true;
+    suppressClickUntilMs = 0;
+    clearHoldTimers();
+
+    holdTimeoutId = setTimeout(function () {
+      runRepeatAction();
+      holdIntervalId = setInterval(runRepeatAction, intervalMs);
+    }, startDelayMs);
+  }
+
+  function handlePressStart(event) {
+    if (event.type === "mousedown" && event.button !== 0) {
+      return;
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    startHold();
+  }
+
+  function handlePressEnd() {
+    if (!holdActive) {
+      return;
+    }
+
+    stopHold();
+  }
+
+  button.addEventListener("click", function (event) {
+    if (Date.now() > suppressClickUntilMs) {
+      return;
+    }
+
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
 
-  button.addEventListener("mousedown", function (event) {
-    if (!isHoldToClickEnabled() || button.disabled) {
-      return;
-    }
+  button.addEventListener("mousedown", handlePressStart);
+  button.addEventListener("touchstart", handlePressStart, { passive: false });
 
-    if (Date.now() < ignoreMouseUntil || event.button !== 0) {
-      return;
-    }
+  button.addEventListener("mouseup", handlePressEnd);
+  button.addEventListener("mouseleave", handlePressEnd);
+  button.addEventListener("touchend", handlePressEnd, { passive: true });
+  button.addEventListener("touchcancel", handlePressEnd, { passive: true });
+  window.addEventListener("mouseup", handlePressEnd);
+  window.addEventListener("touchend", handlePressEnd, { passive: true });
+  window.addEventListener("touchcancel", handlePressEnd, { passive: true });
 
-    startHold();
+  button.addEventListener("contextmenu", function (event) {
+    if (holdActive) {
+      event.preventDefault();
+    }
   });
 
-  button.addEventListener("touchstart", function () {
-    if (!isHoldToClickEnabled() || button.disabled) {
-      return;
-    }
-
-    ignoreMouseUntil = Date.now() + 1000;
-    startHold();
-  }, { passive: true });
-
-  function stopHoldFromEvent() {
-    stopHold();
-  }
-
-  button.addEventListener("mouseup", stopHoldFromEvent);
-  button.addEventListener("mouseleave", stopHoldFromEvent);
-  button.addEventListener("touchend", stopHoldFromEvent);
-  button.addEventListener("touchcancel", stopHoldFromEvent);
-  button.addEventListener("blur", stopHold);
-}
-
-  if (gameState.upgradeConfirmationEnabled !== true) {
-    return performPurchase();
-  }
-
-  ensureSharedUpgradeUi();
-  syncUpgradeInteractionPreference(gameState);
-
-  sharedUpgradeDialogState.title.textContent = upgradeDefinition.name;
-  sharedUpgradeDialogState.description.textContent = upgradeDefinition.description || "No description available";
-  sharedUpgradeDialogState.costs.textContent = getUpgradeCostSummary(upgradeDefinition)
-    ? "Cost: " + getUpgradeCostSummary(upgradeDefinition)
-    : "Cost: None";
-  sharedUpgradeDialogState.requirements.textContent = getUpgradeRequirementSummary(gameState, upgradeDefinition)
-    ? "Requires: " + getUpgradeRequirementSummary(gameState, upgradeDefinition)
-    : "Requires: None";
-
-  sharedUpgradeDialogState.confirmButton.onclick = function () {
-    performPurchase();
-    sharedUpgradeDialogState.close();
-  };
-
-  sharedUpgradeDialogState.overlay.classList.add("is-visible");
-  return false;
+  button.addEventListener("blur", handlePressEnd);
 }
 
 // Read one numeric bird field, defaulting to zero when the species does not
@@ -1390,6 +1577,7 @@ function getPoints(gameState) {
   const legendaryPoints = getCaughtBirdCountByRarity(gameState, "Legendary") * 25;
   const habitatCompletionPoints = getCompletedHabitatCount(gameState) * 100;
   const constructedHabitatPoints = Math.max(0, gameState.ownedHabitats.length - 1) * 50;
+  const shrikeQuestPoints = gameState.shrikeQuestsCompleted * 25;
 
   return (
     speciesPoints +
@@ -1399,7 +1587,8 @@ function getPoints(gameState) {
     epicPoints +
     legendaryPoints +
     habitatCompletionPoints +
-    constructedHabitatPoints
+    constructedHabitatPoints +
+    shrikeQuestPoints
   );
 }
 
@@ -1545,7 +1734,7 @@ function getGrubFarmRates(gameState) {
   }
 
   return {
-    seedsPerSecond: 10,
+    seedsPerSecond: 15,
     twigsPerSecond: 1,
     grubsPerSecond: 0.5
   };
@@ -1584,7 +1773,7 @@ function getSawmillRemainingMs(gameState, currentTime) {
   }
 
   const elapsedMs = currentTime - gameState.sawmillProcessingStart;
-  return Math.max(0, gameState.sawmillProcessingDurationMs - elapsedMs);
+  return Math.max(0, getSawmillProcessingDurationMs(gameState) - elapsedMs);
 }
 
 // Advance sawmill processing based on real time.
@@ -1614,13 +1803,14 @@ function tryAutoStartSawmill(gameState, currentTime) {
     return false;
   }
 
-  const minimumTwigRequirement = Math.max(10000, gameState.sawmillTwigThreshold);
+  const processingCost = getSawmillTwigProcessingCost(gameState);
+  const minimumTwigRequirement = Math.max(processingCost, gameState.sawmillTwigThreshold);
 
   if (gameState.twigs < minimumTwigRequirement) {
     return false;
   }
 
-  gameState.twigs -= 10000;
+  gameState.twigs -= processingCost;
   gameState.sawmillProcessingStart = currentTime;
   gameState.sawmillProcessingPendingHardwood = 10;
   gameState.sawmillProcessingActive = true;
@@ -1638,7 +1828,11 @@ function runSawmillAutomation(gameState, currentTime) {
   }
 
   if (gameState.sawmillProcessingReady) {
-    gameState.hardwood += gameState.sawmillProcessingPendingHardwood;
+    gameState.hardwood = addPassiveResourceWithCap(
+      gameState.hardwood,
+      gameState.hardwoodMax,
+      gameState.sawmillProcessingPendingHardwood
+    );
     gameState.sawmillProcessingPendingHardwood = 0;
     gameState.sawmillProcessingStart = null;
     gameState.sawmillProcessingActive = false;
@@ -1651,6 +1845,14 @@ function runSawmillAutomation(gameState, currentTime) {
   }
 
   return didChange;
+}
+
+function addPassiveResourceWithCap(currentValue, maxValue, amountToAdd) {
+  const safeCurrentValue = isFiniteNumber(currentValue) ? currentValue : 0;
+  const safeMaxValue = isFiniteNumber(maxValue) ? maxValue : safeCurrentValue;
+  const safeAmountToAdd = isFiniteNumber(amountToAdd) ? amountToAdd : 0;
+
+  return Math.max(0, Math.min(safeMaxValue, safeCurrentValue + safeAmountToAdd));
 }
 
 // Return how long remains on an active Dockyard voyage.
@@ -1935,6 +2137,13 @@ function getBirdCountById(gameState, birdId) {
   return bird ? bird.count : 0;
 }
 
+// Look up one item definition from the shared catalog by stable id.
+function getItemById(itemId) {
+  return ITEM_LIBRARY.find(function (item) {
+    return item.id === itemId;
+  }) || null;
+}
+
 // Return the current owned count for one inventory item id.
 function getItemCount(gameState, itemId) {
   if (!gameState.items || typeof gameState.items !== "object") {
@@ -2128,6 +2337,30 @@ function getEffectiveFishPerVoyage(gameState) {
 // resource pace without trap-price escalation muddying it.
 function getEffectiveTrapFishCost() {
   return 5;
+}
+
+function getSawmillTwigProcessingCost(gameState) {
+  let processingCost = 10000;
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifySawmillTwigProcessingCost === "function") {
+      processingCost = upgrade.modifySawmillTwigProcessingCost(processingCost, gameState);
+    }
+  });
+
+  return Math.max(1, Math.round(processingCost));
+}
+
+function getSawmillProcessingDurationMs(gameState) {
+  let processingDurationMs = gameState.sawmillProcessingDurationMs;
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifySawmillProcessingDurationMs === "function") {
+      processingDurationMs = upgrade.modifySawmillProcessingDurationMs(processingDurationMs, gameState);
+    }
+  });
+
+  return Math.max(1000, Math.round(processingDurationMs));
 }
 
 // Grow the base seed-bait load cost after a successful catch. The early climb
@@ -2386,15 +2619,19 @@ function removeBirdsFromFlock(gameState, birdId, amountToRemove) {
   if (bird.variantCounts && typeof bird.variantCounts === "object") {
     let remainingToRemove = amountToRemove;
 
-    Object.keys(bird.variantCounts).forEach(function (variantKey) {
-      if (remainingToRemove <= 0) {
-        return;
+    while (remainingToRemove > 0) {
+      const removableVariantKeys = Object.keys(bird.variantCounts).filter(function (variantKey) {
+        return (bird.variantCounts[variantKey] || 0) > 0;
+      });
+
+      if (removableVariantKeys.length === 0) {
+        break;
       }
 
-      const removableCount = Math.min(bird.variantCounts[variantKey] || 0, remainingToRemove);
-      bird.variantCounts[variantKey] = Math.max(0, (bird.variantCounts[variantKey] || 0) - removableCount);
-      remainingToRemove -= removableCount;
-    });
+      const selectedVariantKey = removableVariantKeys[Math.floor(Math.random() * removableVariantKeys.length)];
+      bird.variantCounts[selectedVariantKey] = Math.max(0, (bird.variantCounts[selectedVariantKey] || 0) - 1);
+      remainingToRemove -= 1;
+    }
   }
 
   bird.acquired = bird.count > 0;
@@ -2518,10 +2755,10 @@ function getCoinsPerVisitorRate(gameState) {
 // Sum seed production coming specifically from trees.
 function getTreeSeedsPerSecond(gameState) {
   return (
-    gameState.appleTrees * 1 +
-    gameState.pearTrees * 3 +
-    gameState.peachTrees * 5 +
-    gameState.orangeTrees * 10
+    gameState.appleTrees * 0.5 +
+    gameState.pearTrees * 1.5 +
+    gameState.peachTrees * 3 +
+    gameState.orangeTrees * 5
   );
 }
 
@@ -2601,10 +2838,10 @@ function formatSeeds(seeds) {
 
 // Keep capped resources inside their valid ranges after any update.
 function clampGameStateResources(gameState) {
-  gameState.coins = Math.max(0, Math.min(gameState.coins, gameState.coinMax));
-  gameState.seeds = Math.max(0, Math.min(gameState.seeds, gameState.seedMax));
-  gameState.grubs = Math.max(0, Math.min(gameState.grubs, gameState.grubMax));
-  gameState.twigs = Math.max(0, Math.min(gameState.twigs, gameState.twigMax));
+  gameState.coins = Math.max(0, gameState.coins);
+  gameState.seeds = Math.max(0, gameState.seeds);
+  gameState.grubs = Math.max(0, gameState.grubs);
+  gameState.twigs = Math.max(0, gameState.twigs);
   gameState.hardwood = Math.max(0, gameState.hardwood);
   gameState.mice = Math.max(0, gameState.mice);
 }
@@ -3007,13 +3244,12 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
     }
   }
 
-  // Apply the final totals, clamp to storage caps, and move the save clock
-  // forward so future ticks start from this exact moment.
-  gameState.coins += earnedCoins;
-  gameState.seeds += earnedSeeds;
-  gameState.grubs += earnedGrubs;
-  gameState.twigs += earnedTwigs;
-  clampGameStateResources(gameState);
+  // Apply the final totals. Passive generation respects storage caps, but
+  // direct rewards like treasure, quests, and codes can overflow them.
+  gameState.coins = addPassiveResourceWithCap(gameState.coins, gameState.coinMax, earnedCoins);
+  gameState.seeds = addPassiveResourceWithCap(gameState.seeds, gameState.seedMax, earnedSeeds);
+  gameState.grubs = addPassiveResourceWithCap(gameState.grubs, gameState.grubMax, earnedGrubs);
+  gameState.twigs = addPassiveResourceWithCap(gameState.twigs, gameState.twigMax, earnedTwigs);
   gameState.lastCoinUpdate = currentTime;
   saveGameState(gameState);
   return true;
