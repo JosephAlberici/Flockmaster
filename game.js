@@ -477,6 +477,7 @@ function decodeSavePayload(saveText) {
 }
 
 function serializeGameState(gameState) {
+  ensurePlayerAccountIdentity(gameState);
   return encodeSavePayload(JSON.stringify(gameState));
 }
 
@@ -660,6 +661,7 @@ function eraseGameProgress() {
 // Replace the current save with imported text from an exported file.
 function importGameProgress(saveText) {
   const parsedGameState = normalizeGameState(parseSavedGameState(saveText));
+  ensurePlayerAccountIdentity(parsedGameState);
   saveGameState(parsedGameState);
 }
 
