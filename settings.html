@@ -106,6 +106,10 @@
       margin-bottom: 12px;
     }
 
+    .settings-danger-row {
+      margin-top: 4px;
+    }
+
     .danger-button {
       display: inline-block;
       background: #8a2d2d;
@@ -206,6 +210,30 @@
       font-weight: bold;
     }
 
+    .auth-shell {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #d3ccc2;
+    }
+
+    .auth-status {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .auth-status.is-ready {
+      color: #17311e;
+    }
+
+    .auth-status.is-pending {
+      color: #6a5842;
+    }
+
+    .cloud-save-actions {
+      margin-top: 12px;
+    }
+
     .settings-option-shell {
       margin-top: 24px;
       padding-top: 18px;
@@ -295,6 +323,9 @@
       <div class="settings-actions">
         <button class="action-button" type="button" id="exportSaveButton">Export Save</button>
         <button class="action-button" type="button" id="importSaveButton">Import Save</button>
+      </div>
+
+      <div class="settings-danger-row">
         <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
       </div>
 
@@ -318,6 +349,18 @@
           </div>
         </div>
         <p class="account-helper">Player ID and Friend Code are generated automatically and will be used when we connect the online friends system.</p>
+        <div class="auth-shell">
+          <p class="auth-status is-pending" id="googleAuthStatus">Google sign-in is not connected yet</p>
+          <div class="code-row">
+            <button class="action-button" type="button" id="googleSignInButton">Sign In With Google</button>
+            <button class="danger-button" type="button" id="googleSignOutButton">Sign Out</button>
+          </div>
+          <p class="auth-status is-pending" id="cloudSaveStatus">Sign in with Google to use cloud saves</p>
+          <div class="code-row cloud-save-actions">
+            <button class="action-button" type="button" id="syncCloudSaveButton">Sync Local Save To Cloud</button>
+            <button class="action-button" type="button" id="loadCloudSaveButton">Load Cloud Save</button>
+          </div>
+        </div>
       </div>
 
       <div class="settings-option-shell">
@@ -359,10 +402,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the settings controls used on this screen.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const exportSaveButton = document.querySelector("#exportSaveButton");
     const importSaveButton = document.querySelector("#importSaveButton");
@@ -375,6 +421,12 @@
     const savePlayerNameButton = document.querySelector("#savePlayerNameButton");
     const playerIdField = document.querySelector("#playerIdField");
     const friendCodeField = document.querySelector("#friendCodeField");
+    const googleAuthStatus = document.querySelector("#googleAuthStatus");
+    const googleSignInButton = document.querySelector("#googleSignInButton");
+    const googleSignOutButton = document.querySelector("#googleSignOutButton");
+    const cloudSaveStatus = document.querySelector("#cloudSaveStatus");
+    const syncCloudSaveButton = document.querySelector("#syncCloudSaveButton");
+    const loadCloudSaveButton = document.querySelector("#loadCloudSaveButton");
     const upgradeConfirmationCheckbox = document.querySelector("#upgradeConfirmationCheckbox");
     const holdToClickCheckbox = document.querySelector("#holdToClickCheckbox");
     const codeInput = document.querySelector("#codeInput");
@@ -389,6 +441,291 @@
       friendCodeField.value = gameState.friendCode || "";
     }
 
+    function setGoogleAuthStatus(message, statusClassName) {
+      googleAuthStatus.textContent = message;
+      googleAuthStatus.classList.remove("is-ready", "is-pending");
+
+      if (statusClassName) {
+        googleAuthStatus.classList.add(statusClassName);
+      }
+    }
+
+    function setGoogleAuthButtons(isSignedIn) {
+      googleSignInButton.disabled = isSignedIn;
+      googleSignOutButton.disabled = !isSignedIn;
+      googleSignInButton.style.opacity = isSignedIn ? "0.65" : "1";
+      googleSignOutButton.style.opacity = isSignedIn ? "1" : "0.65";
+      googleSignInButton.style.cursor = isSignedIn ? "default" : "pointer";
+      googleSignOutButton.style.cursor = isSignedIn ? "pointer" : "default";
+    }
+
+    function setCloudSaveStatus(message, statusClassName) {
+      cloudSaveStatus.textContent = message;
+      cloudSaveStatus.classList.remove("is-ready", "is-pending");
+
+      if (statusClassName) {
+        cloudSaveStatus.classList.add(statusClassName);
+      }
+    }
+
+    function setCloudSaveButtons(isSignedIn, hasCloudSave) {
+      syncCloudSaveButton.disabled = !isSignedIn;
+      loadCloudSaveButton.disabled = !isSignedIn || !hasCloudSave;
+      syncCloudSaveButton.style.opacity = isSignedIn ? "1" : "0.65";
+      loadCloudSaveButton.style.opacity = (!isSignedIn || !hasCloudSave) ? "0.65" : "1";
+      syncCloudSaveButton.style.cursor = isSignedIn ? "pointer" : "default";
+      loadCloudSaveButton.style.cursor = (!isSignedIn || !hasCloudSave) ? "default" : "pointer";
+    }
+
+    function setLocalSaveTransferButtons(isEnabled) {
+      exportSaveButton.disabled = !isEnabled;
+      importSaveButton.disabled = !isEnabled;
+      exportSaveButton.style.opacity = isEnabled ? "1" : "0.65";
+      importSaveButton.style.opacity = isEnabled ? "1" : "0.65";
+      exportSaveButton.style.cursor = isEnabled ? "pointer" : "default";
+      importSaveButton.style.cursor = isEnabled ? "pointer" : "default";
+    }
+
+    async function getAuthenticatedGoogleUser() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        return null;
+      }
+
+      const { data, error } = await window.supabaseClient.auth.getUser();
+
+      if (error || !data || !data.user) {
+        return null;
+      }
+
+      return data.user;
+    }
+
+    async function fetchCloudSaveRecord() {
+      const authenticatedUser = await getAuthenticatedGoogleUser();
+
+      if (!authenticatedUser) {
+        return {
+          user: null,
+          cloudSaveRecord: null
+        };
+      }
+
+      const { data, error } = await window.supabaseClient
+        .from("user_saves")
+        .select("user_id, save_data, points, updated_at")
+        .eq("user_id", authenticatedUser.id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        user: authenticatedUser,
+        cloudSaveRecord: data || null
+      };
+    }
+
+    function formatCloudSaveTimestamp(timestampText) {
+      if (!timestampText) {
+        return "unknown time";
+      }
+
+      const parsedDate = new Date(timestampText);
+
+      if (Number.isNaN(parsedDate.getTime())) {
+        return "unknown time";
+      }
+
+      return parsedDate.toLocaleString();
+    }
+
+    async function refreshCloudSaveState() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        setCloudSaveStatus("Supabase is not configured for cloud saves yet", "is-pending");
+        setCloudSaveButtons(false, false);
+        return;
+      }
+
+      const authenticatedUser = await getAuthenticatedGoogleUser();
+
+      if (!authenticatedUser) {
+        setCloudSaveStatus("Sign in with Google to use cloud saves", "is-pending");
+        setCloudSaveButtons(false, false);
+        return;
+      }
+
+      try {
+        const cloudResult = await fetchCloudSaveRecord();
+
+        if (!cloudResult.cloudSaveRecord) {
+          setCloudSaveStatus("No cloud save found yet. Sync this device to create one.", "is-pending");
+          setCloudSaveButtons(true, false);
+          return;
+        }
+
+        setCloudSaveStatus(
+          "Cloud save found from " + formatCloudSaveTimestamp(cloudResult.cloudSaveRecord.updated_at),
+          "is-ready"
+        );
+        setCloudSaveButtons(true, true);
+      } catch (error) {
+        setCloudSaveStatus("Cloud save status could not be loaded", "is-pending");
+        setCloudSaveButtons(true, false);
+      }
+    }
+
+    async function refreshGoogleAuthState() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        setGoogleAuthStatus("Supabase is not configured for Google sign-in yet", "is-pending");
+        setGoogleAuthButtons(false);
+        setCloudSaveStatus("Supabase is not configured for cloud saves yet", "is-pending");
+        setCloudSaveButtons(false, false);
+        setLocalSaveTransferButtons(true);
+        return;
+      }
+
+      const { data, error } = await window.supabaseClient.auth.getSession();
+
+      if (error) {
+        setGoogleAuthStatus("Google sign-in status could not be loaded", "is-pending");
+        setGoogleAuthButtons(false);
+        setCloudSaveStatus("Cloud save status could not be loaded", "is-pending");
+        setCloudSaveButtons(false, false);
+        setLocalSaveTransferButtons(true);
+        return;
+      }
+
+      const session = data && data.session ? data.session : null;
+
+      if (!session || !session.user) {
+        setGoogleAuthStatus("Not signed in with Google", "is-pending");
+        setGoogleAuthButtons(false);
+        setCloudSaveStatus("Sign in with Google to use cloud saves", "is-pending");
+        setCloudSaveButtons(false, false);
+        setLocalSaveTransferButtons(true);
+        return;
+      }
+
+      const userEmail = session.user.email || "Google account connected";
+      setGoogleAuthStatus("Signed in with Google: " + userEmail, "is-ready");
+      setGoogleAuthButtons(true);
+      setLocalSaveTransferButtons(false);
+      refreshCloudSaveState();
+    }
+
+    async function signInWithGoogle() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        setGoogleAuthStatus("Supabase is not configured for Google sign-in yet", "is-pending");
+        return;
+      }
+
+      setGoogleAuthStatus("Redirecting to Google sign-in...", "is-pending");
+
+      const { error } = await window.supabaseClient.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.href
+        }
+      });
+
+      if (error) {
+        setGoogleAuthStatus("Google sign-in failed: " + error.message, "is-pending");
+      }
+    }
+
+    async function signOutFromGoogle() {
+      if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
+        setGoogleAuthStatus("Supabase is not configured for Google sign-in yet", "is-pending");
+        return;
+      }
+
+      const { error } = await window.supabaseClient.auth.signOut();
+
+      if (error) {
+        setGoogleAuthStatus("Google sign-out failed: " + error.message, "is-pending");
+        return;
+      }
+
+      setGoogleAuthStatus("Signed out of Google", "is-pending");
+      setGoogleAuthButtons(false);
+      setCloudSaveStatus("Sign in with Google to use cloud saves", "is-pending");
+      setCloudSaveButtons(false, false);
+      setLocalSaveTransferButtons(true);
+    }
+
+    async function syncLocalSaveToCloud() {
+      const authenticatedUser = await getAuthenticatedGoogleUser();
+
+      if (!authenticatedUser) {
+        setCloudSaveStatus("Sign in with Google before syncing cloud saves", "is-pending");
+        setCloudSaveButtons(false, false);
+        return;
+      }
+
+      updateCoinsFromElapsedTime(gameState, Date.now());
+      setCloudSaveStatus("Syncing local save to cloud...", "is-pending");
+
+      const { error } = await window.supabaseClient
+        .from("user_saves")
+        .upsert({
+          user_id: authenticatedUser.id,
+          save_data: createGameStateSnapshot(gameState),
+          points: getPoints(gameState),
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        setCloudSaveStatus("Cloud sync failed: " + error.message, "is-pending");
+        return;
+      }
+
+      playButtonSound();
+      await refreshCloudSaveState();
+    }
+
+    async function loadCloudSaveIntoBrowser() {
+      const authenticatedUser = await getAuthenticatedGoogleUser();
+
+      if (!authenticatedUser) {
+        setCloudSaveStatus("Sign in with Google before loading a cloud save", "is-pending");
+        setCloudSaveButtons(false, false);
+        return;
+      }
+
+      setCloudSaveStatus("Loading cloud save...", "is-pending");
+
+      let cloudResult = null;
+
+      try {
+        cloudResult = await fetchCloudSaveRecord();
+      } catch (error) {
+        setCloudSaveStatus("Cloud save load failed: " + error.message, "is-pending");
+        return;
+      }
+
+      if (!cloudResult.cloudSaveRecord || !cloudResult.cloudSaveRecord.save_data) {
+        setCloudSaveStatus("No cloud save exists yet for this Google account", "is-pending");
+        setCloudSaveButtons(true, false);
+        return;
+      }
+
+      const shouldLoadCloudSave = window.confirm(
+        "Load the cloud save from " +
+        formatCloudSaveTimestamp(cloudResult.cloudSaveRecord.updated_at) +
+        "? This will overwrite the current browser save on this device."
+      );
+
+      if (!shouldLoadCloudSave) {
+        await refreshCloudSaveState();
+        return;
+      }
+
+      replaceLocalGameState(cloudResult.cloudSaveRecord.save_data);
+      playButtonSound();
+      window.location.reload();
+    }
+
     // Settings mostly manipulates saved data directly, so the top bar stays minimal here.
     // Keep the shared top bar current while this page is open.
     updateCoinsFromElapsedTime(gameState, Date.now());
@@ -397,11 +734,22 @@
       initViewportAwareTooltips();
       syncUpgradeInteractionPreference(gameState);
     renderAccountFields();
+    setGoogleAuthButtons(false);
+    setCloudSaveButtons(false, false);
+    setLocalSaveTransferButtons(true);
     upgradeConfirmationCheckbox.checked = gameState.upgradeConfirmationEnabled === true;
     holdToClickCheckbox.checked = gameState.holdToClickEnabled === true;
     startIncomeSystem(gameState, function () {
       renderTopBar(topBar, gameState);
     });
+    refreshGoogleAuthState();
+
+    if (window.SUPABASE_CONFIGURED && window.supabaseClient) {
+      window.supabaseClient.auth.onAuthStateChange(function () {
+        refreshGoogleAuthState();
+        refreshCloudSaveState();
+      });
+    }
 
     savePlayerNameButton.addEventListener("click", function () {
       gameState.playerName = normalizePlayerName(playerNameInput.value);
@@ -417,6 +765,22 @@
 
       event.preventDefault();
       savePlayerNameButton.click();
+    });
+
+    googleSignInButton.addEventListener("click", function () {
+      signInWithGoogle();
+    });
+
+    googleSignOutButton.addEventListener("click", function () {
+      signOutFromGoogle();
+    });
+
+    syncCloudSaveButton.addEventListener("click", function () {
+      syncLocalSaveToCloud();
+    });
+
+    loadCloudSaveButton.addEventListener("click", function () {
+      loadCloudSaveIntoBrowser();
     });
 
     upgradeConfirmationCheckbox.addEventListener("change", function () {

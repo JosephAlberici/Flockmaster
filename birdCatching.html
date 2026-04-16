@@ -582,10 +582,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the main UI elements this screen updates.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const upgradesList = document.querySelector("#upgradesList");
     const upgradesMinimizeButton = document.querySelector("#upgradesMinimizeButton");
@@ -954,7 +957,8 @@
       button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = hasUpgrade(gameState, config.upgradeId)
+      const isRepeatableUpgrade = upgradeDefinition.oneTime === false;
+      button.textContent = (!isRepeatableUpgrade && hasUpgrade(gameState, config.upgradeId))
         ? upgradeDefinition.name + " (Owned)"
         : upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.seeds) + " Seeds)";
       syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
@@ -999,9 +1003,13 @@
       button.dataset.requiresSuccess = "true";
       button.style.width = "100%";
       button.style.marginRight = "0";
-      button.textContent = hasUpgrade(gameState, config.upgradeId)
+      const isRepeatableUpgrade = upgradeDefinition.oneTime === false;
+      const grubResetCostSummary = Object.keys(upgradeDefinition.costs).map(function (resourceKey) {
+        return formatLargeNumber(upgradeDefinition.costs[resourceKey]) + " " + resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1);
+      }).join(", ");
+      button.textContent = (!isRepeatableUpgrade && hasUpgrade(gameState, config.upgradeId))
         ? upgradeDefinition.name + " (Owned)"
-        : upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.hardwood) + " Hardwood)";
+        : upgradeDefinition.name + " (" + grubResetCostSummary + ")";
       syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
@@ -1734,6 +1742,9 @@
 
       trapGrubRow.appendChild(createTrapGrubResetButton({
         upgradeId: "newSubstrate"
+      }));
+      trapGrubRow.appendChild(createTrapGrubResetButton({
+        upgradeId: "grubBreeding"
       }));
     }
 

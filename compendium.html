@@ -187,6 +187,10 @@
       transform-origin: bottom center;
     }
 
+    .compendium-bestiary-image.is-unacquired {
+      filter: grayscale(1) brightness(0.55) contrast(0);
+    }
+
     .compendium-bestiary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
@@ -359,10 +363,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Load the save and keep the shared top bar current on this page.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const bestiaryButton = document.querySelector("#bestiaryButton");
     const abilityDescriptionsButton = document.querySelector("#abilityDescriptionsButton");
@@ -407,6 +414,7 @@
     function createBestiaryEntry(bird) {
       const birdEntry = document.createElement("div");
       birdEntry.className = "compendium-entry compendium-bestiary-entry";
+      const isAcquired = getAcquiredStatus(bird);
       const birdAbilityNames = getBirdAbilityNames(bird);
       const baseBestiaryScale = typeof bird.habitatScale === "number" ? bird.habitatScale : 1;
       const metaBlock = document.createElement("div");
@@ -415,7 +423,7 @@
       actionRow.className = "compendium-bestiary-actions";
 
       const birdName = document.createElement("h3");
-      birdName.textContent = bird.species;
+      birdName.textContent = isAcquired ? bird.species : "??????";
       birdEntry.appendChild(birdName);
 
       const habitatLine = document.createElement("p");
@@ -423,7 +431,7 @@
       metaBlock.appendChild(habitatLine);
 
       const scientificNameLine = document.createElement("p");
-      scientificNameLine.textContent = "Scientific Name: " + bird.scientificName;
+      scientificNameLine.textContent = isAcquired ? "Scientific Name: " + bird.scientificName : "Scientific Name: ??????";
       metaBlock.appendChild(scientificNameLine);
 
       const rarityLine = document.createElement("p");
@@ -448,16 +456,10 @@
         const variantKeys = Object.keys(bird.variantImages);
         let activeVariantIndex = 0;
 
-        const toggleButton = document.createElement("button");
-        toggleButton.className = "compendium-toggle-button";
-        toggleButton.type = "button";
-        toggleButton.textContent = "Toggle Sex";
-        actionRow.appendChild(toggleButton);
-
         const bestiaryImage = document.createElement("img");
         bestiaryImage.className = "compendium-bestiary-image";
         bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
-        bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+        bestiaryImage.alt = isAcquired ? bird.species + " (" + variantKeys[activeVariantIndex] + ")" : "Unknown species";
         const currentVariantKey = variantKeys[activeVariantIndex];
         const variantScaleMultiplier =
           bird.habitatVariantScales &&
@@ -465,26 +467,36 @@
             ? bird.habitatVariantScales[currentVariantKey]
             : 1;
         bestiaryImage.style.setProperty("--bestiary-image-scale", baseBestiaryScale * variantScaleMultiplier);
+        bestiaryImage.classList.toggle("is-unacquired", !isAcquired);
         imageWrap.appendChild(bestiaryImage);
 
-        toggleButton.addEventListener("click", function () {
-          activeVariantIndex = (activeVariantIndex + 1) % variantKeys.length;
-          bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
-          bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
-          const toggledVariantKey = variantKeys[activeVariantIndex];
-          const toggledVariantScaleMultiplier =
-            bird.habitatVariantScales &&
-            typeof bird.habitatVariantScales[toggledVariantKey] === "number"
-              ? bird.habitatVariantScales[toggledVariantKey]
-              : 1;
-          bestiaryImage.style.setProperty("--bestiary-image-scale", baseBestiaryScale * toggledVariantScaleMultiplier);
-        });
+        if (isAcquired) {
+          const toggleButton = document.createElement("button");
+          toggleButton.className = "compendium-toggle-button";
+          toggleButton.type = "button";
+          toggleButton.textContent = "Toggle Sex";
+          actionRow.appendChild(toggleButton);
+
+          toggleButton.addEventListener("click", function () {
+            activeVariantIndex = (activeVariantIndex + 1) % variantKeys.length;
+            bestiaryImage.src = bird.variantImages[variantKeys[activeVariantIndex]];
+            bestiaryImage.alt = bird.species + " (" + variantKeys[activeVariantIndex] + ")";
+            const toggledVariantKey = variantKeys[activeVariantIndex];
+            const toggledVariantScaleMultiplier =
+              bird.habitatVariantScales &&
+              typeof bird.habitatVariantScales[toggledVariantKey] === "number"
+                ? bird.habitatVariantScales[toggledVariantKey]
+                : 1;
+            bestiaryImage.style.setProperty("--bestiary-image-scale", baseBestiaryScale * toggledVariantScaleMultiplier);
+          });
+        }
       } else {
         const bestiaryImage = document.createElement("img");
         bestiaryImage.className = "compendium-bestiary-image";
         bestiaryImage.src = getBirdPrimaryImage(bird);
-        bestiaryImage.alt = bird.species;
+        bestiaryImage.alt = isAcquired ? bird.species : "Unknown species";
         bestiaryImage.style.setProperty("--bestiary-image-scale", baseBestiaryScale);
+        bestiaryImage.classList.toggle("is-unacquired", !isAcquired);
         imageWrap.appendChild(bestiaryImage);
       }
 
@@ -511,6 +523,11 @@
       birdEntry.appendChild(imageWrap);
 
       return birdEntry;
+    }
+
+    function getAcquiredStatus(bird) {
+      const birdProgress = getBirdById(gameState, bird.id);
+      return !!(birdProgress && birdProgress.acquired);
     }
 
     // Split bestiary entries into pages using stable measured card sizing.

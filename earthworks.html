@@ -716,10 +716,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the main UI elements this screen updates.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const grubsPanel = document.querySelector(".earthworks-panel");
     const sawmillPanel = document.querySelector("#sawmillPanel");
@@ -938,14 +941,15 @@
       huntingButton.appendChild(huntingImage);
 
       function performGrubHunt(clickX, clickY) {
-        gameState.grubs += gameState.grubsPerClick;
+        const grubHuntReward = getGrubHuntReward(gameState);
+        gameState.grubs += grubHuntReward.rewardAmount;
         clampGameStateResources(gameState);
         saveGameState(gameState);
         renderTopBar(topBar, gameState);
         renderEarthworksOverview();
         grubSplatSound.currentTime = 0;
         playGameSound(grubSplatSound);
-        spawnGrubFloat(clickX, clickY, gameState.grubsPerClick);
+        spawnGrubFloat(clickX, clickY, grubHuntReward.rewardAmount, grubHuntReward.didCrit);
       }
 
       huntingButton.addEventListener("click", function (event) {
@@ -1321,10 +1325,10 @@
       return didChange;
     }
 
-    function spawnGrubFloat(x, y, amount) {
+    function spawnGrubFloat(x, y, amount, isCrit) {
       const grubFloat = document.createElement("div");
       grubFloat.className = "grub-float";
-      grubFloat.textContent = "+" + amount;
+      grubFloat.textContent = isCrit ? "CRIT +" + amount : "+" + amount;
       grubFloat.style.left = x + "px";
       grubFloat.style.top = y + "px";
       document.body.appendChild(grubFloat);

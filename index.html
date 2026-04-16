@@ -162,10 +162,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Load the save and cache the home-page UI elements.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const speechOptions = [
       "Hey, Daddy-O", 
       "Stop closing the blinds when you change", 

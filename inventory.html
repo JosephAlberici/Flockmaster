@@ -201,9 +201,12 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const inventoryGrid = document.querySelector("#inventoryGrid");
     const censusResourceList = document.querySelector("#censusResourceList");

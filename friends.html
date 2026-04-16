@@ -292,6 +292,7 @@
     // Load the save and refresh the simple friends overview.
     // This page is intentionally light and just mirrors the live point formula from game.js.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const pointsDisplay = document.querySelector("#pointsDisplay");
     const playerNameDisplay = document.querySelector("#playerNameDisplay");

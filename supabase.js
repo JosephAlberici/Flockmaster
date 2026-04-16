@@ -13,8 +13,9 @@ const SUPABASE_CONFIGURED =
 const supabaseClient = SUPABASE_CONFIGURED
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
       }
     })
   : null;

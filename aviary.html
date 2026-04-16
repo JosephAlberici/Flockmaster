@@ -880,10 +880,13 @@
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
   <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
   <script src="game.js"></script>
   <script>
     // Cache page state and the main UI elements this screen updates.
     const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
     const individualCount = document.querySelector("#individualCount");
@@ -1697,9 +1700,18 @@
                 (variantCount > 0 ? "<span class='bird-count-badge habitat-variant-count-badge'>x" + variantCount + "</span>" : "") +
               "</span>";
             }).join("") + "</div>"
-          : "<span class='habitat-image-frame' style='--habitat-image-scale:" + baseHabitatScale + "'>" +
-              "<img src='" + habitatImages[0].src + "' alt='" + habitatImages[0].alt + "' data-bird-id='" + bird.id + "' data-variant='" + (habitatImages[0].variantKey || "") + "'>" +
-            "</span>";
+          : (function () {
+              const singleImageEntry = habitatImages[0];
+              const singleVariantScaleMultiplier = singleImageEntry.variantKey &&
+                bird.habitatVariantScales &&
+                typeof bird.habitatVariantScales[singleImageEntry.variantKey] === "number"
+                  ? bird.habitatVariantScales[singleImageEntry.variantKey]
+                  : 1;
+
+              return "<span class='habitat-image-frame' style='--habitat-image-scale:" + (baseHabitatScale * singleVariantScaleMultiplier) + "'>" +
+                "<img src='" + singleImageEntry.src + "' alt='" + singleImageEntry.alt + "' data-bird-id='" + bird.id + "' data-variant='" + (singleImageEntry.variantKey || "") + "'>" +
+              "</span>";
+            })();
 
         habitatFigure.innerHTML =
           "<div class='habitat-bird-tooltip'>" +

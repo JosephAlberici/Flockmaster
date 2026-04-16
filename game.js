@@ -1,4 +1,5 @@
 const STORAGE_KEY = "flockmasterSave";
+const CLOUD_SAVE_META_KEY = "flockmasterCloudMeta";
 const SAVE_ENCODING_PREFIX = "FLOCKMASTER_SAVE_V1:";
 const SAVE_ENCODING_KEY = "FlockmasterHarborCipher";
 const BASE_TICK_MS = 1000;
@@ -70,6 +71,9 @@ const TREE_BONUS_KEY_BY_TREE_KEY = {
 
 const SAVE_TEXT_ENCODER = typeof TextEncoder === "function" ? new TextEncoder() : null;
 const SAVE_TEXT_DECODER = typeof TextDecoder === "function" ? new TextDecoder() : null;
+let cloudSyncTimeoutId = null;
+let cloudSaveBootstrapPromise = null;
+let cloudSaveSyncEnabled = false;
 
 // Shared save-schema defaults
 // Add new saved primitive values here first so loading, importing, and new saves stay aligned.
@@ -481,8 +485,230 @@ function serializeGameState(gameState) {
   return encodeSavePayload(JSON.stringify(gameState));
 }
 
+function createGameStateSnapshot(gameState) {
+  ensurePlayerAccountIdentity(gameState);
+  return JSON.parse(JSON.stringify(gameState));
+}
+
 function parseSavedGameState(saveText) {
   return JSON.parse(decodeSavePayload(saveText));
+}
+
+function replaceLocalGameState(nextGameState) {
+  const normalizedGameState = normalizeGameState(nextGameState);
+  saveGameState(normalizedGameState);
+  return normalizedGameState;
+}
+
+function cloneJsonValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getCloudSaveMeta() {
+  try {
+    const savedMeta = localStorage.getItem(CLOUD_SAVE_META_KEY);
+
+    if (!savedMeta) {
+      return null;
+    }
+
+    const parsedMeta = JSON.parse(savedMeta);
+    return isPlainObject(parsedMeta) ? parsedMeta : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function setCloudSaveMeta(meta) {
+  if (!isPlainObject(meta)) {
+    localStorage.removeItem(CLOUD_SAVE_META_KEY);
+    return;
+  }
+
+  localStorage.setItem(CLOUD_SAVE_META_KEY, JSON.stringify(meta));
+}
+
+function clearCloudSaveMeta() {
+  localStorage.removeItem(CLOUD_SAVE_META_KEY);
+}
+
+function hasSupabaseCloudClient() {
+  return typeof window !== "undefined" && window.SUPABASE_CONFIGURED && !!window.supabaseClient;
+}
+
+async function getAuthenticatedCloudUser() {
+  if (!hasSupabaseCloudClient()) {
+    return null;
+  }
+
+  const sessionResult = await window.supabaseClient.auth.getSession();
+
+  if (sessionResult.error || !sessionResult.data || !sessionResult.data.session || !sessionResult.data.session.user) {
+    return null;
+  }
+
+  return sessionResult.data.session.user;
+}
+
+async function fetchCloudSaveRecordForUser(userId) {
+  if (!hasSupabaseCloudClient() || !userId) {
+    return null;
+  }
+
+  const { data, error } = await window.supabaseClient
+    .from("user_saves")
+    .select("user_id, save_data, points, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data || null;
+}
+
+async function syncPlayerProfileToSupabase(gameState, updatedAtIso) {
+  if (!hasSupabaseCloudClient()) {
+    return;
+  }
+
+  const { error } = await window.supabaseClient
+    .from("players")
+    .upsert({
+      id: gameState.playerId,
+      player_name: gameState.playerName,
+      friend_code: gameState.friendCode,
+      points: getPoints(gameState),
+      updated_at: updatedAtIso || new Date().toISOString()
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function uploadCloudSaveSnapshot(gameState) {
+  const authenticatedUser = await getAuthenticatedCloudUser();
+
+  if (!authenticatedUser) {
+    return false;
+  }
+
+  const updatedAtIso = new Date().toISOString();
+  const snapshot = createGameStateSnapshot(gameState);
+  const { error } = await window.supabaseClient
+    .from("user_saves")
+    .upsert({
+      user_id: authenticatedUser.id,
+      save_data: snapshot,
+      points: getPoints(snapshot),
+      updated_at: updatedAtIso
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  await syncPlayerProfileToSupabase(snapshot, updatedAtIso);
+  setCloudSaveMeta({
+    userId: authenticatedUser.id,
+    updatedAt: updatedAtIso
+  });
+  return true;
+}
+
+function queueCloudSaveSync(gameState) {
+  if (!cloudSaveSyncEnabled || !hasSupabaseCloudClient()) {
+    return;
+  }
+
+  if (cloudSyncTimeoutId !== null) {
+    clearTimeout(cloudSyncTimeoutId);
+  }
+
+  cloudSyncTimeoutId = setTimeout(function () {
+    cloudSyncTimeoutId = null;
+    uploadCloudSaveSnapshot(gameState).catch(function (error) {
+      console.warn("Cloud save sync failed", error);
+    });
+  }, 1200);
+}
+
+async function initCloudSaveForCurrentPage(gameState, options) {
+  const initOptions = options || {};
+
+  if (!hasSupabaseCloudClient()) {
+    cloudSaveSyncEnabled = false;
+    return false;
+  }
+
+  if (cloudSaveBootstrapPromise) {
+    return cloudSaveBootstrapPromise;
+  }
+
+  cloudSaveBootstrapPromise = (async function () {
+    cloudSaveSyncEnabled = false;
+    const authenticatedUser = await getAuthenticatedCloudUser();
+
+    if (!authenticatedUser) {
+      clearCloudSaveMeta();
+      cloudSaveBootstrapPromise = null;
+      return false;
+    }
+
+    const cloudSaveRecord = await fetchCloudSaveRecordForUser(authenticatedUser.id);
+
+    if (!cloudSaveRecord || !cloudSaveRecord.save_data) {
+      await uploadCloudSaveSnapshot(gameState);
+      cloudSaveSyncEnabled = true;
+      cloudSaveBootstrapPromise = null;
+      return false;
+    }
+
+    const existingCloudMeta = getCloudSaveMeta();
+    const shouldApplyCloudSave =
+      !existingCloudMeta ||
+      existingCloudMeta.userId !== authenticatedUser.id ||
+      existingCloudMeta.updatedAt !== cloudSaveRecord.updated_at;
+
+    if (shouldApplyCloudSave) {
+      const normalizedCloudSave = normalizeGameState(cloneJsonValue(cloudSaveRecord.save_data));
+      Object.keys(gameState).forEach(function (key) {
+        delete gameState[key];
+      });
+      Object.assign(gameState, normalizedCloudSave);
+      saveGameState(gameState);
+      setCloudSaveMeta({
+        userId: authenticatedUser.id,
+        updatedAt: cloudSaveRecord.updated_at
+      });
+      cloudSaveSyncEnabled = true;
+
+      if (typeof initOptions.onCloudLoad === "function") {
+        initOptions.onCloudLoad(gameState);
+      }
+
+      if (initOptions.reloadOnRemoteLoad && typeof window !== "undefined" && window.location) {
+        window.location.reload();
+      }
+
+      cloudSaveBootstrapPromise = null;
+      return true;
+    }
+
+    cloudSaveSyncEnabled = true;
+    await syncPlayerProfileToSupabase(gameState, new Date().toISOString());
+    cloudSaveBootstrapPromise = null;
+    return false;
+  })().catch(function (error) {
+    console.warn("Cloud save bootstrap failed", error);
+    cloudSaveSyncEnabled = true;
+    cloudSaveBootstrapPromise = null;
+    return false;
+  });
+
+  return cloudSaveBootstrapPromise;
 }
 
 function generateRandomCode(codeLength) {
@@ -651,11 +877,13 @@ function createDefaultGameState() {
 // Persist the current game state to browser storage.
 function saveGameState(gameState) {
   localStorage.setItem(STORAGE_KEY, serializeGameState(gameState));
+  queueCloudSaveSync(gameState);
 }
 
 // Wipe the saved game from browser storage.
 function eraseGameProgress() {
   localStorage.removeItem(STORAGE_KEY);
+  clearCloudSaveMeta();
 }
 
 // Replace the current save with imported text from an exported file.
@@ -1437,11 +1665,15 @@ function getParasiteTargetBird(parasiticBird, gameState) {
 
 // Support both single-diet birds and future birds that can eat multiple bait types.
 function birdMatchesBaitType(bird, baitType) {
+  const normalizedBaitType = typeof baitType === "string" ? baitType.toLowerCase() : "";
+
   if (Array.isArray(bird.diet)) {
-    return bird.diet.includes(baitType);
+    return bird.diet.some(function (dietType) {
+      return typeof dietType === "string" && dietType.toLowerCase() === normalizedBaitType;
+    });
   }
 
-  return bird.diet === baitType;
+  return typeof bird.diet === "string" && bird.diet.toLowerCase() === normalizedBaitType;
 }
 
 // Filter the habitat catch pool by the bait diet that was loaded into the trap.
@@ -1909,7 +2141,7 @@ function getRandomDockyardTreasureReward() {
 // Build the treasure bundle waiting at the end of one Dockyard voyage.
 function rollDockyardTreasureRewards(gameState) {
   const pendingRewards = {};
-  const treasureChance = gameState.dockyardTreasureChance;
+  const treasureChance = getDockyardTreasureChance(gameState);
 
   if (Math.random() >= treasureChance) {
     return pendingRewards;
@@ -1953,7 +2185,13 @@ function startDockyardVoyage(gameState, currentTime) {
 
 // Pay out all stored Dockyard voyage rewards and clear the finished trip.
 function collectDockyardVoyageRewards(gameState) {
-  gameState.fish += gameState.dockyardVoyagePendingFish || 0;
+  let fishReward = gameState.dockyardVoyagePendingFish || 0;
+
+  if (fishReward > 0 && Math.random() < getDockyardFishDoubleChance(gameState)) {
+    fishReward *= 2;
+  }
+
+  gameState.fish += fishReward;
   gameState.scrap += gameState.dockyardVoyagePendingScrap || 0;
 
   if (gameState.dockyardVoyagePendingTreasureRewards && typeof gameState.dockyardVoyagePendingTreasureRewards === "object") {
@@ -2079,6 +2317,129 @@ function runDockyardAutomation(gameState, currentTime) {
   return didChange;
 }
 
+// Replay elapsed sawmill time across the whole offline span so an assigned
+// overseer can finish, collect, and restart multiple batches while away.
+function catchUpSawmillAutomation(gameState, targetTime) {
+  let didChange = false;
+  let safeguard = 0;
+  let simulationTime = gameState.lastCoinUpdate;
+
+  while (safeguard < 1000) {
+    safeguard += 1;
+
+    if (gameState.sawmillProcessingActive && !gameState.sawmillProcessingReady && gameState.sawmillProcessingStart !== null) {
+      const sawmillFinishTime = gameState.sawmillProcessingStart + getSawmillProcessingDurationMs(gameState);
+
+      if (sawmillFinishTime > targetTime) {
+        break;
+      }
+
+      gameState.sawmillProcessingReady = true;
+      simulationTime = sawmillFinishTime;
+      didChange = true;
+    }
+
+    if (gameState.sawmillProcessingReady) {
+      if (!getAssignedOverseerId(gameState, "sawmill") || gameState.sawmillTwigThreshold <= 0) {
+        break;
+      }
+
+      gameState.hardwood = addPassiveResourceWithCap(
+        gameState.hardwood,
+        gameState.hardwoodMax,
+        gameState.sawmillProcessingPendingHardwood
+      );
+      gameState.sawmillProcessingPendingHardwood = 0;
+      gameState.sawmillProcessingStart = null;
+      gameState.sawmillProcessingActive = false;
+      gameState.sawmillProcessingReady = false;
+      didChange = true;
+      continue;
+    }
+
+    if (
+      getAssignedOverseerId(gameState, "sawmill") &&
+      gameState.sawmillTwigThreshold > 0 &&
+      tryAutoStartSawmill(gameState, simulationTime)
+    ) {
+      didChange = true;
+      continue;
+    }
+
+    break;
+  }
+
+  return didChange;
+}
+
+// Replay elapsed Dockyard time across the full offline span so voyage
+// automation can collect and launch repeated trips while the player is away.
+function catchUpDockyardAutomation(gameState, targetTime) {
+  let didChange = false;
+  let safeguard = 0;
+  let simulationTime = gameState.lastCoinUpdate;
+
+  while (safeguard < 1000) {
+    safeguard += 1;
+
+    if (gameState.dockyardVoyageActive && !gameState.dockyardVoyageReady && gameState.dockyardVoyageStart !== null) {
+      const dockyardFinishTime = gameState.dockyardVoyageStart + gameState.dockyardVoyageDurationMs;
+
+      if (dockyardFinishTime > targetTime) {
+        break;
+      }
+
+      gameState.dockyardVoyageReady = true;
+      simulationTime = dockyardFinishTime;
+      didChange = true;
+    }
+
+    if (gameState.dockyardVoyageReady) {
+      if (
+        !isDockyardUnlocked(gameState) ||
+        !getAssignedOverseerId(gameState, "dockyard") ||
+        gameState.dockyardCoinThreshold <= 0
+      ) {
+        break;
+      }
+
+      collectDockyardVoyageRewards(gameState);
+      didChange = true;
+      continue;
+    }
+
+    if (
+      isDockyardUnlocked(gameState) &&
+      getAssignedOverseerId(gameState, "dockyard") &&
+      gameState.dockyardCoinThreshold > 0 &&
+      tryAutoStartDockyard(gameState, simulationTime)
+    ) {
+      didChange = true;
+      continue;
+    }
+
+    break;
+  }
+
+  return didChange;
+}
+
+// Advance automation across a potentially long offline span instead of only
+// resolving a single "ready" state at the current timestamp.
+function catchUpAutomationSystems(gameState, targetTime) {
+  let didChange = false;
+
+  if (catchUpSawmillAutomation(gameState, targetTime)) {
+    didChange = true;
+  }
+
+  if (catchUpDockyardAutomation(gameState, targetTime)) {
+    didChange = true;
+  }
+
+  return didChange;
+}
+
 // Advance all timer-based automation systems from the shared one-second clock
 // so their progress is not tied to whichever feature page happens to be open.
 function runAutomationSystems(gameState, currentTime) {
@@ -2190,7 +2551,16 @@ function grantHabitatConstructionRewards(gameState, habitatName) {
     return;
   }
 
-  addItemCount(gameState, "seedbaitticket", 10);
+  const habitatConstructionSeedBaitTickets = applyGlobalAbilityModifiers(
+    gameState,
+    10,
+    "modifyHabitatConstructionSeedBaitTickets",
+    {
+      habitatName: habitatName
+    }
+  );
+
+  addItemCount(gameState, "seedbaitticket", Math.max(0, Math.round(habitatConstructionSeedBaitTickets)));
 }
 
 // Population bonuses only stay active while their flock requirement is still met.
@@ -2333,6 +2703,58 @@ function getEffectiveFishPerVoyage(gameState) {
   );
 
   return Math.max(0, effectiveFishPerVoyage);
+}
+
+function getDockyardTreasureChance(gameState) {
+  const treasureChance = applyGlobalAbilityModifiers(
+    gameState,
+    gameState.dockyardTreasureChance,
+    "modifyVoyageTreasureChance"
+  );
+
+  return Math.max(0, Math.min(1, treasureChance));
+}
+
+function getDockyardFishDoubleChance(gameState) {
+  const doubleChance = applyGlobalAbilityModifiers(
+    gameState,
+    0,
+    "modifyVoyageFishDoubleChance"
+  );
+
+  return Math.max(0, Math.min(1, doubleChance));
+}
+
+function getGrubHuntCritChance(gameState) {
+  const critChance = applyGlobalAbilityModifiers(
+    gameState,
+    0,
+    "modifyGrubHuntCritChance"
+  );
+
+  return Math.max(0, Math.min(1, critChance));
+}
+
+function getGrubHuntCritMultiplier(gameState) {
+  const critMultiplier = applyGlobalAbilityModifiers(
+    gameState,
+    1,
+    "modifyGrubHuntCritMultiplier"
+  );
+
+  return Math.max(1, critMultiplier);
+}
+
+function getGrubHuntReward(gameState) {
+  const baseReward = Math.max(0, gameState.grubsPerClick || 0);
+  const didCrit = baseReward > 0 && Math.random() < getGrubHuntCritChance(gameState);
+
+  return {
+    didCrit: didCrit,
+    rewardAmount: didCrit
+      ? Math.round(baseReward * getGrubHuntCritMultiplier(gameState))
+      : baseReward
+  };
 }
 
 // Fish bait currently uses one flat price so Harbor progression can set the
@@ -3174,6 +3596,7 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   const twigsPerSecond = getTwigsPerSecond(gameState);
   const rawElapsedTime = currentTime - gameState.lastCoinUpdate;
   const elapsedTime = Math.min(rawElapsedTime, getMaxOfflineDurationMs(gameState));
+  const automationTargetTime = gameState.lastCoinUpdate + Math.max(0, elapsedTime);
 
   if (elapsedTime <= 0) {
     if (didAutomationUpdate) {
@@ -3187,6 +3610,7 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   // Even when nothing is producing right now, advance the clock so the next
   // real income change starts from "now" instead of replaying this dead span.
   if (coinsPerSecond <= 0 && seedsPerSecond <= 0 && grubsPerSecond <= 0 && twigsPerSecond <= 0) {
+    catchUpAutomationSystems(gameState, automationTargetTime);
     gameState.lastCoinUpdate = currentTime;
     clampGameStateResources(gameState);
     saveGameState(gameState);
@@ -3252,6 +3676,7 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   gameState.seeds = addPassiveResourceWithCap(gameState.seeds, gameState.seedMax, earnedSeeds);
   gameState.grubs = addPassiveResourceWithCap(gameState.grubs, gameState.grubMax, earnedGrubs);
   gameState.twigs = addPassiveResourceWithCap(gameState.twigs, gameState.twigMax, earnedTwigs);
+  catchUpAutomationSystems(gameState, automationTargetTime);
   gameState.lastCoinUpdate = currentTime;
   saveGameState(gameState);
   return true;
