@@ -4,10 +4,18 @@
 const ABILITIES = {
   baitfisher: {
     name: "Baitfisher",
-    description: "Increase fish per voyage (+1 per individual)",
+    description: "Increase fish per voyage by 1 per individual with the ability",
 
     modifyFishPerVoyage(dockyardFishPerVoyage, context){
       return dockyardFishPerVoyage + context.totalIndividuals;
+    }
+  },
+  globalist: {
+    name: "Globalist",
+    description: "Awards 1 Seed Bait Ticket per individual whenever a new habitat is constructed",
+
+    modifyHabitatConstructionSeedBaitTickets(currentSeedBaitTickets, context) {
+      return currentSeedBaitTickets + context.totalIndividuals;
     }
   },
   dimorphic: {
@@ -27,11 +35,27 @@ const ABILITIES = {
   },
   mascot: {
     name: "Mascot",
-    description: "Increases coins per visitor (0.05 per mascot species acquired)",
+    description: "Increases coins per visitor by 0.05 per mascot species acquired",
 
     // Reward broad flock variety rather than raw mascot headcount.
     modifyCoinsPerVisitorRate(currentCoinsPerVisitorRate, context) {
       return currentCoinsPerVisitorRate + (context.totalSpecies * 0.05);
+    }
+  },
+  mudSweeper: {
+    name: "Mud Sweeper",
+    description: "Adds a 1% chance per individual to crit on grub hunting clicks",
+
+    modifyGrubHuntCritChance(currentCritChance, context) {
+      return currentCritChance + (context.totalIndividuals * 0.01);
+    },
+
+    modifyGrubHuntCritMultiplier(currentCritMultiplier, context) {
+      if (context.totalIndividuals <= 0) {
+        return currentCritMultiplier;
+      }
+
+      return Math.max(currentCritMultiplier, 5);
     }
   },
   nocturnal: {
@@ -65,7 +89,23 @@ const ABILITIES = {
     // Overseer powers assignment/automation systems on specific pages, so it also
     // stays metadata-driven rather than joining the global modifier hooks.
     name: "Overseer",
-    description: "Can supervise the sawmill and trigger automatic twig processing when a threshold is met"
+    description: "Can supervise and automate timed processes (sawmill, harbor)"
+  },
+  deepSeaDiver: {
+    name: "Deep Sea Diver",
+    description: "Increases Harbor treasure chance by 1% per individual",
+
+    modifyVoyageTreasureChance(currentTreasureChance, context) {
+      return currentTreasureChance + (context.totalIndividuals * 0.01);
+    }
+  },
+  spearfishing: {
+    name: "Spearfishing",
+    description: "Gives a 1% chance per individual to double fish returned from a Harbor voyage",
+
+    modifyVoyageFishDoubleChance(currentDoubleChance, context) {
+      return currentDoubleChance + (context.totalIndividuals * 0.01);
+    }
   },
   treePeck: {
     name: "Tree Peck",

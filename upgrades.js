@@ -91,11 +91,11 @@ const BIRD_CATCHING_UPGRADES = {
     page: "birdCatching",
     section: "trapCostSeeds",
     order: 2,
-    oneTime: true,
+    oneTime: false,
     costs: { seeds: 1000000 },
-    description: "Resets seed bait cost to 10k seeds",
+    description: "Resets seed bait cost to 50k seeds",
     onPurchase(gameState) {
-      gameState.trapLoadCost = 10000;
+      gameState.trapLoadCost = 50000;
     }
   },
   newSubstrate: {
@@ -107,9 +107,22 @@ const BIRD_CATCHING_UPGRADES = {
     order: 1,
     oneTime: true,
     costs: { hardwood: 20 },
-    description: "Resets grub bait cost to 20 grubs",
+    description: "Resets grub bait cost to 100 grubs",
     onPurchase(gameState) {
-      gameState.trapGrubLoadCost = 20;
+      gameState.trapGrubLoadCost = 100;
+    }
+  },
+  grubBreeding: {
+    id: "grubBreeding",
+    name: "Grub Breeding",
+    page: "birdCatching",
+    section: "trapCostGrubs",
+    order: 2,
+    oneTime: false,
+    costs: { grubs: 100000 },
+    description: "Resets grub bait cost to 5k grubs",
+    onPurchase(gameState) {
+      gameState.trapGrubLoadCost = 5000;
     }
   }
 };

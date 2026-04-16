@@ -313,6 +313,7 @@
     let activeLeaderboardView = "global";
     let lastProfileSyncAt = 0;
     let lastLeaderboardRefreshAt = 0;
+    let isFriendsUserAuthenticated = false;
 
     function setLeaderboardRefreshButtonState() {
       const remainingCooldownMs = Math.max(0, (lastLeaderboardRefreshAt + LEADERBOARD_REFRESH_COOLDOWN_MS) - Date.now());
@@ -328,16 +329,42 @@
     }
 
     function renderConnectionStatus() {
-      if (window.SUPABASE_CONFIGURED) {
-        supabaseStatus.textContent = "Supabase client is configured and ready for connection testing";
+      if (!window.SUPABASE_CONFIGURED) {
+        supabaseStatus.textContent = "Paste your Supabase URL and publishable key into supabase.js to continue";
+        supabaseStatus.classList.remove("is-ready");
+        supabaseStatus.classList.add("is-pending");
+        return;
+      }
+
+      if (isFriendsUserAuthenticated) {
+        supabaseStatus.textContent = "Signed in with Google. Leaderboard sync and friend management are enabled.";
         supabaseStatus.classList.remove("is-pending");
         supabaseStatus.classList.add("is-ready");
         return;
       }
 
-      supabaseStatus.textContent = "Paste your Supabase URL and publishable key into supabase.js to continue";
+      supabaseStatus.textContent = "Supabase is configured. Sign in with Google on Settings to sync to the leaderboard or add friends.";
       supabaseStatus.classList.remove("is-ready");
       supabaseStatus.classList.add("is-pending");
+    }
+
+    function syncFriendsAuthUi() {
+      syncProfileButton.disabled = !isFriendsUserAuthenticated;
+      addFriendButton.disabled = !isFriendsUserAuthenticated;
+      friendsLeaderboardButton.disabled = !isFriendsUserAuthenticated;
+      syncProfileButton.style.opacity = isFriendsUserAuthenticated ? "1" : "0.65";
+      addFriendButton.style.opacity = isFriendsUserAuthenticated ? "1" : "0.65";
+      friendsLeaderboardButton.style.opacity = isFriendsUserAuthenticated ? "1" : "0.65";
+      syncProfileButton.style.cursor = isFriendsUserAuthenticated ? "pointer" : "default";
+      addFriendButton.style.cursor = isFriendsUserAuthenticated ? "pointer" : "default";
+      friendsLeaderboardButton.style.cursor = isFriendsUserAuthenticated ? "pointer" : "default";
+    }
+
+    async function refreshFriendsAuthState() {
+      const authenticatedUser = await getAuthenticatedCloudUser();
+      isFriendsUserAuthenticated = !!authenticatedUser;
+      renderConnectionStatus();
+      syncFriendsAuthUi();
     }
 
     function renderLeaderboardTabs() {
@@ -387,6 +414,12 @@
     }
 
     async function loadFriendsLeaderboard() {
+      if (!isFriendsUserAuthenticated) {
+        leaderboardStatus.textContent = "Sign in with Google on Settings to use the friends leaderboard.";
+        leaderboardList.innerHTML = "";
+        return;
+      }
+
       if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
         leaderboardStatus.textContent = "Supabase test is waiting for a configured client";
         leaderboardList.innerHTML = "";
@@ -460,6 +493,11 @@
         return;
       }
 
+      if (!isFriendsUserAuthenticated) {
+        leaderboardStatus.textContent = "Sign in with Google on Settings to sync your profile to the leaderboard.";
+        return;
+      }
+
       if (!syncOptions.force && (Date.now() - lastProfileSyncAt) < PROFILE_SYNC_COOLDOWN_MS) {
         if (syncOptions.refreshLeaderboard !== false) {
           await loadLeaderboard();
@@ -500,6 +538,11 @@
     async function addFriendByCode() {
       if (!window.SUPABASE_CONFIGURED || !window.supabaseClient) {
         friendCodeResult.textContent = "Supabase is not configured yet";
+        return;
+      }
+
+      if (!isFriendsUserAuthenticated) {
+        friendCodeResult.textContent = "Sign in with Google on Settings before adding friends";
         return;
       }
 
@@ -580,7 +623,15 @@
     initViewportAwareTooltips();
     renderFriendsPage();
     setLeaderboardRefreshButtonState();
-    syncCurrentPlayerProfile({ skipSound: true, refreshLeaderboard: true });
+    refreshFriendsAuthState().then(function () {
+      syncCurrentPlayerProfile({ skipSound: true, refreshLeaderboard: true });
+    });
+
+    if (window.SUPABASE_CONFIGURED && window.supabaseClient) {
+      window.supabaseClient.auth.onAuthStateChange(function () {
+        refreshFriendsAuthState();
+      });
+    }
     syncProfileButton.addEventListener("click", function () {
       syncCurrentPlayerProfile({ force: true, refreshLeaderboard: true });
     });
@@ -608,6 +659,11 @@
       loadLeaderboard();
     });
     friendsLeaderboardButton.addEventListener("click", function () {
+      if (!isFriendsUserAuthenticated) {
+        leaderboardStatus.textContent = "Sign in with Google on Settings to use the friends leaderboard.";
+        return;
+      }
+
       activeLeaderboardView = "friends";
       loadLeaderboard();
     });

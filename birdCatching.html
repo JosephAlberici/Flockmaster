@@ -838,6 +838,11 @@
     // Build a one-time bedding upgrade row with requirements and tooltip text.
     function createBeddingUpgradeButton(config) {
       const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
+
+      if (!upgradeDefinition) {
+        return document.createComment("Missing upgrade definition: " + config.upgradeId);
+      }
+
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 
@@ -904,6 +909,11 @@
     // Build a one-time seed storage upgrade button.
     function createStorageUpgradeButton(config) {
       const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
+
+      if (!upgradeDefinition) {
+        return document.createComment("Missing upgrade definition: " + config.upgradeId);
+      }
+
       const tooltipWrapper = document.createElement("div");
       tooltipWrapper.className = "upgrade-tooltip";
 
@@ -944,6 +954,11 @@
     // Build a seed-bait reset upgrade button.
     function createTrapSeedResetButton(config) {
       const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
+
+      if (!upgradeDefinition) {
+        return document.createComment("Missing upgrade definition: " + config.upgradeId);
+      }
+
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 
@@ -990,6 +1005,11 @@
     // Build a grub-bait reset upgrade button.
     function createTrapGrubResetButton(config) {
       const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
+
+      if (!upgradeDefinition) {
+        return document.createComment("Missing upgrade definition: " + config.upgradeId);
+      }
+
       const wrapper = document.createElement("div");
       wrapper.className = "upgrade-entry";
 

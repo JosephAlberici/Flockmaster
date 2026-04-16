@@ -72,7 +72,7 @@ const BIRD_LIBRARY = [
     species: "Pileated Woodpecker",
     visitorsPerDay: 1,
     twigsPerSecond: 0.06,
-    grubsPerSecond: 0.1,
+    grubsPerSecond: 0.06,
     abilities: ["treePeck"],
     diet: "grubs",
     rarity: "Rare",
@@ -119,7 +119,7 @@ const BIRD_LIBRARY = [
   {
     id: "screechowl",
     species: "Eastern Screech Owl",
-    grubsPerSecond: 0.15,
+    grubsPerSecond: 0.1,
     abilities: ["overseer"],
     diet: "grubs",
     rarity: "Epic",
@@ -183,7 +183,7 @@ const BIRD_LIBRARY = [
   {
     id: "mallard",
     species: "Mallard",
-    diet: "Seeds",
+    diet: "seeds",
     rarity: "Common",
     abilities: ["dimorphic"],
     acquired: false,
@@ -205,11 +205,13 @@ const BIRD_LIBRARY = [
     species: "Canada Goose",
     diet: "seeds",
     rarity: "Common",
-    visitorsPerDay: 3,
+    visitorsPerDay: 2,
+    seedsPerSecond: 0.1,
     image: "/Resources/Bird Images/goose.png",
     call: "/Resources/Calls/goose.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Branta canadensis"
+    scientificName: "Branta canadensis",
+    habitatScale: 1.3
   },
   {
     id: "sandpiper",
@@ -225,7 +227,7 @@ const BIRD_LIBRARY = [
   {
     id: "nightheron",
     species: "Black-Crowned Night Heron",
-    diet: ["fish", "grubs"],
+    diet: "fish",
     rarity: "Uncommon",
     visitorsPerDay: 4,
     abilities: ["nocturnal"],
@@ -239,7 +241,7 @@ const BIRD_LIBRARY = [
     species: "Green Heron",
     diet: ["fish", "grubs"],
     rarity: "Rare",
-    grubsPerSecond: 0.05,
+    grubsPerSecond: 0.04,
     abilities: ["baitfisher"],
     image: "/Resources/Bird Images/greenHeron.png",
     call: "/Resources/Calls/greenHeron.mp3",
@@ -257,5 +259,102 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/muteSwan.mp3",
     nativeHabitat: "Urban Waters",
     scientificName: "Cygnus olor"
+  },
+  {
+    id: "killdeer",
+    species: "Killdeer",
+    diet: "grubs",
+    rarity: "Common",
+    twigsPerSecond: 0.02,
+    grubsPerSecond: 0.01,
+    image: "/Resources/Bird Images/killdeer.png",
+    call: "/Resources/Calls/killdeer.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Charadrius vociferus"
+  },
+  {
+    id: "osprey",
+    species: "Osprey",
+    diet: "fish",
+    rarity: "Rare",
+    abilities: ["globalist"],
+    visitorsPerDay: 3,
+    image: "/Resources/Bird Images/osprey.png",
+    call: "/Resources/Calls/osprey.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Pandion haliaetus"
+  },
+  {
+    id: "coot",
+    species: "American Coot",
+    diet: "seeds",
+    rarity: "Uncommon",
+    seedsPerSecond: 0.2,
+    image: "/Resources/Bird Images/coot.png",
+    call: "/Resources/Calls/coot.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Fulica americana"
+  },
+  {
+    id: "kingfisher",
+    species: "Belted Kingfisher",
+    diet: "fish",
+    rarity: "Epic",
+    abilities: ["spearfishing"],
+    image: "/Resources/Bird Images/kingfisher.png",
+    call: "/Resources/Calls/kingfisher.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Megaceryle alcyon"
+  },
+  {
+    id: "cormorant",
+    species: "Double-Breasted Cormorant",
+    diet: "fish",
+    rarity: "Legendary",
+    abilities: ["deepSeaDiver"],
+    visitorsPerDay: 5,
+    seedsPerSecond: 0.5,
+    image: "/Resources/Bird Images/cormorant.png",
+    call: "/Resources/Calls/cormorant.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Nannopterum auritum"
+  },
+  {
+    id: "avocet",
+    species: "American Avocet",
+    diet: "grubs",
+    rarity: "Epic",
+    abilities: ["mudSweeper"],
+    grubsPerSecond: 0.05,
+    image: "/Resources/Bird Images/avocet.png",
+    call: "/Resources/Calls/avocet.wav",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Recurvirostra americana"
+  },
+  {
+    id: "harrier",
+    species: "Northern Harrier",
+    diet: "mice",
+    rarity: "Epic",
+    abilities: ["overseer"],
+    twigsPerSecond: 0.08,
+    visitorsPerDay: 5,
+    bonusPearTree: 1,
+    image: "/Resources/Bird Images/harrier.png",
+    call: "/Resources/Calls/harrier.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Circus hudsonius"
+  },
+  {
+    id: "grebe",
+    species: "Pied-billed Grebe",
+    diet: ["fish", "grubs"],
+    rarity: "Common",
+    grubsPerSecond: 0.01,
+    visitorsPerDay: 1,
+    image: "/Resources/Bird Images/grebe.png",
+    call: "/Resources/Calls/grebe.mp3",
+    nativeHabitat: "Urban Waters",
+    scientificName: "Podilymbus podiceps"
   }
 ];
