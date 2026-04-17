@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flockmaster Species Upgrades</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .wip-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 42, 54, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .wip-card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--cream-bg);
+      border: 3px solid black;
+      border-radius: 22px;
+      padding: 28px;
+      box-sizing: border-box;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .wip-card h1 {
+      margin: 0 0 14px;
+      color: var(--navy-bg);
+      letter-spacing: 2px;
+    }
+
+    .wip-card p {
+      margin: 0 0 24px;
+      color: var(--navy-bg);
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .wip-card .menu-button {
+      margin: 0;
+      min-width: 220px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wip-overlay" role="dialog" aria-modal="true" aria-labelledby="wipTitle">
+    <div class="wip-card">
+      <h1 id="wipTitle">WORK IN PROGRESS</h1>
+      <p>Species Upgrades is still under construction.</p>
+      <a class="menu-button" href="aviary.html">Return to Aviary</a>
+    </div>
+  </div>
+</body>
+</html>

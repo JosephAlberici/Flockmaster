@@ -140,6 +140,13 @@
       margin-bottom: 0;
     }
 
+    .upgrade-tooltip > .menu-button {
+      width: 100%;
+      margin-right: 0;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
     .dockyard-progress-shell {
       width: 100%;
       margin-top: auto;
@@ -385,6 +392,20 @@
       color: #f7f1e6;
       text-align: center;
     }
+
+    .nav-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .nav-card .menu-button {
+      width: 100%;
+      margin: 0;
+      text-align: center;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 
@@ -437,11 +458,12 @@
 
   <div class="page-layout">
     <div class="dockyard-sidebar">
-      <div class="card">
+      <div class="card nav-card">
         <a class="menu-button" href="index.html">Home</a>
         <a class="menu-button" href="aviary.html">Aviary</a>
         <a class="menu-button" href="birdCatching.html">Bird Catching</a>
         <a class="menu-button" href="earthworks.html">Earthworks</a>
+        <span class="menu-button is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
       </div>
 
       <div class="card">
@@ -571,7 +593,7 @@
 
     function renderDockyardOverview() {
       dockyardVoyageDuration.textContent = formatDurationLabel(gameState.dockyardVoyageDurationMs);
-      dockyardVoyageCost.textContent = "100k Coins";
+      dockyardVoyageCost.textContent = formatLargeNumber(getDockyardVoyageCoinCost()) + " Coins";
       dockyardFishPerVoyage.textContent = formatLargeNumber(getEffectiveFishPerVoyage(gameState));
       dockyardScrapPerVoyage.textContent = formatLargeNumber(gameState.dockyardScrapPerVoyage);
       dockyardTreasureChance.textContent = (gameState.dockyardTreasureChance * 100).toFixed(0) + "%";
@@ -592,7 +614,7 @@
       constructHarborButton.dataset.requiresSuccess = "true";
       constructHarborButton.textContent = hasUpgrade(gameState, "constructHarbor")
         ? "Construct Harbor (Owned)"
-        : "Construct Harbor (100 Hardwood, 200k Coins)";
+        : "Construct Harbor (100 Hardwood, 10k Coins)";
 
       if (hasUpgrade(gameState, "constructHarbor")) {
         constructHarborButton.classList.add("is-locked");
@@ -630,7 +652,7 @@
       dredgerButton.dataset.requiresSuccess = "true";
       dredgerButton.textContent = hasUpgrade(gameState, "dredger")
         ? "Dredger (Owned)"
-        : "Dredger (500k Coins)";
+        : "Dredger (25k Coins)";
 
       if (!harborConstructed || hasUpgrade(gameState, "dredger")) {
         dredgerButton.classList.add("is-locked");
@@ -706,7 +728,11 @@
       }
 
       voyageButton.textContent = "Voyage";
-      voyageTooltipBox.textContent = "Voyage costs 100k coins and returns in " + formatDurationLabel(gameState.dockyardVoyageDurationMs);
+      voyageTooltipBox.textContent =
+        "Voyage costs " +
+        formatLargeNumber(getDockyardVoyageCoinCost()) +
+        " coins and returns in " +
+        formatDurationLabel(gameState.dockyardVoyageDurationMs);
       dockyardProgressFill.style.width = "0%";
       dockyardProgressLabel.textContent = "Idle";
     }
@@ -831,7 +857,11 @@
         dockyardProgressLabel.textContent = formatDurationLabel(remainingMs) + " Remaining";
       } else {
         voyageButton.textContent = "Voyage";
-        voyageTooltipBox.textContent = "Voyage costs 100k coins and returns in " + formatDurationLabel(gameState.dockyardVoyageDurationMs);
+        voyageTooltipBox.textContent =
+          "Voyage costs " +
+          formatLargeNumber(getDockyardVoyageCoinCost()) +
+          " coins and returns in " +
+          formatDurationLabel(gameState.dockyardVoyageDurationMs);
         dockyardProgressFill.style.width = "0%";
         dockyardProgressLabel.textContent = "Idle";
       }
@@ -864,7 +894,7 @@
           return;
         }
 
-        if (gameState.coins < 100000) {
+        if (gameState.coins < getDockyardVoyageCoinCost()) {
           return;
         }
 

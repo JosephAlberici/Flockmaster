@@ -328,6 +328,13 @@
       display: inline-block;
     }
 
+    .upgrade-tooltip > .menu-button {
+      width: 100%;
+      margin-right: 0;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
     .upgrade-tooltip-box {
       position: absolute;
       top: calc(100% + 8px);
@@ -403,6 +410,33 @@
       color: #d7dde4;
       cursor: default;
       pointer-events: none;
+    }
+
+    .nav-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .nav-card .menu-button,
+    .nav-card .nav-tooltip {
+      width: 100%;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    .nav-card .menu-button {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .nav-card .nav-tooltip {
+      display: block;
+    }
+
+    .nav-card .nav-tooltip-box {
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     .shop-row {
@@ -534,10 +568,12 @@
 
   <div class="page-layout">
       <div class="catching-sidebar">
-        <div class="card">
-          <a class="menu-button" href="aviary.html">Return To Aviary</a>
+        <div class="card nav-card">
+          <a class="menu-button" href="index.html">Home</a>
+          <a class="menu-button" href="aviary.html">Aviary</a>
           <span class="nav-tooltip" id="earthworksNavWrapper"></span>
           <span class="nav-tooltip" id="dockyardNavWrapper"></span>
+          <span class="menu-button is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
         </div>
 
       <div class="card" id="upgradesCard">
@@ -643,7 +679,7 @@
     }
 
     function isLoggerheadUnlocked() {
-      return getTotalBirdCount(gameState) >= 75 || gameState.loggerheadShowingBird || getLoggerheadCurrentRequest() === null;
+      return getTotalBirdCount(gameState) >= 50 || gameState.loggerheadShowingBird || getLoggerheadCurrentRequest() === null;
     }
 
     function isLoggerheadSpendMiceUnlocked() {
@@ -727,7 +763,7 @@
 
       earthworksNavWrapper.innerHTML =
         "<span class='menu-button is-locked'>Earthworks</span>" +
-        "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+        "<span class='nav-tooltip-box'>Unlock at 10 Individuals</span>";
     }
 
     function renderDockyardNav() {
@@ -1152,12 +1188,6 @@
 
               addBirdToFlock(birdInFlock);
 
-              // Only seed bait uses the escalating bait-cost formula. Other bait
-              // types manage their costs on load or stay fixed for now.
-              if (gameState.trapBaitType === "seeds") {
-                gameState.trapLoadCost = getNextTrapSeedLoadCost(gameState.trapLoadCost);
-              }
-
               if (alreadyOwned) {
                 gameState.lastTrapResult = "You caught another " + caughtBird.species;
               } else {
@@ -1272,17 +1302,18 @@
           loadGrubTrapButton.className = "menu-button";
           loadGrubTrapButton.type = "button";
           loadGrubTrapButton.dataset.requiresSuccess = "true";
-          loadGrubTrapButton.textContent = formatLargeNumber(gameState.trapGrubLoadCost) + " Grubs";
+          const effectiveTrapGrubCost = getEffectiveTrapGrubCost(gameState);
+          loadGrubTrapButton.textContent = formatLargeNumber(Math.ceil(effectiveTrapGrubCost)) + " Grubs";
 
           loadGrubTrapButton.addEventListener("click", function () {
             updateCoinsFromElapsedTime(gameState, Date.now());
+            const currentTrapGrubCost = getEffectiveTrapGrubCost(gameState);
 
-            if (gameState.grubs < gameState.trapGrubLoadCost) {
+            if (gameState.grubs < currentTrapGrubCost) {
               return;
             }
 
-            gameState.grubs -= gameState.trapGrubLoadCost;
-            gameState.trapGrubLoadCost += 5;
+            gameState.grubs -= currentTrapGrubCost;
             gameState.trapLoaded = true;
             gameState.trapPulled = false;
             gameState.trapBaitType = "grubs";
@@ -1379,7 +1410,7 @@
         label: "Trade",
         isActive: activeLoggerheadMode === "trade",
         isLocked: !isLoggerheadUnlocked(),
-        tooltipText: "Requires 75 Individuals",
+        tooltipText: "Requires 50 Individuals",
         onActivate: function () {
           activeLoggerheadMode = "trade";
           renderLoggerheadPanel();

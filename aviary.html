@@ -638,6 +638,10 @@
 
     .upgrade-entry {
       margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
     }
 
     .upgrade-row {
@@ -663,13 +667,16 @@
       font-weight: bold;
       font-family: inherit;
       cursor: pointer;
-      text-align: left;
+      text-align: center;
     }
 
     .upgrade-requirement {
-      margin: 8px 0 0;
+      margin: 0;
       color: #2c3e50;
       font-weight: bold;
+      font-size: 14px;
+      line-height: 1.3;
+      text-align: center;
     }
 
     .upgrade-entry .upgrade-action-button.is-placeholder {
@@ -686,9 +693,38 @@
       pointer-events: none;
     }
 
+    .nav-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .nav-card .back-link,
+    .nav-card .nav-tooltip {
+      width: 100%;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    .nav-card .back-link {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .nav-card .nav-tooltip {
+      display: block;
+    }
+
+    .nav-card .nav-tooltip-box {
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+    }
+
     .upgrade-tooltip {
       position: relative;
       display: block;
+      width: 100%;
     }
 
     .upgrade-tooltip-box {
@@ -798,11 +834,12 @@
 
   <div class="page-layout">
     <div class="aviary-sidebar">
-      <div class="card">
-        <a class="back-link" href="index.html">Back To Home</a>
+      <div class="card nav-card">
+        <a class="back-link" href="index.html">Home</a>
         <a class="back-link" href="birdCatching.html">Bird Catching</a>
         <span class="nav-tooltip" id="earthworksNavWrapper"></span>
         <span class="nav-tooltip" id="dockyardNavWrapper"></span>
+        <span class="back-link is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
       </div>
 
       <div class="card">
@@ -815,8 +852,8 @@
         </div>
         <p class="stat-line">Species Count: <span id="speciesCount"></span></p>
         <p class="stat-line">Individual Count: <span id="individualCount"></span></p>
-        <p class="stat-line">Grubs Per Second: <span id="grubsPerSecond"></span></p>
-        <p class="stat-line">Twigs Per Second: <span id="twigsPerSecond"></span></p>
+          <p class="stat-line" id="grubsPerMinuteLine">Grubs Per Minute: <span id="grubsPerMinute"></span></p>
+          <p class="stat-line" id="twigsPerMinuteLine">Twigs Per Minute: <span id="twigsPerMinute"></span></p>
         <div id="birdOverviewList"></div>
       </div>
 
@@ -830,8 +867,9 @@
             <p class="stat-line">Max Offline Duration: <span id="maxOfflineDuration"></span> hours</p>
           </div>
           <div class="overview-stat-column">
-            <p class="stat-line">Coins Per Second: <span id="coinsPerSecond"></span></p>
-            <p class="stat-line">Seeds Per Second: <span id="seedsPerSecond"></span></p>
+              <p class="stat-line">Federal Grant: <span id="federalGrantPerMinute"></span></p>
+              <p class="stat-line">Coins Per Minute: <span id="coinsPerMinute"></span></p>
+              <p class="stat-line">Seeds Per Minute: <span id="seedsPerMinute"></span></p>
           </div>
         </div>
       </div>
@@ -841,11 +879,23 @@
           <h2>Upgrades</h2>
           <div class="overview-controls">
             <button class="overview-button is-active" id="upgradesMinimizeButton" type="button">Minimize</button>
-            <button class="overview-button" id="flockUpgradesButton" type="button">Flock Upgrades</button>
             <button class="overview-button" id="aviaryUpgradesButton" type="button">Aviary Upgrades</button>
+            <button class="overview-button" id="fundraisingUpgradesButton" type="button">Fundraising</button>
           </div>
         </div>
         <div id="upgradesOverviewList"></div>
+      </div>
+
+      <div class="card">
+        <div class="overview-header">
+          <h2>Construction</h2>
+          <div class="overview-controls">
+            <button class="overview-button is-active" id="constructionMinimizeButton" type="button">Minimize</button>
+            <button class="overview-button" id="constructionHabitatsButton" type="button">Habitats</button>
+            <button class="overview-button" id="constructionAmenitiesButton" type="button">Amenities</button>
+          </div>
+        </div>
+        <div id="constructionOverviewList"></div>
       </div>
 
       <div class="card">
@@ -890,23 +940,30 @@
     const topBar = document.querySelector("#topBar");
     const speciesCount = document.querySelector("#speciesCount");
     const individualCount = document.querySelector("#individualCount");
+    const grubsPerMinuteLine = document.querySelector("#grubsPerMinuteLine");
+    const twigsPerMinuteLine = document.querySelector("#twigsPerMinuteLine");
     const maxOfflineDurationDisplay = document.querySelector("#maxOfflineDuration");
     const visitorsPerDayDisplay = document.querySelector("#visPerDay");
-    const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
-    const twigsPerSecondDisplay = document.querySelector("#twigsPerSecond");
+    const grubsPerMinuteDisplay = document.querySelector("#grubsPerMinute");
+    const twigsPerMinuteDisplay = document.querySelector("#twigsPerMinute");
     const coinsPerVisitorDisplay = document.querySelector("#coinsPerVisitor");
     const habitatsOwnedDisplay = document.querySelector("#habitatsOwned");
-    const coinsPerSecondDisplay = document.querySelector("#coinsPerSecond");
-    const seedsPerSecondDisplay = document.querySelector("#seedsPerSecond");
+    const federalGrantPerMinuteDisplay = document.querySelector("#federalGrantPerMinute");
+    const coinsPerMinuteDisplay = document.querySelector("#coinsPerMinute");
+    const seedsPerMinuteDisplay = document.querySelector("#seedsPerMinute");
     const birdOverviewList = document.querySelector("#birdOverviewList");
     const overviewHabitatButtons = document.querySelector("#overviewHabitatButtons");
     const upgradesOverviewList = document.querySelector("#upgradesOverviewList");
+    const constructionOverviewList = document.querySelector("#constructionOverviewList");
     const saplingShopList = document.querySelector("#saplingShopList");
     const habitatPanels = document.querySelector("#habitatPanels");
     const overviewMinimizeButton = document.querySelector("#overviewMinimizeButton");
     const upgradesMinimizeButton = document.querySelector("#upgradesMinimizeButton");
-    const flockUpgradesButton = document.querySelector("#flockUpgradesButton");
     const aviaryUpgradesButton = document.querySelector("#aviaryUpgradesButton");
+    const fundraisingUpgradesButton = document.querySelector("#fundraisingUpgradesButton");
+    const constructionMinimizeButton = document.querySelector("#constructionMinimizeButton");
+    const constructionHabitatsButton = document.querySelector("#constructionHabitatsButton");
+    const constructionAmenitiesButton = document.querySelector("#constructionAmenitiesButton");
     const saplingShopMinimizeButton = document.querySelector("#saplingShopMinimizeButton");
     const saplingShopExpandButton = document.querySelector("#saplingShopExpandButton");
     const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
@@ -924,6 +981,7 @@
     };
     let activeOverviewMode = "minimize";
     let activeUpgradesMode = "minimize";
+    let activeConstructionMode = "minimize";
     let activeSaplingShopMode = "minimize";
     let activeParasiteBirdId = null;
     const habitatPanelModes = {};
@@ -939,7 +997,7 @@
 
       earthworksNavWrapper.innerHTML =
         "<span class='back-link is-locked'>Earthworks</span>" +
-        "<span class='nav-tooltip-box'>Unlock at 4 Species</span>";
+        "<span class='nav-tooltip-box'>Unlock at 10 Individuals</span>";
     }
 
     function renderDockyardNav() {
@@ -1164,17 +1222,23 @@
 
     // Refresh the summary cards from current save data.
     function refreshAviarySummary() {
+      const grubsPerMinute = getGrubsPerMinute(gameState);
+      const twigsPerMinute = getTwigsPerMinute(gameState);
+
       speciesCount.textContent = getFlockDiversity(gameState);
       individualCount.textContent = getTotalBirdCount(gameState);
       maxOfflineDurationDisplay.textContent = getMaxOfflineDurationLabel(gameState);
       visitorsPerDayDisplay.textContent = getVisitorsPerDay(gameState);
-      grubsPerSecondDisplay.textContent = getGrubsPerSecond(gameState).toFixed(2);
-      twigsPerSecondDisplay.textContent = getTwigsPerSecond(gameState).toFixed(2);
-      coinsPerVisitorDisplay.textContent = "+" + getCoinsPerVisitorRate(gameState).toFixed(1) + " coins/sec";
-      habitatsOwnedDisplay.textContent = gameState.ownedHabitats.length;
-      coinsPerSecondDisplay.textContent = "+" + getCoinsPerSecond(gameState).toFixed(1);
-      seedsPerSecondDisplay.textContent = "+" + getSeedsPerSecond(gameState).toFixed(1);
-    }
+        grubsPerMinuteDisplay.textContent = "+" + formatRateValue(grubsPerMinute);
+        twigsPerMinuteDisplay.textContent = "+" + formatRateValue(twigsPerMinute);
+        grubsPerMinuteLine.style.display = grubsPerMinute > 0 ? "" : "none";
+        twigsPerMinuteLine.style.display = twigsPerMinute > 0 ? "" : "none";
+        coinsPerVisitorDisplay.textContent = formatRateValue(getCoinsPerVisitor(gameState)) + " coins/visitor";
+        habitatsOwnedDisplay.textContent = gameState.ownedHabitats.length;
+        federalGrantPerMinuteDisplay.textContent = formatRateValue(getFederalGrantPerMinute(gameState)) + " coins/min";
+        coinsPerMinuteDisplay.textContent = "+" + formatRateValue(getCoinsPerMinute(gameState));
+        seedsPerMinuteDisplay.textContent = "+" + formatRateValue(getSeedsPerMinute(gameState));
+      }
 
     // Toggle which flock-overview button is visually active.
     function setActiveOverviewButton() {
@@ -1187,8 +1251,15 @@
     // Toggle which upgrades-tab button is visually active.
     function setActiveUpgradesButton() {
       upgradesMinimizeButton.classList.toggle("is-active", activeUpgradesMode === "minimize");
-      flockUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "flock");
       aviaryUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "aviary");
+      fundraisingUpgradesButton.classList.toggle("is-active", activeUpgradesMode === "fundraising");
+    }
+
+    // Toggle which construction tab is visually active.
+    function setActiveConstructionButton() {
+      constructionMinimizeButton.classList.toggle("is-active", activeConstructionMode === "minimize");
+      constructionHabitatsButton.classList.toggle("is-active", activeConstructionMode === "habitats");
+      constructionAmenitiesButton.classList.toggle("is-active", activeConstructionMode === "amenities");
     }
 
     // Toggle which sapling-shop button is visually active.
@@ -1297,28 +1368,28 @@
           return 1000;
         },
         countKey: "appleTrees",
-        rateText: "Provides 0.5 seeds/sec"
+        rateText: "Provides 30 seeds/min"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Pear Tree",
         cost: 5000,
         countKey: "pearTrees",
-        rateText: "Provides 1.5 seeds/sec"
+        rateText: "Provides 90 seeds/min"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Peach Tree",
         cost: 20000,
         countKey: "peachTrees",
-        rateText: "Provides 3.0 seeds/sec"
+        rateText: "Provides 180 seeds/min"
       }));
 
       saplingShopList.appendChild(createSaplingButton({
         label: "Orange Tree",
         cost: 100000,
         countKey: "orangeTrees",
-        rateText: "Provides 5.0 seeds/sec",
+        rateText: "Provides 300 seeds/min",
         unlockUpgradeId: "orangeSeeds"
       }));
 
@@ -1778,6 +1849,7 @@
       renderTopBar(topBar, gameState);
       renderOverview();
       renderUpgradesOverview();
+      renderConstructionOverview();
       renderSaplingShop();
       renderHabitatPanels();
     }
@@ -1791,342 +1863,69 @@
         return;
       }
 
-      if (activeUpgradesMode === "flock") {
-        const flockTitle = document.createElement("p");
-        flockTitle.className = "upgrade-section-title";
-        flockTitle.textContent = "Population Bonuses";
-        upgradesOverviewList.appendChild(flockTitle);
+        if (activeUpgradesMode === "fundraising") {
+          const fundraisingTitle = document.createElement("p");
+          fundraisingTitle.className = "upgrade-section-title";
+          fundraisingTitle.textContent = "Federal Grant";
+          upgradesOverviewList.appendChild(fundraisingTitle);
 
-        const populationRow = document.createElement("div");
-        populationRow.className = "upgrade-row upgrade-row-three";
-        upgradesOverviewList.appendChild(populationRow);
-        const murderPartyDefinition = getUpgradeDefinition("murderParty");
-        const turtleWakeDefinition = getUpgradeDefinition("turtleWake");
-        const seedDispersalDefinition = getUpgradeDefinition("seedDispersal");
-        const flockForestryDefinition = getUpgradeDefinition("flockForestry");
+          const fundraisingRow = document.createElement("div");
+          fundraisingRow.className = "upgrade-row";
+          upgradesOverviewList.appendChild(fundraisingRow);
 
-        const murderPartyEntry = document.createElement("div");
-        murderPartyEntry.className = "upgrade-entry";
+          const humbleParkDefinition = getUpgradeDefinition("humblePark");
+          const humbleParkEntry = document.createElement("div");
+          humbleParkEntry.className = "upgrade-entry";
 
-        const murderPartyTooltip = document.createElement("div");
-        murderPartyTooltip.className = "upgrade-tooltip";
+          const humbleParkTooltip = document.createElement("div");
+          humbleParkTooltip.className = "upgrade-tooltip";
 
-        const murderPartyButton = document.createElement("button");
-        murderPartyButton.className = "upgrade-action-button";
-        murderPartyButton.type = "button";
-        murderPartyButton.dataset.requiresSuccess = "true";
-        murderPartyButton.textContent = hasUpgrade(gameState, "murderParty")
-          ? "Murder Party (" + (isMurderPartyActive(gameState) ? "Active" : "Inactive") + ")"
-          : "Murder Party";
-        syncOwnedUpgradeButtonState(murderPartyButton, gameState, "murderParty");
+          const humbleParkButton = document.createElement("button");
+          humbleParkButton.className = "upgrade-action-button";
+          humbleParkButton.type = "button";
+          humbleParkButton.dataset.requiresSuccess = "true";
+          humbleParkButton.textContent = hasUpgrade(gameState, "humblePark")
+            ? "Humble Park (Active)"
+            : "Humble Park";
+          syncOwnedUpgradeButtonState(humbleParkButton, gameState, "humblePark");
 
-        murderPartyButton.addEventListener("click", function () {
-          handleUpgradePurchaseRequest(gameState, "murderParty", {
-            onSuccess: function () {
-              rerenderAviary();
-            }
+          humbleParkButton.addEventListener("click", function () {
+            handleUpgradePurchaseRequest(gameState, "humblePark", {
+              onSuccess: function () {
+                rerenderAviary();
+              }
+            });
           });
-        });
 
-        const murderPartyTooltipBox = document.createElement("div");
-        murderPartyTooltipBox.className = "upgrade-tooltip-box";
-        murderPartyTooltipBox.textContent = murderPartyDefinition.description;
+          const humbleParkTooltipBox = document.createElement("div");
+          humbleParkTooltipBox.className = "upgrade-tooltip-box";
+          humbleParkTooltipBox.textContent = humbleParkDefinition.description;
 
-        const murderPartyRequirement = document.createElement("p");
-        murderPartyRequirement.className = "upgrade-requirement";
-        murderPartyRequirement.textContent = "Requires: " + formatLargeNumber(murderPartyDefinition.requirements.birds.crow) + " Crows";
+          const humbleParkRequirement = document.createElement("p");
+          humbleParkRequirement.className = "upgrade-requirement";
+          humbleParkRequirement.textContent =
+            "Requires: " + formatLargeNumber(humbleParkDefinition.requirements.individuals) +
+            " Individuals | " + formatLargeNumber(humbleParkDefinition.requirements.visitorsPerDay) + " Visitors/Day";
 
-        murderPartyTooltip.appendChild(murderPartyButton);
-        murderPartyTooltip.appendChild(murderPartyTooltipBox);
-        murderPartyEntry.appendChild(murderPartyTooltip);
-        murderPartyEntry.appendChild(murderPartyRequirement);
-        populationRow.appendChild(murderPartyEntry);
-
-        const turtleWakeEntry = document.createElement("div");
-        turtleWakeEntry.className = "upgrade-entry";
-
-        const turtleWakeTooltip = document.createElement("div");
-        turtleWakeTooltip.className = "upgrade-tooltip";
-
-        const turtleWakeButton = document.createElement("button");
-        turtleWakeButton.className = "upgrade-action-button";
-        turtleWakeButton.type = "button";
-        turtleWakeButton.dataset.requiresSuccess = "true";
-        turtleWakeButton.textContent = hasUpgrade(gameState, "turtleWake")
-          ? "Turtle Wake (" + (isTurtleWakeActive(gameState) ? "Active" : "Inactive") + ")"
-          : "Turtle Wake";
-        syncOwnedUpgradeButtonState(turtleWakeButton, gameState, "turtleWake");
-
-        turtleWakeButton.addEventListener("click", function () {
-          handleUpgradePurchaseRequest(gameState, "turtleWake", {
-            onSuccess: function () {
-              rerenderAviary();
-            }
-          });
-        });
-
-        const turtleWakeTooltipBox = document.createElement("div");
-        turtleWakeTooltipBox.className = "upgrade-tooltip-box";
-        turtleWakeTooltipBox.textContent = turtleWakeDefinition.description;
-
-        const turtleWakeRequirement = document.createElement("p");
-        turtleWakeRequirement.className = "upgrade-requirement";
-        turtleWakeRequirement.textContent = "Requires: " + formatLargeNumber(turtleWakeDefinition.requirements.birds.mourningdove) + " Mourning Doves";
-
-        turtleWakeTooltip.appendChild(turtleWakeButton);
-        turtleWakeTooltip.appendChild(turtleWakeTooltipBox);
-        turtleWakeEntry.appendChild(turtleWakeTooltip);
-        turtleWakeEntry.appendChild(turtleWakeRequirement);
-        populationRow.appendChild(turtleWakeEntry);
-
-        const flockResourceTitle = document.createElement("p");
-        flockResourceTitle.className = "upgrade-section-title";
-        flockResourceTitle.textContent = "Resource Generation";
-        upgradesOverviewList.appendChild(flockResourceTitle);
-
-        const flockResourceRow = document.createElement("div");
-        flockResourceRow.className = "upgrade-row upgrade-row-three";
-        upgradesOverviewList.appendChild(flockResourceRow);
-
-        const seedDispersalEntry = document.createElement("div");
-        seedDispersalEntry.className = "upgrade-entry";
-
-        const seedDispersalTooltip = document.createElement("div");
-        seedDispersalTooltip.className = "upgrade-tooltip";
-
-        const seedDispersalButton = document.createElement("button");
-        seedDispersalButton.className = "upgrade-action-button";
-        seedDispersalButton.type = "button";
-        seedDispersalButton.dataset.requiresSuccess = "true";
-        seedDispersalButton.textContent = hasUpgrade(gameState, "seedDispersal")
-          ? "Seed Dispersal (Active)"
-          : "Seed Dispersal";
-        syncOwnedUpgradeButtonState(seedDispersalButton, gameState, "seedDispersal");
-
-        seedDispersalButton.addEventListener("click", function () {
-          handleUpgradePurchaseRequest(gameState, "seedDispersal", {
-            onSuccess: function () {
-              rerenderAviary();
-            }
-          });
-        });
-
-        const seedDispersalTooltipBox = document.createElement("div");
-        seedDispersalTooltipBox.className = "upgrade-tooltip-box";
-        seedDispersalTooltipBox.textContent = seedDispersalDefinition.description;
-
-        const seedDispersalRequirement = document.createElement("p");
-        seedDispersalRequirement.className = "upgrade-requirement";
-        seedDispersalRequirement.textContent = "Requires: " + formatLargeNumber(seedDispersalDefinition.requirements.birds.mourningdove) + " Mourning Doves";
-
-        seedDispersalTooltip.appendChild(seedDispersalButton);
-        seedDispersalTooltip.appendChild(seedDispersalTooltipBox);
-        seedDispersalEntry.appendChild(seedDispersalTooltip);
-        seedDispersalEntry.appendChild(seedDispersalRequirement);
-        flockResourceRow.appendChild(seedDispersalEntry);
-
-        const flockForestryEntry = document.createElement("div");
-        flockForestryEntry.className = "upgrade-entry";
-
-        const flockForestryTooltip = document.createElement("div");
-        flockForestryTooltip.className = "upgrade-tooltip";
-
-        const flockForestryButton = document.createElement("button");
-        flockForestryButton.className = "upgrade-action-button";
-        flockForestryButton.type = "button";
-        flockForestryButton.dataset.requiresSuccess = "true";
-        flockForestryButton.textContent = hasUpgrade(gameState, "flockForestry")
-          ? "Flock Forestry (Active)"
-          : "Flock Forestry (" + formatLargeNumber(flockForestryDefinition.costs.coins) + " Coins)";
-        syncOwnedUpgradeButtonState(flockForestryButton, gameState, "flockForestry");
-
-        flockForestryButton.addEventListener("click", function () {
-          handleUpgradePurchaseRequest(gameState, "flockForestry", {
-            beforePurchase: function () {
-              updateCoinsFromElapsedTime(gameState, Date.now());
-            },
-            onSuccess: function () {
-              rerenderAviary();
-            }
-          });
-        });
-
-        const flockForestryTooltipBox = document.createElement("div");
-        flockForestryTooltipBox.className = "upgrade-tooltip-box";
-        flockForestryTooltipBox.textContent = flockForestryDefinition.description;
-
-        const flockForestryRequirement = document.createElement("p");
-        flockForestryRequirement.className = "upgrade-requirement";
-        flockForestryRequirement.textContent = "Requires: " + formatLargeNumber(flockForestryDefinition.requirements.species) + " Species";
-
-        flockForestryTooltip.appendChild(flockForestryButton);
-        flockForestryTooltip.appendChild(flockForestryTooltipBox);
-        flockForestryEntry.appendChild(flockForestryTooltip);
-        flockForestryEntry.appendChild(flockForestryRequirement);
-        flockResourceRow.appendChild(flockForestryEntry);
-        return;
-      }
-
-      const constructTitle = document.createElement("p");
-      constructTitle.className = "upgrade-section-title";
-      constructTitle.textContent = "Construct Habitats (Also Gives 10 Seed Bait Tickets)";
-      upgradesOverviewList.appendChild(constructTitle);
-
-      const urbanWatersEntry = document.createElement("div");
-      urbanWatersEntry.className = "upgrade-entry";
-
-      const urbanWatersTooltip = document.createElement("div");
-      urbanWatersTooltip.className = "upgrade-tooltip";
-
-      const urbanWatersButton = document.createElement("button");
-      urbanWatersButton.className = "upgrade-action-button";
-      urbanWatersButton.type = "button";
-      urbanWatersButton.dataset.requiresSuccess = "true";
-      urbanWatersButton.textContent = gameState.ownedHabitats.includes("Urban Waters")
-        ? "Urban Waters (Constructed)"
-        : "Urban Waters (" + formatLargeNumber(10000) + " Coins)";
-      urbanWatersButton.classList.toggle("is-locked", gameState.ownedHabitats.includes("Urban Waters"));
-      urbanWatersButton.disabled = gameState.ownedHabitats.includes("Urban Waters");
-
-      urbanWatersButton.addEventListener("click", function () {
-        updateCoinsFromElapsedTime(gameState, Date.now());
-
-        if (gameState.ownedHabitats.includes("Urban Waters")) {
+          humbleParkTooltip.appendChild(humbleParkButton);
+          humbleParkTooltip.appendChild(humbleParkTooltipBox);
+          humbleParkEntry.appendChild(humbleParkTooltip);
+          humbleParkEntry.appendChild(humbleParkRequirement);
+          fundraisingRow.appendChild(humbleParkEntry);
           return;
         }
 
-        if (getTotalBirdCount(gameState) < 30 || getFlockDiversity(gameState) < 8 || gameState.coins < 10000) {
-          return;
-        }
+        const treasuryTitle = document.createElement("p");
+        treasuryTitle.className = "upgrade-section-title";
+        treasuryTitle.textContent = "Treasury";
+        upgradesOverviewList.appendChild(treasuryTitle);
 
-        gameState.coins -= 10000;
-        gameState.ownedHabitats.push("Urban Waters");
-        grantHabitatConstructionRewards(gameState, "Urban Waters");
-        playButtonSound();
-        saveGameState(gameState);
-        rerenderAviary();
-      });
-
-      urbanWatersTooltip.appendChild(urbanWatersButton);
-      urbanWatersEntry.appendChild(urbanWatersTooltip);
-
-      const urbanWatersRequirement = document.createElement("p");
-      urbanWatersRequirement.className = "upgrade-requirement";
-      urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(30) + " Individuals and " + formatLargeNumber(8) + " Species";
-      urbanWatersEntry.appendChild(urbanWatersRequirement);
-      upgradesOverviewList.appendChild(urbanWatersEntry);
-
-      const divider = document.createElement("div");
-      divider.className = "overview-divider";
-      upgradesOverviewList.appendChild(divider);
-
-      const amenitiesTitle = document.createElement("p");
-      amenitiesTitle.className = "upgrade-section-title";
-      amenitiesTitle.textContent = "Amenities";
-      upgradesOverviewList.appendChild(amenitiesTitle);
-
-      const amenitiesRow = document.createElement("div");
-      amenitiesRow.className = "upgrade-row";
-      const cafeDefinition = getUpgradeDefinition("cafe");
-      const indoorGardenDefinition = getUpgradeDefinition("indoorGarden");
-      const basketDefinition = getUpgradeDefinition("basket");
-      const depositBoxDefinition = getUpgradeDefinition("depositBox");
-
-      const cafeEntry = document.createElement("div");
-      cafeEntry.className = "upgrade-entry";
-
-      const cafeTooltip = document.createElement("div");
-      cafeTooltip.className = "upgrade-tooltip";
-
-      const cafeButton = document.createElement("button");
-      cafeButton.className = "upgrade-action-button";
-      cafeButton.type = "button";
-      cafeButton.dataset.requiresSuccess = "true";
-      cafeButton.textContent = hasUpgrade(gameState, "cafe")
-        ? "Café (Owned)"
-        : "Café (" + formatLargeNumber(cafeDefinition.costs.coins) + " Coins)";
-      syncOwnedUpgradeButtonState(cafeButton, gameState, "cafe");
-
-      cafeButton.addEventListener("click", function () {
-        handleUpgradePurchaseRequest(gameState, "cafe", {
-          beforePurchase: function () {
-            updateCoinsFromElapsedTime(gameState, Date.now());
-          },
-          onSuccess: function () {
-            rerenderAviary();
-          }
-        });
-      });
-
-      const cafeTooltipBox = document.createElement("div");
-      cafeTooltipBox.className = "upgrade-tooltip-box";
-      cafeTooltipBox.textContent = cafeDefinition.description;
-
-      cafeTooltip.appendChild(cafeButton);
-      cafeTooltip.appendChild(cafeTooltipBox);
-      cafeEntry.appendChild(cafeTooltip);
-
-      const cafeRequirement = document.createElement("p");
-      cafeRequirement.className = "upgrade-requirement";
-      cafeRequirement.textContent = "Requires: " + formatLargeNumber(cafeDefinition.requirements.species) + " Species";
-      cafeEntry.appendChild(cafeRequirement);
-      amenitiesRow.appendChild(cafeEntry);
-
-      const indoorGardenEntry = document.createElement("div");
-      indoorGardenEntry.className = "upgrade-entry";
-
-      const indoorGardenTooltip = document.createElement("div");
-      indoorGardenTooltip.className = "upgrade-tooltip";
-
-      const indoorGardenButton = document.createElement("button");
-      indoorGardenButton.className = "upgrade-action-button";
-      indoorGardenButton.type = "button";
-      indoorGardenButton.dataset.requiresSuccess = "true";
-      indoorGardenButton.textContent = hasUpgrade(gameState, "indoorGarden")
-        ? "Indoor Garden (Owned)"
-        : "Indoor Garden (" + formatLargeNumber(indoorGardenDefinition.costs.seeds) + " Seeds)";
-      syncOwnedUpgradeButtonState(indoorGardenButton, gameState, "indoorGarden");
-
-      indoorGardenButton.addEventListener("click", function () {
-        handleUpgradePurchaseRequest(gameState, "indoorGarden", {
-          beforePurchase: function () {
-            updateCoinsFromElapsedTime(gameState, Date.now());
-          },
-          onSuccess: function () {
-            rerenderAviary();
-          }
-        });
-      });
-
-      const indoorGardenTooltipBox = document.createElement("div");
-      indoorGardenTooltipBox.className = "upgrade-tooltip-box";
-      indoorGardenTooltipBox.textContent = indoorGardenDefinition.description;
-
-      indoorGardenTooltip.appendChild(indoorGardenButton);
-      indoorGardenTooltip.appendChild(indoorGardenTooltipBox);
-      indoorGardenEntry.appendChild(indoorGardenTooltip);
-
-      const indoorGardenRequirement = document.createElement("p");
-      indoorGardenRequirement.className = "upgrade-requirement";
-      indoorGardenRequirement.textContent = "Requires: " + formatLargeNumber(indoorGardenDefinition.requirements.birds.kestrel) + " Kestrels";
-      indoorGardenEntry.appendChild(indoorGardenRequirement);
-      amenitiesRow.appendChild(indoorGardenEntry);
-      upgradesOverviewList.appendChild(amenitiesRow);
-
-      const treasuryDivider = document.createElement("div");
-      treasuryDivider.className = "overview-divider";
-      upgradesOverviewList.appendChild(treasuryDivider);
-
-      const treasuryTitle = document.createElement("p");
-      treasuryTitle.className = "upgrade-section-title";
-      treasuryTitle.textContent = "Treasury";
-      upgradesOverviewList.appendChild(treasuryTitle);
-
-      const treasuryRow = document.createElement("div");
-      treasuryRow.className = "upgrade-row upgrade-row-three";
-
-      const basketEntry = document.createElement("div");
-      basketEntry.className = "upgrade-entry";
+        const treasuryRow = document.createElement("div");
+        treasuryRow.className = "upgrade-row upgrade-row-three";
+        const basketDefinition = getUpgradeDefinition("basket");
+        const depositBoxDefinition = getUpgradeDefinition("depositBox");
+        const basketEntry = document.createElement("div");
+        basketEntry.className = "upgrade-entry";
 
       const basketTooltip = document.createElement("div");
       basketTooltip.className = "upgrade-tooltip";
@@ -2228,8 +2027,127 @@
       simpleSafeEntry.appendChild(simpleSafeTooltip);
       treasuryRow.appendChild(simpleSafeEntry);
 
-      upgradesOverviewList.appendChild(treasuryRow);
-    }
+        upgradesOverviewList.appendChild(treasuryRow);
+      }
+
+      // Render the dedicated construction panel for habitat builds and amenities.
+      function renderConstructionOverview() {
+        constructionOverviewList.innerHTML = "";
+        setActiveConstructionButton();
+
+        if (activeConstructionMode === "minimize") {
+          return;
+        }
+
+        if (activeConstructionMode === "habitats") {
+          const habitatsTitle = document.createElement("p");
+          habitatsTitle.className = "upgrade-section-title";
+          habitatsTitle.textContent = "Construct Habitats (Also Gives 10 Seed Bait Tickets)";
+          constructionOverviewList.appendChild(habitatsTitle);
+
+          const urbanWatersEntry = document.createElement("div");
+          urbanWatersEntry.className = "upgrade-entry";
+
+          const urbanWatersTooltip = document.createElement("div");
+          urbanWatersTooltip.className = "upgrade-tooltip";
+
+          const urbanWatersButton = document.createElement("button");
+          urbanWatersButton.className = "upgrade-action-button";
+          urbanWatersButton.type = "button";
+          urbanWatersButton.dataset.requiresSuccess = "true";
+          urbanWatersButton.textContent = gameState.ownedHabitats.includes("Urban Waters")
+            ? "Urban Waters (Constructed)"
+            : "Urban Waters (" + formatLargeNumber(1000) + " Coins, " + formatLargeNumber(2000) + " Twigs)";
+          urbanWatersButton.classList.toggle("is-locked", gameState.ownedHabitats.includes("Urban Waters"));
+          urbanWatersButton.disabled = gameState.ownedHabitats.includes("Urban Waters");
+
+          urbanWatersButton.addEventListener("click", function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+
+            if (gameState.ownedHabitats.includes("Urban Waters")) {
+              return;
+            }
+
+            if (
+              getTotalBirdCount(gameState) < 30 ||
+              getFlockDiversity(gameState) < 8 ||
+              gameState.coins < 1000 ||
+              gameState.twigs < 2000
+            ) {
+              return;
+            }
+
+            gameState.coins -= 1000;
+            gameState.twigs -= 2000;
+            gameState.ownedHabitats.push("Urban Waters");
+            grantHabitatConstructionRewards(gameState, "Urban Waters");
+            playButtonSound();
+            saveGameState(gameState);
+            rerenderAviary();
+          });
+
+          urbanWatersTooltip.appendChild(urbanWatersButton);
+          urbanWatersEntry.appendChild(urbanWatersTooltip);
+
+          const urbanWatersRequirement = document.createElement("p");
+          urbanWatersRequirement.className = "upgrade-requirement";
+          urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(30) + " Individuals and " + formatLargeNumber(8) + " Species";
+          urbanWatersEntry.appendChild(urbanWatersRequirement);
+          constructionOverviewList.appendChild(urbanWatersEntry);
+          return;
+        }
+
+        const amenitiesTitle = document.createElement("p");
+        amenitiesTitle.className = "upgrade-section-title";
+        amenitiesTitle.textContent = "Amenities";
+        constructionOverviewList.appendChild(amenitiesTitle);
+
+        const amenitiesRow = document.createElement("div");
+        amenitiesRow.className = "upgrade-row";
+        constructionOverviewList.appendChild(amenitiesRow);
+
+        const cafeDefinition = getUpgradeDefinition("cafe");
+        const cafeEntry = document.createElement("div");
+        cafeEntry.className = "upgrade-entry";
+
+        const cafeTooltip = document.createElement("div");
+        cafeTooltip.className = "upgrade-tooltip";
+
+        const cafeButton = document.createElement("button");
+        cafeButton.className = "upgrade-action-button";
+        cafeButton.type = "button";
+        cafeButton.dataset.requiresSuccess = "true";
+        const cafeCostSummary = getUpgradeCostSummary(cafeDefinition);
+        cafeButton.textContent = hasUpgrade(gameState, "cafe")
+          ? "Café (Owned)"
+          : "Café (" + cafeCostSummary + ")";
+        syncOwnedUpgradeButtonState(cafeButton, gameState, "cafe");
+
+        cafeButton.addEventListener("click", function () {
+          handleUpgradePurchaseRequest(gameState, "cafe", {
+            beforePurchase: function () {
+              updateCoinsFromElapsedTime(gameState, Date.now());
+            },
+            onSuccess: function () {
+              rerenderAviary();
+            }
+          });
+        });
+
+        const cafeTooltipBox = document.createElement("div");
+        cafeTooltipBox.className = "upgrade-tooltip-box";
+        cafeTooltipBox.textContent = cafeDefinition.description;
+
+        cafeTooltip.appendChild(cafeButton);
+        cafeTooltip.appendChild(cafeTooltipBox);
+        cafeEntry.appendChild(cafeTooltip);
+
+        const cafeRequirement = document.createElement("p");
+        cafeRequirement.className = "upgrade-requirement";
+        cafeRequirement.textContent = "Requires: " + formatLargeNumber(cafeDefinition.requirements.species) + " Species";
+        cafeEntry.appendChild(cafeRequirement);
+        amenitiesRow.appendChild(cafeEntry);
+      }
 
     overviewMinimizeButton.addEventListener("click", function () {
       activeOverviewMode = "minimize";
@@ -2241,14 +2159,29 @@
       renderUpgradesOverview();
     });
 
-    flockUpgradesButton.addEventListener("click", function () {
-      activeUpgradesMode = "flock";
-      renderUpgradesOverview();
-    });
-
     aviaryUpgradesButton.addEventListener("click", function () {
       activeUpgradesMode = "aviary";
       renderUpgradesOverview();
+    });
+
+    fundraisingUpgradesButton.addEventListener("click", function () {
+      activeUpgradesMode = "fundraising";
+      renderUpgradesOverview();
+    });
+
+    constructionMinimizeButton.addEventListener("click", function () {
+      activeConstructionMode = "minimize";
+      renderConstructionOverview();
+    });
+
+    constructionHabitatsButton.addEventListener("click", function () {
+      activeConstructionMode = "habitats";
+      renderConstructionOverview();
+    });
+
+    constructionAmenitiesButton.addEventListener("click", function () {
+      activeConstructionMode = "amenities";
+      renderConstructionOverview();
     });
 
     saplingShopMinimizeButton.addEventListener("click", function () {
@@ -2303,6 +2236,7 @@
     renderOverviewHabitatButtons();
     renderOverview();
     renderUpgradesOverview();
+    renderConstructionOverview();
     renderSaplingShop();
     renderHabitatPanels();
   </script>

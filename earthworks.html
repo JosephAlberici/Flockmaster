@@ -176,6 +176,34 @@
       pointer-events: none;
     }
 
+    .nav-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .nav-card .menu-button,
+    .nav-card .nav-tooltip {
+      width: 100%;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    .nav-card .menu-button {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .nav-card .nav-tooltip {
+      display: block;
+    }
+
+    .nav-card .nav-tooltip-box {
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+    }
+
     .panel-header {
       margin-top: 0;
       color: #17311e;
@@ -199,6 +227,22 @@
       font-size: 18px;
       font-weight: bold;
       color: #2c3e50;
+    }
+
+    .upgrade-requirement {
+      margin: 0 0 14px;
+      font-size: 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .upgrade-tooltip > .menu-button {
+      width: 100%;
+      margin-right: 0;
+      text-align: center;
+      box-sizing: border-box;
     }
 
     .overview-stat-grid {
@@ -616,10 +660,12 @@
 
   <div class="page-layout">
     <div class="earthworks-sidebar">
-      <div class="card">
-        <a class="menu-button" href="aviary.html">Return To Aviary</a>
+      <div class="card nav-card">
+        <a class="menu-button" href="index.html">Home</a>
+        <a class="menu-button" href="aviary.html">Aviary</a>
         <a class="menu-button" href="birdCatching.html">Bird Catching</a>
         <span class="nav-tooltip" id="dockyardNavWrapper"></span>
+        <span class="menu-button is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
       </div>
 
       <div class="card">
@@ -627,7 +673,7 @@
         <div class="overview-stat-grid">
           <div>
             <p class="panel-note">Grubs Per Click: <span id="grubsPerClick"></span></p>
-            <p class="panel-note">Grubs Per Second: <span id="grubsPerSecond"></span></p>
+            <p class="panel-note">Grubs Per Minute: <span id="grubsPerMinute"></span></p>
           </div>
           <div>
             <p class="panel-note">Hardwood Yield: <span id="hardwoodYield"></span></p>
@@ -672,7 +718,7 @@
           <button class="menu-button" type="button" id="birdPoweredBladesButton" data-requires-success="true">Birdpowered Blades (5 Scrap, 80k Coins)</button>
           <div class="upgrade-tooltip-box" id="birdPoweredBladesTooltip"></div>
         </div>
-        <p class="shop-count" id="birdPoweredBladesRequirement"></p>
+        <p class="upgrade-requirement" id="birdPoweredBladesRequirement"></p>
         <button class="placeholder-button" type="button">Locked</button>
         <p class="upgrade-subtitle">Hardwood Yield</p>
         <button class="placeholder-button" type="button">Locked</button>
@@ -729,7 +775,7 @@
     const grubsPanelContent = document.querySelector("#grubsPanelContent");
     const sawmillPanelContent = document.querySelector("#sawmillPanelContent");
     const grubsPerClickDisplay = document.querySelector("#grubsPerClick");
-    const grubsPerSecondDisplay = document.querySelector("#grubsPerSecond");
+    const grubsPerMinuteDisplay = document.querySelector("#grubsPerMinute");
     const hardwoodYieldDisplay = document.querySelector("#hardwoodYield");
     const twigProcessingTimeDisplay = document.querySelector("#twigProcessingTime");
     const constructGrubFarmButton = document.querySelector("#constructGrubFarmButton");
@@ -771,7 +817,7 @@
     // Refresh the summary stats shown in the left-hand overview panel.
     function renderEarthworksOverview() {
       grubsPerClickDisplay.textContent = "+" + gameState.grubsPerClick;
-      grubsPerSecondDisplay.textContent = "+" + getGrubsPerSecond(gameState).toFixed(2);
+      grubsPerMinuteDisplay.textContent = "+" + formatRateValue(getGrubsPerMinute(gameState));
       hardwoodYieldDisplay.textContent = "+10";
       twigProcessingTimeDisplay.textContent = formatDurationLabel(getSawmillProcessingDurationMs(gameState));
       constructGrubFarmButton.textContent = hasUpgrade(gameState, "constructGrubFarm")
@@ -781,7 +827,7 @@
       constructGrubFarmTooltip.textContent = getUpgradeDefinition("constructGrubFarm").description;
       pheromonesButton.textContent = hasUpgrade(gameState, "pheromones")
         ? "Pheromones (Owned)"
-        : "Pheromones (100k Coins)";
+        : "Pheromones (500 Coins)";
       syncOwnedUpgradeButtonState(pheromonesButton, gameState, "pheromones");
       pheromonesTooltip.textContent = getUpgradeDefinition("pheromones").description;
       constructSawmillButton.textContent = hasUpgrade(gameState, "constructSawmill")
@@ -791,12 +837,12 @@
       constructSawmillTooltip.textContent = getUpgradeDefinition("constructSawmill").description;
       twigCompactorButton.textContent = hasUpgrade(gameState, "twigCompactor")
         ? "Twig Compactor (Owned)"
-        : "Twig Compactor (10 Scrap, 50k Coins)";
+        : "Twig Compactor (10 Scrap, 5k Coins)";
       syncOwnedUpgradeButtonState(twigCompactorButton, gameState, "twigCompactor");
       twigCompactorTooltip.textContent = getUpgradeDefinition("twigCompactor").description;
       birdPoweredBladesButton.textContent = hasUpgrade(gameState, "birdPoweredBlades")
         ? "Birdpowered Blades (Owned)"
-        : "Birdpowered Blades (5 Scrap, 80k Coins)";
+        : "Birdpowered Blades (5 Scrap, 8k Coins)";
       syncOwnedUpgradeButtonState(birdPoweredBladesButton, gameState, "birdPoweredBlades");
       birdPoweredBladesTooltip.textContent = getUpgradeDefinition("birdPoweredBlades").description;
       birdPoweredBladesRequirement.textContent = "Requirement: 100 Individuals";
@@ -873,7 +919,7 @@
         // about explaining the running trade rather than manual clicking.
         const farmNote = document.createElement("p");
         farmNote.className = "panel-note";
-        farmNote.textContent = "Spend twigs/sec and seeds/sec to generate grubs/sec";
+        farmNote.textContent = "Spend twigs/min and seeds/min to generate grubs/min";
 
         const farmShell = document.createElement("div");
         farmShell.className = "grub-farm-shell";
@@ -904,7 +950,7 @@
 
         const farmTradeoff = document.createElement("p");
         farmTradeoff.className = "grub-farm-tradeoff";
-        farmTradeoff.textContent = "Uses 15 seeds/sec and 1 twig/sec to generate 0.5 grubs/sec";
+        farmTradeoff.textContent = "Uses 900 seeds/min and 60 twigs/min to generate 30 grubs/min";
 
         farmShell.appendChild(farmToggleButton);
         farmShell.appendChild(farmImage);
@@ -1359,7 +1405,7 @@
     });
 
       if (!isEarthworksUnlocked(gameState)) {
-      grubsPanelContent.innerHTML = "<p class='locked-note'>Unlock Earthworks by reaching 4 species in your aviary</p>";
+        grubsPanelContent.innerHTML = "<p class='locked-note'>Unlock Earthworks by reaching 10 individuals in your aviary</p>";
         pheromonesButton.disabled = true;
         pheromonesButton.classList.add("is-locked");
         constructGrubFarmButton.disabled = true;
@@ -1382,7 +1428,7 @@
       sawmillMinimizeButton.classList.add("is-locked");
       sawmillTabButton.disabled = true;
       sawmillTabButton.classList.add("is-locked");
-      sawmillPanelContent.innerHTML = "<p class='locked-note'>Unlock Earthworks by reaching 4 species in your aviary</p>";
+        sawmillPanelContent.innerHTML = "<p class='locked-note'>Unlock Earthworks by reaching 10 individuals in your aviary</p>";
     } else {
       grubsMinimizeButton.addEventListener("click", function () {
         activeGrubsMode = "minimize";
