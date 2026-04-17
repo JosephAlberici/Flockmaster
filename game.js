@@ -2870,12 +2870,12 @@ function getEffectiveTrapSeedCost(gameState) {
     "modifyTrapSeedCost"
   );
 
-  return Math.max(1, effectiveCost);
+  return Math.min(100000, Math.max(1, effectiveCost));
 }
 
 function getEffectiveTrapGrubCost(gameState) {
   const grubBirdCount = Math.max(0, getBirdDietIndividualCount(gameState, "grubs"));
-  return Math.max(1, gameState.trapGrubLoadCost + (grubBirdCount * 5));
+  return Math.min(5000, Math.max(1, gameState.trapGrubLoadCost + (grubBirdCount * 5)));
 }
 
 // Apply all matching ability handlers for Dockyard fish haul calculations.

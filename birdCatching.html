@@ -379,6 +379,14 @@
       width: 100%;
     }
 
+    .storage-upgrade-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+      align-items: start;
+    }
+
     .nav-tooltip {
       position: relative;
       display: inline-block;
@@ -985,111 +993,6 @@
       tooltipWrapper.appendChild(tooltipBox);
 
       return tooltipWrapper;
-    }
-
-    // Build a seed-bait reset upgrade button.
-    function createTrapSeedResetButton(config) {
-      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
-
-      if (!upgradeDefinition) {
-        return document.createComment("Missing upgrade definition: " + config.upgradeId);
-      }
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "upgrade-entry";
-
-      const tooltipWrapper = document.createElement("div");
-      tooltipWrapper.className = "upgrade-tooltip";
-      tooltipWrapper.style.display = "block";
-
-      const button = document.createElement("button");
-      button.className = "menu-button";
-      button.type = "button";
-      button.dataset.requiresSuccess = "true";
-      button.style.width = "100%";
-      button.style.marginRight = "0";
-      const isRepeatableUpgrade = upgradeDefinition.oneTime === false;
-      button.textContent = (!isRepeatableUpgrade && hasUpgrade(gameState, config.upgradeId))
-        ? upgradeDefinition.name + " (Owned)"
-        : upgradeDefinition.name + " (" + formatLargeNumber(upgradeDefinition.costs.seeds) + " Seeds)";
-      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
-
-      button.addEventListener("click", function () {
-        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
-          beforePurchase: function () {
-            updateCoinsFromElapsedTime(gameState, Date.now());
-          },
-          onSuccess: function () {
-            renderTopBar(topBar, gameState);
-            renderActionPanels();
-            renderUpgrades();
-          }
-        });
-      });
-
-      const tooltipBox = document.createElement("div");
-      tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = upgradeDefinition.description;
-
-      tooltipWrapper.appendChild(button);
-      tooltipWrapper.appendChild(tooltipBox);
-      wrapper.appendChild(tooltipWrapper);
-
-      return wrapper;
-    }
-
-    // Build a grub-bait reset upgrade button.
-    function createTrapGrubResetButton(config) {
-      const upgradeDefinition = getUpgradeDefinition(config.upgradeId);
-
-      if (!upgradeDefinition) {
-        return document.createComment("Missing upgrade definition: " + config.upgradeId);
-      }
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "upgrade-entry";
-
-      const tooltipWrapper = document.createElement("div");
-      tooltipWrapper.className = "upgrade-tooltip";
-      tooltipWrapper.style.display = "block";
-
-      const button = document.createElement("button");
-      button.className = "menu-button";
-      button.type = "button";
-      button.dataset.requiresSuccess = "true";
-      button.style.width = "100%";
-      button.style.marginRight = "0";
-      const isRepeatableUpgrade = upgradeDefinition.oneTime === false;
-      const grubResetCostSummary = Object.keys(upgradeDefinition.costs).map(function (resourceKey) {
-        return formatLargeNumber(upgradeDefinition.costs[resourceKey]) + " " + resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1);
-      }).join(", ");
-      button.textContent = (!isRepeatableUpgrade && hasUpgrade(gameState, config.upgradeId))
-        ? upgradeDefinition.name + " (Owned)"
-        : upgradeDefinition.name + " (" + grubResetCostSummary + ")";
-      syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
-
-      button.addEventListener("click", function () {
-        handleUpgradePurchaseRequest(gameState, config.upgradeId, {
-          beforePurchase: function () {
-            updateCoinsFromElapsedTime(gameState, Date.now());
-          },
-          onSuccess: function () {
-            renderTopBar(topBar, gameState);
-            renderActionPanels();
-            renderUpgrades();
-          }
-        });
-      });
-
-      const tooltipBox = document.createElement("div");
-      tooltipBox.className = "upgrade-tooltip-box";
-      tooltipBox.textContent = upgradeDefinition.description;
-
-      tooltipWrapper.appendChild(button);
-      tooltipWrapper.appendChild(tooltipBox);
-      wrapper.appendChild(tooltipWrapper);
-
-      return wrapper;
     }
 
     // The sapling shop now lives on the Aviary page, so these old refresh hooks are intentional no-ops here.
@@ -1754,49 +1657,25 @@
       storageLabel.textContent = "Storage: Increase Max Seeds";
       upgradesList.appendChild(storageLabel);
 
-      upgradesList.appendChild(createStorageUpgradeButton({
+      const storageUpgradeRow = document.createElement("div");
+      storageUpgradeRow.className = "storage-upgrade-row";
+      upgradesList.appendChild(storageUpgradeRow);
+
+      storageUpgradeRow.appendChild(createStorageUpgradeButton({
         upgradeId: "seedPouch"
       }));
 
-      upgradesList.appendChild(createStorageUpgradeButton({
+      storageUpgradeRow.appendChild(createStorageUpgradeButton({
         upgradeId: "seedBank"
+      }));
+
+      storageUpgradeRow.appendChild(createStorageUpgradeButton({
+        upgradeId: "seedVault"
       }));
 
       const storageDivider = document.createElement("div");
       storageDivider.className = "upgrade-divider";
       upgradesList.appendChild(storageDivider);
-
-      const trapSeedLabel = document.createElement("p");
-      trapSeedLabel.className = "upgrade-section-title";
-      trapSeedLabel.textContent = "Trap Cost: Seeds";
-      upgradesList.appendChild(trapSeedLabel);
-
-      const trapSeedRow = document.createElement("div");
-      trapSeedRow.className = "upgrade-row upgrade-row-three";
-      upgradesList.appendChild(trapSeedRow);
-
-      trapSeedRow.appendChild(createTrapSeedResetButton({
-        upgradeId: "avianRepopulation"
-      }));
-      trapSeedRow.appendChild(createTrapSeedResetButton({
-        upgradeId: "wildlifeRestoration"
-      }));
-
-      const trapGrubLabel = document.createElement("p");
-      trapGrubLabel.className = "upgrade-section-title";
-      trapGrubLabel.textContent = "Trap Cost: Grubs";
-      upgradesList.appendChild(trapGrubLabel);
-
-      const trapGrubRow = document.createElement("div");
-      trapGrubRow.className = "upgrade-row upgrade-row-three";
-      upgradesList.appendChild(trapGrubRow);
-
-      trapGrubRow.appendChild(createTrapGrubResetButton({
-        upgradeId: "newSubstrate"
-      }));
-      trapGrubRow.appendChild(createTrapGrubResetButton({
-        upgradeId: "grubBreeding"
-      }));
     }
 
     upgradesMinimizeButton.addEventListener("click", function () {

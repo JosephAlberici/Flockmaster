@@ -85,61 +85,6 @@ const BIRD_CATCHING_UPGRADES = {
     onPurchase(gameState) {
       gameState.seedMax = Math.max(gameState.seedMax, 1000000);
     }
-  },
-  avianRepopulation: {
-    id: "avianRepopulation",
-    legacyPurchasedKey: "avianRepopulationPurchased",
-    name: "Avian Repopulation",
-    page: "birdCatching",
-    section: "trapCostSeeds",
-    order: 1,
-    oneTime: true,
-    costs: { seeds: 100000 },
-    description: "Resets seed bait cost to 1k seeds",
-    onPurchase(gameState) {
-      gameState.trapLoadCost = 1000;
-    }
-  },
-  wildlifeRestoration: {
-    id: "wildlifeRestoration",
-    legacyPurchasedKey: "wildlifeRestorationPurchased",
-    name: "Wildlife Restoration",
-    page: "birdCatching",
-    section: "trapCostSeeds",
-    order: 2,
-    oneTime: false,
-    costs: { seeds: 1000000 },
-    description: "Resets seed bait cost to 50k seeds",
-    onPurchase(gameState) {
-      gameState.trapLoadCost = 50000;
-    }
-  },
-  newSubstrate: {
-    id: "newSubstrate",
-    legacyPurchasedKey: "newSubstratePurchased",
-    name: "New Substrate",
-    page: "birdCatching",
-    section: "trapCostGrubs",
-    order: 1,
-    oneTime: true,
-    costs: { hardwood: 20 },
-    description: "Resets grub bait cost to 100 grubs",
-    onPurchase(gameState) {
-      gameState.trapGrubLoadCost = 100;
-    }
-  },
-  grubBreeding: {
-    id: "grubBreeding",
-    name: "Grub Breeding",
-    page: "birdCatching",
-    section: "trapCostGrubs",
-    order: 2,
-    oneTime: false,
-    costs: { grubs: 100000 },
-    description: "Resets grub bait cost to 5k grubs",
-    onPurchase(gameState) {
-      gameState.trapGrubLoadCost = 5000;
-    }
   }
 };
 
