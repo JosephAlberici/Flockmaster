@@ -13,7 +13,9 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/crow.wav",
     nativeHabitat: "City Living",
     scientificName: "Corvus brachyrhynchos",
-    habitatScale: 0.8
+    habitatScale: 0.8,
+    order: "Passerines",
+    family: "Corvids"
   },
   {
     id: "pigeon",
@@ -25,13 +27,14 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/pigeon.png",
     call: "/Resources/Calls/pigeon.wav",
     nativeHabitat: "City Living",
-    scientificName: "Columba livia"
+    scientificName: "Columba livia",
+    order: "Columbiformes"
   },
   {
     id: "kestrel",
     species: "American Kestrel",
     visitorsPerDay: 3,
-    twigsPerSecond: 0.04,
+    twigsPerMinute: 2,
     diet: "grubs",
     rarity: "Uncommon",
     acquired: false,
@@ -39,40 +42,44 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/kestrel.wav",
     nativeHabitat: "City Living",
     scientificName: "Falco sparverius",
-    habitatScale: 0.8
+    habitatScale: 0.8,
+    order: "Falcons"
   },
   {
     id: "bluejay",
     species: "Blue Jay",
-    visitorsPerDay: 1,
-    twigsPerSecond: 0.06,
+    visitorsPerDay: 2,
+    twigsPerMinute: 3,
     diet: "seeds",
     rarity: "Uncommon",
     acquired: false,
     image: "/Resources/Bird Images/bluejay.png",
     call: "/Resources/Calls/bluejay.wav",
     nativeHabitat: "City Living",
-    scientificName: "Cyanocitta cristata"
+    scientificName: "Cyanocitta cristata",
+    order: "Passerines",
+    family: "Corvids"
   },
   {
     id: "mourningdove",
     species: "Mourning Dove",
     visitorsPerDay: 1,
-    seedsPerSecond: 0.1,
+    seedsPerMinute: 4,
     diet: "seeds",
     rarity: "Common",
     acquired: false,
     image: "/Resources/Bird Images/mourningdove.png",
     call: "/Resources/Calls/mourningdove.wav",
     nativeHabitat: "City Living",
-    scientificName: "Zenaida macroura"
+    scientificName: "Zenaida macroura",
+    order: "Columbiformes"
   },
   {
     id: "pileatedwoodpecker",
     species: "Pileated Woodpecker",
     visitorsPerDay: 1,
-    twigsPerSecond: 0.06,
-    grubsPerSecond: 0.06,
+    twigsPerMinute: 3.5,
+    grubsPerMinute: 3,
     abilities: ["treePeck"],
     diet: "grubs",
     rarity: "Rare",
@@ -81,7 +88,8 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/pileatedwoodpecker.mp3",
     nativeHabitat: "City Living",
     scientificName: "Dryocopus pileatus",
-    habitatScale: 1.2
+    habitatScale: 1.2,
+    order: "Piciformes"
   },
   {
     id: "cardinal",
@@ -102,7 +110,9 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/cardinal.mp3",
     nativeHabitat: "City Living",
     scientificName: "Cardinalis cardinalis",
-    habitatScale: 1.2
+    habitatScale: 1.2,
+    order: "Passerines",
+    family: "Cardinals"
   },
   {
     id: "nuthatch",
@@ -115,11 +125,12 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/nuthatch.wav",
     nativeHabitat: "City Living",
     scientificName: "Sitta carolinensis",
+    order: "Nuthatches"
   },
   {
     id: "screechowl",
     species: "Eastern Screech Owl",
-    grubsPerSecond: 0.1,
+    grubsPerMinute: 5,
     abilities: ["overseer"],
     diet: "grubs",
     rarity: "Epic",
@@ -128,11 +139,12 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/screechowl.wav",
     nativeHabitat: "City Living",
     scientificName: "Megascops asio",
+    order: "True Owls"
   },
   {
     id: "nighthawk",
     species: "Common Nighthawk",
-    grubsPerSecond: 0.02,
+    grubsPerMinute: 1,
     abilities: ["nocturnal"],
     diet: "grubs",
     rarity: "Common",
@@ -141,6 +153,7 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/nighthawk.wav",
     nativeHabitat: "City Living",
     scientificName: "Chordeiles minor",
+    order: "Nightjars"
   },
   {
     id: "shrike",
@@ -152,6 +165,8 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/shrike.mp3",
     nativeHabitat: "The Hollow",
     scientificName: "Lanius ludovicianus",
+    order: "Passerines",
+    family: "Shrikes"
   },
   {
     id: "cowbird",
@@ -164,13 +179,15 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/cowbird.mp3",
     nativeHabitat: "City Living",
     scientificName: "Molothrus ater",
+    order: "Passerines",
+    family: "Icterids"
   },
   {
     id: "redTailedHawk",
     species: "Red-Tailed Hawk",
-    twigsPerSecond: 0.1,
-    bonusPeachTree: 2,
-    habitatScale: 1.6,
+    twigsPerMinute: 6,
+    bonusPeachTree: 1,
+    habitatScale: 1.5,
     diet: "mice",
     rarity: "Epic",
     abilities: ["predator"],
@@ -179,6 +196,7 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/redTailedHawk.wav",
     nativeHabitat: "City Living",
     scientificName: "Buteo jamaicensis",
+    order: "Accipitriformes"
   },
   {
     id: "mallard",
@@ -198,7 +216,8 @@ const BIRD_LIBRARY = [
     },
     call: "/Resources/Calls/mallard.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Anas platyrhynchos"
+    scientificName: "Anas platyrhynchos",
+    order: "Waterfowl"
   },
   {
     id: "goose",
@@ -206,23 +225,25 @@ const BIRD_LIBRARY = [
     diet: "seeds",
     rarity: "Common",
     visitorsPerDay: 2,
-    seedsPerSecond: 0.1,
+    seedsPerMinute: 6,
     image: "/Resources/Bird Images/goose.png",
     call: "/Resources/Calls/goose.wav",
     nativeHabitat: "Urban Waters",
     scientificName: "Branta canadensis",
-    habitatScale: 1.3
+    habitatScale: 1.3,
+    order: "Waterfowl"
   },
   {
     id: "sandpiper",
     species: "Spotted Sandpiper",
     diet: "grubs",
     rarity: "Common",
-    twigsPerSecond: 0.04,
+    twigsPerMinute: 2.5,
     image: "/Resources/Bird Images/sandpiper.png",
     call: "/Resources/Calls/sandpiper.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Actitis macularius"
+    scientificName: "Actitis macularius",
+    order: "Shorebirds"
   },
   {
     id: "nightheron",
@@ -234,19 +255,21 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/nightHeron.png",
     call: "/Resources/Calls/nightHeron.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Nycticorax nycticorax"
+    scientificName: "Nycticorax nycticorax",
+    order: "Pelecaniformes"
   },
   {
     id: "greenheron",
     species: "Green Heron",
     diet: ["fish", "grubs"],
     rarity: "Rare",
-    grubsPerSecond: 0.04,
+    grubsPerMinute: 2.5,
     abilities: ["baitfisher"],
     image: "/Resources/Bird Images/greenHeron.png",
     call: "/Resources/Calls/greenHeron.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Butorides virescens"
+    scientificName: "Butorides virescens",
+    order: "Pelecaniformes"
   },
   {
     id: "muteswan",
@@ -258,19 +281,21 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/muteSwan.png",
     call: "/Resources/Calls/muteSwan.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Cygnus olor"
+    scientificName: "Cygnus olor",
+    order: "Waterfowl"
   },
   {
     id: "killdeer",
     species: "Killdeer",
     diet: "grubs",
     rarity: "Common",
-    twigsPerSecond: 0.02,
-    grubsPerSecond: 0.01,
+    twigsPerMinute: 1,
+    grubsPerMinute: 0.5,
     image: "/Resources/Bird Images/killdeer.png",
     call: "/Resources/Calls/killdeer.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Charadrius vociferus"
+    scientificName: "Charadrius vociferus",
+    order: "Shorebirds"
   },
   {
     id: "osprey",
@@ -282,18 +307,21 @@ const BIRD_LIBRARY = [
     image: "/Resources/Bird Images/osprey.png",
     call: "/Resources/Calls/osprey.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Pandion haliaetus"
+    scientificName: "Pandion haliaetus",
+    order: "Accipitriformes"
   },
   {
     id: "coot",
     species: "American Coot",
     diet: "seeds",
     rarity: "Uncommon",
-    seedsPerSecond: 0.2,
+    seedsPerMinute: 5,
+    visitorsPerDay: 1,
     image: "/Resources/Bird Images/coot.png",
     call: "/Resources/Calls/coot.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Fulica americana"
+    scientificName: "Fulica americana",
+    order: "Gruiformes"
   },
   {
     id: "kingfisher",
@@ -301,23 +329,26 @@ const BIRD_LIBRARY = [
     diet: "fish",
     rarity: "Epic",
     abilities: ["spearfishing"],
+    visitorsPerDay: 4,
     image: "/Resources/Bird Images/kingfisher.png",
     call: "/Resources/Calls/kingfisher.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Megaceryle alcyon"
+    scientificName: "Megaceryle alcyon",
+    order: "Coraciiformes"
   },
   {
     id: "cormorant",
-    species: "Double-Breasted Cormorant",
+    species: "Double-Crested Cormorant",
     diet: "fish",
     rarity: "Legendary",
     abilities: ["deepSeaDiver"],
     visitorsPerDay: 5,
-    seedsPerSecond: 0.5,
+    seedsPerMinute: 30,
     image: "/Resources/Bird Images/cormorant.png",
     call: "/Resources/Calls/cormorant.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Nannopterum auritum"
+    scientificName: "Nannopterum auritum",
+    order: "Suliformes"
   },
   {
     id: "avocet",
@@ -325,11 +356,12 @@ const BIRD_LIBRARY = [
     diet: "grubs",
     rarity: "Epic",
     abilities: ["mudSweeper"],
-    grubsPerSecond: 0.05,
+    grubsPerMinute: 3,
     image: "/Resources/Bird Images/avocet.png",
     call: "/Resources/Calls/avocet.wav",
     nativeHabitat: "Urban Waters",
-    scientificName: "Recurvirostra americana"
+    scientificName: "Recurvirostra americana",
+    order: "Shorebirds"
   },
   {
     id: "harrier",
@@ -337,24 +369,26 @@ const BIRD_LIBRARY = [
     diet: "mice",
     rarity: "Epic",
     abilities: ["overseer"],
-    twigsPerSecond: 0.08,
+    twigsPerMinute: 4.5,
     visitorsPerDay: 5,
     bonusPearTree: 1,
     image: "/Resources/Bird Images/harrier.png",
     call: "/Resources/Calls/harrier.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Circus hudsonius"
+    scientificName: "Circus hudsonius",
+    order: "Accipitriformes"
   },
   {
     id: "grebe",
     species: "Pied-billed Grebe",
     diet: ["fish", "grubs"],
     rarity: "Common",
-    grubsPerSecond: 0.01,
+    grubsPerMinute: 0.5,
     visitorsPerDay: 1,
     image: "/Resources/Bird Images/grebe.png",
     call: "/Resources/Calls/grebe.mp3",
     nativeHabitat: "Urban Waters",
-    scientificName: "Podilymbus podiceps"
+    scientificName: "Podilymbus podiceps",
+    order: "Grebes"
   }
 ];

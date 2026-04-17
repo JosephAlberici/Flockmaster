@@ -73,6 +73,10 @@ const ABILITIES = {
     name: "Parasite",
     description: "Can inherit the current stats of a target species from the same habitat. Starts limited to Common targets"
   },
+  pickpocket: {
+    name: "Pickpocket",
+    description: "Once per day, receive a random reward per species with this ability in your flock"
+  },
   predator: {
     name: "Predator",
     description: "Improves catch rate when using seed bait by 2% per individual with the ability up to a maximum of 10%",

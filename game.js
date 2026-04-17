@@ -12,6 +12,7 @@ const RARITY_WEIGHTS = {
   Epic: 4,
   Legendary: 1
 };
+const DOCKYARD_VOYAGE_COIN_COST = 1500000;
 const DOCKYARD_TREASURE_REWARD_TABLE = [
   {
     type: "item",
@@ -71,6 +72,9 @@ const TREE_BONUS_KEY_BY_TREE_KEY = {
 
 const SAVE_TEXT_ENCODER = typeof TextEncoder === "function" ? new TextEncoder() : null;
 const SAVE_TEXT_DECODER = typeof TextDecoder === "function" ? new TextDecoder() : null;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_DAY = 1440;
+const SECONDS_PER_DAY = 86400;
 let cloudSyncTimeoutId = null;
 let cloudSaveBootstrapPromise = null;
 let cloudSaveSyncEnabled = false;
@@ -81,8 +85,11 @@ const GAME_STATE_DEFAULTS = {
   playerId: "",
   playerName: "",
   friendCode: "",
-  seeds: 200,
-  seedMax: 1000,
+  // 900 seeds gives an expected ~20 opening seed-trap draws with the
+  // starting 20-seed cost, 50% catch rate, and 15% cost growth on catches.
+  seeds: 900,
+  seedMax: 5000,
+  federalGrantPerMinute: 10,
   grubs: 0,
   grubMax: 10000,
   grubsPerClick: 1,
@@ -140,6 +147,7 @@ const GAME_STATE_DEFAULTS = {
   lastTrapResult: "",
   items: {},
   upgrades: {},
+  speciesUpgrades: {},
   ownedHabitats: ["City Living"],
   redeemedCodes: [],
   parasiteTargets: {},
@@ -202,6 +210,7 @@ const GAME_STATE_VALIDATORS = {
   friendCode: isString,
   seeds: isFiniteNumber,
   seedMax: isFiniteNumber,
+  federalGrantPerMinute: isFiniteNumber,
   grubs: isFiniteNumber,
   grubMax: isFiniteNumber,
   grubsPerClick: isFiniteNumber,
@@ -256,6 +265,7 @@ const GAME_STATE_VALIDATORS = {
   lastTrapResult: isString,
   items: isPlainObject,
   upgrades: isPlainObject,
+  speciesUpgrades: isPlainObject,
   ownedHabitats: Array.isArray,
   redeemedCodes: Array.isArray,
   parasiteTargets: isPlainObject,
@@ -955,6 +965,7 @@ function normalizeGameState(parsedGameState) {
   normalizedGameState.items = mergeItemCounts(normalizedGameState.items);
   normalizedGameState.upgrades = mergeUpgradeOwnership(normalizedGameState.upgrades, normalizedGameState);
   normalizedGameState.birds = mergeBirdProgress(normalizedGameState.birds);
+  normalizedGameState.seedMax = Math.max(normalizedGameState.seedMax, GAME_STATE_DEFAULTS.seedMax);
 
   // Clamp after every migration step so legacy overflows cannot leak back into
   // the running game state.
@@ -986,6 +997,111 @@ function loadGameState() {
 // Return one upgrade definition by id from the shared catalogue.
 function getUpgradeDefinition(upgradeId) {
   return UPGRADE_LIBRARY[upgradeId] || null;
+}
+
+// Return the dedicated species-upgrade catalogue when that page/library is
+// loaded, while safely falling back to an empty object everywhere else.
+function getSpeciesUpgradeLibrary() {
+  if (typeof SPECIES_UPGRADE_LIBRARY === "undefined" || !isPlainObject(SPECIES_UPGRADE_LIBRARY)) {
+    return {};
+  }
+
+  return SPECIES_UPGRADE_LIBRARY;
+}
+
+// Fetch one bird's tech-tree definitions in their intended display order.
+function getSpeciesUpgradeDefinitionsForBird(birdId) {
+  const speciesUpgradeLibrary = getSpeciesUpgradeLibrary();
+  const birdUpgradeDefinitions = Array.isArray(speciesUpgradeLibrary[birdId])
+    ? speciesUpgradeLibrary[birdId].slice()
+    : [];
+
+  return birdUpgradeDefinitions.sort(function (leftUpgrade, rightUpgrade) {
+    return (leftUpgrade.order || 0) - (rightUpgrade.order || 0);
+  });
+}
+
+// Check whether the current save owns one species-specific upgrade.
+function hasSpeciesUpgrade(gameState, speciesUpgradeId) {
+  return Boolean(
+    gameState.speciesUpgrades &&
+    gameState.speciesUpgrades[speciesUpgradeId] === true
+  );
+}
+
+function getSpeciesUpgradeDefinitionById(speciesUpgradeId) {
+  const speciesUpgradeLibrary = getSpeciesUpgradeLibrary();
+  const birdIds = Object.keys(speciesUpgradeLibrary);
+
+  for (let index = 0; index < birdIds.length; index += 1) {
+    const birdUpgradeDefinitions = Array.isArray(speciesUpgradeLibrary[birdIds[index]])
+      ? speciesUpgradeLibrary[birdIds[index]]
+      : [];
+    const matchingDefinition = birdUpgradeDefinitions.find(function (speciesUpgradeDefinition) {
+      return speciesUpgradeDefinition.id === speciesUpgradeId;
+    });
+
+    if (matchingDefinition) {
+      return matchingDefinition;
+    }
+  }
+
+  return null;
+}
+
+function setSpeciesUpgradeOwned(gameState, speciesUpgradeId, isOwned) {
+  if (!gameState.speciesUpgrades || typeof gameState.speciesUpgrades !== "object") {
+    gameState.speciesUpgrades = {};
+  }
+
+  gameState.speciesUpgrades[speciesUpgradeId] = isOwned === true;
+}
+
+function meetsSpeciesUpgradeRequirements(gameState, speciesUpgradeDefinition) {
+  const parentIds = Array.isArray(speciesUpgradeDefinition.parents)
+    ? speciesUpgradeDefinition.parents
+    : [];
+
+  if (parentIds.length > 0) {
+    const parentsOwned = parentIds.every(function (parentId) {
+      return hasSpeciesUpgrade(gameState, parentId);
+    });
+
+    if (!parentsOwned) {
+      return false;
+    }
+  }
+
+  return meetsUpgradeRequirements(gameState, speciesUpgradeDefinition);
+}
+
+function purchaseSpeciesUpgrade(gameState, speciesUpgradeId) {
+  const speciesUpgradeDefinition = getSpeciesUpgradeDefinitionById(speciesUpgradeId);
+
+  if (!speciesUpgradeDefinition) {
+    return false;
+  }
+
+  if (speciesUpgradeDefinition.oneTime !== false && hasSpeciesUpgrade(gameState, speciesUpgradeId)) {
+    return false;
+  }
+
+  if (
+    !meetsSpeciesUpgradeRequirements(gameState, speciesUpgradeDefinition) ||
+    !canAffordUpgrade(gameState, speciesUpgradeDefinition)
+  ) {
+    return false;
+  }
+
+  spendUpgradeCosts(gameState, speciesUpgradeDefinition);
+  setSpeciesUpgradeOwned(gameState, speciesUpgradeId, true);
+
+  if (typeof speciesUpgradeDefinition.onPurchase === "function") {
+    speciesUpgradeDefinition.onPurchase(gameState);
+  }
+
+  clampGameStateResources(gameState);
+  return true;
 }
 
 // Check whether the current save owns one named upgrade.
@@ -1066,11 +1182,18 @@ function meetsUpgradeRequirements(gameState, upgradeDefinition) {
   }
 
   if (
-    typeof requirements.species === "number" &&
-    getFlockDiversity(gameState) < requirements.species
-  ) {
-    return false;
-  }
+      typeof requirements.species === "number" &&
+      getFlockDiversity(gameState) < requirements.species
+    ) {
+      return false;
+    }
+
+    if (
+      typeof requirements.visitorsPerDay === "number" &&
+      getVisitorsPerDay(gameState) < requirements.visitorsPerDay
+    ) {
+      return false;
+    }
 
   if (requirements.birds && typeof requirements.birds === "object") {
     const hasEnoughBirds = Object.keys(requirements.birds).every(function (birdId) {
@@ -1094,6 +1217,12 @@ function canAffordUpgrade(gameState, upgradeDefinition) {
   const costs = upgradeDefinition.costs || {};
 
   return Object.keys(costs).every(function (resourceKey) {
+    if (resourceKey === "birds" && costs.birds && typeof costs.birds === "object") {
+      return Object.keys(costs.birds).every(function (birdId) {
+        return getBirdCountById(gameState, birdId) >= costs.birds[birdId];
+      });
+    }
+
     return gameState[resourceKey] >= costs[resourceKey];
   });
 }
@@ -1103,6 +1232,13 @@ function spendUpgradeCosts(gameState, upgradeDefinition) {
   const costs = upgradeDefinition.costs || {};
 
   Object.keys(costs).forEach(function (resourceKey) {
+    if (resourceKey === "birds" && costs.birds && typeof costs.birds === "object") {
+      Object.keys(costs.birds).forEach(function (birdId) {
+        removeBirdsFromFlock(gameState, birdId, costs.birds[birdId]);
+      });
+      return;
+    }
+
     gameState[resourceKey] -= costs[resourceKey];
   });
 }
@@ -1143,6 +1279,15 @@ function getUpgradeCostSummary(upgradeDefinition) {
   const costs = upgradeDefinition && upgradeDefinition.costs ? upgradeDefinition.costs : {};
 
   return Object.keys(costs).map(function (resourceKey) {
+    if (resourceKey === "birds" && costs.birds && typeof costs.birds === "object") {
+      return Object.keys(costs.birds).map(function (birdId) {
+        const bird = BIRD_LIBRARY.find(function (birdEntry) {
+          return birdEntry.id === birdId;
+        }) || null;
+        return formatLargeNumber(costs.birds[birdId]) + " " + (bird ? bird.species : birdId);
+      }).join(" | ");
+    }
+
     const resourceLabel = resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1);
     return formatLargeNumber(costs[resourceKey]) + " " + resourceLabel;
   }).join(" | ");
@@ -1161,9 +1306,13 @@ function getUpgradeRequirementSummary(gameState, upgradeDefinition) {
     requirementParts.push(formatLargeNumber(requirements.individuals) + " Individuals");
   }
 
-  if (typeof requirements.species === "number") {
-    requirementParts.push(formatLargeNumber(requirements.species) + " Species");
-  }
+    if (typeof requirements.species === "number") {
+      requirementParts.push(formatLargeNumber(requirements.species) + " Species");
+    }
+
+    if (typeof requirements.visitorsPerDay === "number") {
+      requirementParts.push(formatLargeNumber(requirements.visitorsPerDay) + " Visitors/Day");
+    }
 
   if (requirements.birds && typeof requirements.birds === "object") {
     Object.keys(requirements.birds).forEach(function (birdId) {
@@ -1531,9 +1680,9 @@ function getFlockDiversity(gameState) {
   ).size;
 }
 
-// Earthworks unlocks once the flock reaches four unique species.
+// Earthworks unlocks once the flock reaches ten total individuals.
 function isEarthworksUnlocked(gameState) {
-  return getFlockDiversity(gameState) >= 4;
+  return getTotalBirdCount(gameState) >= 10;
 }
 
 // Dockyard unlocks once Urban Waters has been constructed.
@@ -1690,6 +1839,12 @@ function getBirdsByDiet(gameState, dietType) {
   });
 }
 
+function getBirdDietIndividualCount(gameState, dietType) {
+  return getBirdsByDiet(gameState, dietType).reduce(function (totalBirds, bird) {
+    return totalBirds + Math.max(0, bird.count || 0);
+  }, 0);
+}
+
 // Split the mouse pool into first-time catches and already-owned repeats.
 function getMouseCatchPools(gameState) {
   const mouseBirds = getBirdsByDiet(gameState, "mice");
@@ -1827,16 +1982,16 @@ function getPoints(gameState) {
 }
 
 // Apply per-species twig modifiers from aviary upgrades.
-function getBirdTwigRatePerSecond(bird, gameState, visitedBirdIds) {
+function getBirdTwigRatePerMinute(bird, gameState, visitedBirdIds) {
   return getResolvedBirdNumericProperty(
     bird,
     gameState,
-    "twigsPerSecond",
+    "twigsPerMinute",
     visitedBirdIds,
     function (twigRate, resolvedBird, resolvedGameState) {
       getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
-        if (typeof upgrade.modifyTwigRatePerSecond === "function") {
-          twigRate = upgrade.modifyTwigRatePerSecond(twigRate, {
+        if (typeof upgrade.modifyTwigRatePerMinute === "function") {
+          twigRate = upgrade.modifyTwigRatePerMinute(twigRate, {
             bird: resolvedBird,
             gameState: resolvedGameState
           });
@@ -1849,16 +2004,16 @@ function getBirdTwigRatePerSecond(bird, gameState, visitedBirdIds) {
 }
 
 // Return a bird's passive seed income, defaulting to zero when absent.
-function getBirdSeedRatePerSecond(bird, gameState, visitedBirdIds) {
+function getBirdSeedRatePerMinute(bird, gameState, visitedBirdIds) {
   return getResolvedBirdNumericProperty(
     bird,
     gameState,
-    "seedsPerSecond",
+    "seedsPerMinute",
     visitedBirdIds,
     function (seedRate, resolvedBird, resolvedGameState) {
       getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
-        if (typeof upgrade.modifySeedRatePerSecond === "function") {
-          seedRate = upgrade.modifySeedRatePerSecond(seedRate, {
+        if (typeof upgrade.modifySeedRatePerMinute === "function") {
+          seedRate = upgrade.modifySeedRatePerMinute(seedRate, {
             bird: resolvedBird,
             gameState: resolvedGameState
           });
@@ -1871,8 +2026,23 @@ function getBirdSeedRatePerSecond(bird, gameState, visitedBirdIds) {
 }
 
 // Return a bird's passive grub income, defaulting to zero when absent.
+function getBirdGrubRatePerMinute(bird, gameState, visitedBirdIds) {
+  return getResolvedBirdNumericProperty(bird, gameState, "grubsPerMinute", visitedBirdIds);
+}
+
+// The passive-income engine still runs in per-second units, so keep tiny
+// conversion wrappers instead of forcing the rest of the timing code to care
+// about the bird-data unit change.
+function getBirdTwigRatePerSecond(bird, gameState, visitedBirdIds) {
+  return getBirdTwigRatePerMinute(bird, gameState, visitedBirdIds) / SECONDS_PER_MINUTE;
+}
+
+function getBirdSeedRatePerSecond(bird, gameState, visitedBirdIds) {
+  return getBirdSeedRatePerMinute(bird, gameState, visitedBirdIds) / SECONDS_PER_MINUTE;
+}
+
 function getBirdGrubRatePerSecond(bird, gameState, visitedBirdIds) {
-  return getResolvedBirdNumericProperty(bird, gameState, "grubsPerSecond", visitedBirdIds);
+  return getBirdGrubRatePerMinute(bird, gameState, visitedBirdIds) / SECONDS_PER_MINUTE;
 }
 
 // Return one bird's orchard-cap bonus for the requested tree type.
@@ -1907,24 +2077,24 @@ const BIRD_RESOURCE_DEFINITIONS = [
     }
   },
   {
-    key: "grubsPerSecond",
-    label: "Grubs Per Second",
+    key: "grubsPerMinute",
+    label: "Grubs Per Minute",
     getValue: function (bird, gameState) {
-      return getBirdGrubRatePerSecond(bird, gameState);
+      return getBirdGrubRatePerMinute(bird, gameState);
     }
   },
   {
-    key: "twigsPerSecond",
-    label: "Twigs Per Second",
+    key: "twigsPerMinute",
+    label: "Twigs Per Minute",
     getValue: function (bird, gameState) {
-      return getBirdTwigRatePerSecond(bird, gameState);
+      return getBirdTwigRatePerMinute(bird, gameState);
     }
   },
   {
-    key: "seedsPerSecond",
-    label: "Seeds Per Second",
+    key: "seedsPerMinute",
+    label: "Seeds Per Minute",
     getValue: function (bird, gameState) {
-      return getBirdSeedRatePerSecond(bird, gameState);
+      return getBirdSeedRatePerMinute(bird, gameState);
     }
   },
   {
@@ -2166,14 +2336,21 @@ function rollDockyardTreasureRewards(gameState) {
   return pendingRewards;
 }
 
+// Return the current Harbor coin cost for beginning one voyage.
+function getDockyardVoyageCoinCost() {
+  return DOCKYARD_VOYAGE_COIN_COST;
+}
+
 // Start one Dockyard voyage and capture its reward bundle up front so the
 // eventual return state is deterministic once the boat leaves harbor.
 function startDockyardVoyage(gameState, currentTime) {
-  if (gameState.coins < 100000) {
+  const voyageCoinCost = getDockyardVoyageCoinCost();
+
+  if (gameState.coins < voyageCoinCost) {
     return false;
   }
 
-  gameState.coins -= 100000;
+  gameState.coins -= voyageCoinCost;
   gameState.dockyardVoyageStart = currentTime;
   gameState.dockyardVoyageActive = true;
   gameState.dockyardVoyageReady = false;
@@ -2283,7 +2460,7 @@ function tryAutoStartDockyard(gameState, currentTime) {
     return false;
   }
 
-  const minimumCoinRequirement = Math.max(100000, gameState.dockyardCoinThreshold);
+  const minimumCoinRequirement = Math.max(getDockyardVoyageCoinCost(), gameState.dockyardCoinThreshold);
 
   if (gameState.coins < minimumCoinRequirement) {
     return false;
@@ -2685,13 +2862,20 @@ function applyGlobalAbilityModifiers(gameState, startingValue, hookName, extraCo
 
 // Apply all matching ability handlers for a trap seed bait cost calculation.
 function getEffectiveTrapSeedCost(gameState) {
+  const seedBirdCount = Math.max(0, getBirdDietIndividualCount(gameState, "seeds"));
+  const compoundedBaseCost = gameState.trapLoadCost * Math.pow(1.05, Math.max(0, seedBirdCount - 1));
   const effectiveCost = applyGlobalAbilityModifiers(
     gameState,
-    gameState.trapLoadCost,
+    compoundedBaseCost,
     "modifyTrapSeedCost"
   );
 
   return Math.max(1, effectiveCost);
+}
+
+function getEffectiveTrapGrubCost(gameState) {
+  const grubBirdCount = Math.max(0, getBirdDietIndividualCount(gameState, "grubs"));
+  return Math.max(1, gameState.trapGrubLoadCost + (grubBirdCount * 5));
 }
 
 // Apply all matching ability handlers for Dockyard fish haul calculations.
@@ -2789,15 +2973,6 @@ function getSawmillProcessingDurationMs(gameState) {
 
 // Grow the base seed-bait load cost after a successful catch. The early climb
 // is steeper, then softens once the base price reaches 10k seeds.
-function getNextTrapSeedLoadCost(currentCost) {
-  const safeCurrentCost = isFiniteNumber(currentCost)
-    ? currentCost
-    : GAME_STATE_DEFAULTS.trapLoadCost;
-  const growthRate = safeCurrentCost >= 10000 ? 1.075 : 1.15;
-
-  return safeCurrentCost * growthRate;
-}
-
 // Turn a bird's ability ids into readable ability names for UI display.
 function getBirdAbilityNames(bird) {
   if (!Array.isArray(bird.abilities) || bird.abilities.length === 0) {
@@ -2877,6 +3052,10 @@ function getBirdResourceEntries(bird, gameState, options) {
 
     if (!shouldDisplayStat) {
       return entries;
+    }
+
+    if (typeof definition.toDisplayValue === "function") {
+      value = definition.toDisplayValue(value);
     }
 
     if (displayOptions.multiplyByCount) {
@@ -3152,28 +3331,47 @@ function getRandomBirdByRarityForGameState(birdPool, gameState) {
 }
 
 // Resource-rate and formatting helpers
-// Convert visitors/day into passive coin income.
-function getCoinsPerSecond(gameState) {
-  return getVisitorsPerDay(gameState) * getCoinsPerVisitorRate(gameState);
-}
-
-// Return how many coins each visitor/day point is worth per second.
-function getCoinsPerVisitorRate(gameState) {
-  let coinsPerVisitorRate = applyGlobalAbilityModifiers(
+// Return how many coins one visitor is worth once all active modifiers apply.
+function getCoinsPerVisitor(gameState) {
+  let coinsPerVisitor = applyGlobalAbilityModifiers(
     gameState,
-    0.1,
+    100,
     "modifyCoinsPerVisitorRate"
   );
 
   getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
     if (typeof upgrade.modifyCoinsPerVisitorRate === "function") {
-      coinsPerVisitorRate = upgrade.modifyCoinsPerVisitorRate(coinsPerVisitorRate, {
+      coinsPerVisitor = upgrade.modifyCoinsPerVisitorRate(coinsPerVisitor, {
         gameState: gameState
       });
     }
   });
 
-  return coinsPerVisitorRate;
+  return coinsPerVisitor;
+}
+
+// Keep the older helper name as a compatibility alias for existing page code
+// and upgrade hooks while the project transitions to clearer economy units.
+function getCoinsPerVisitorRate(gameState) {
+  return getCoinsPerVisitor(gameState);
+}
+
+function getFederalGrantPerMinute(gameState) {
+  return Math.max(0, gameState.federalGrantPerMinute || 0);
+}
+
+// Convert visitors/day into total coins/day, then derive minute/second values
+// from that same source of truth.
+function getCoinsPerDay(gameState) {
+  return (getVisitorsPerDay(gameState) * getCoinsPerVisitor(gameState)) + (getFederalGrantPerMinute(gameState) * MINUTES_PER_DAY);
+}
+
+function getCoinsPerMinute(gameState) {
+  return getCoinsPerDay(gameState) / MINUTES_PER_DAY;
+}
+
+function getCoinsPerSecond(gameState) {
+  return getCoinsPerDay(gameState) / SECONDS_PER_DAY;
 }
 
 // Sum seed production coming specifically from trees.
@@ -3186,25 +3384,41 @@ function getTreeSeedsPerSecond(gameState) {
   );
 }
 
+function getTreeSeedsPerMinute(gameState) {
+  return getTreeSeedsPerSecond(gameState) * SECONDS_PER_MINUTE;
+}
+
 // Sum seed production coming specifically from birds.
-function getBirdSeedsPerSecond(gameState) {
+function getBirdSeedsPerMinute(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    return total + (getBirdSeedRatePerSecond(bird, gameState) * bird.count);
+    return total + (getBirdSeedRatePerMinute(bird, gameState) * bird.count);
   }, 0);
+}
+
+function getBirdSeedsPerSecond(gameState) {
+  return getBirdSeedsPerMinute(gameState) / SECONDS_PER_MINUTE;
 }
 
 // Sum twig production coming specifically from birds before other systems modify it.
-function getBirdTwigsPerSecond(gameState) {
+function getBirdTwigsPerMinute(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    return total + (getBirdTwigRatePerSecond(bird, gameState) * bird.count);
+    return total + (getBirdTwigRatePerMinute(bird, gameState) * bird.count);
   }, 0);
 }
 
+function getBirdTwigsPerSecond(gameState) {
+  return getBirdTwigsPerMinute(gameState) / SECONDS_PER_MINUTE;
+}
+
 // Sum grub production coming specifically from birds before other systems modify it.
-function getBirdGrubsPerSecond(gameState) {
+function getBirdGrubsPerMinute(gameState) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    return total + (getBirdGrubRatePerSecond(bird, gameState) * bird.count);
+    return total + (getBirdGrubRatePerMinute(bird, gameState) * bird.count);
   }, 0);
+}
+
+function getBirdGrubsPerSecond(gameState) {
+  return getBirdGrubsPerMinute(gameState) / SECONDS_PER_MINUTE;
 }
 
 // Sum all seed production from both trees and birds.
@@ -3212,14 +3426,36 @@ function getSeedsPerSecond(gameState) {
   return getTreeSeedsPerSecond(gameState) + getBirdSeedsPerSecond(gameState) - getGrubFarmRates(gameState).seedsPerSecond;
 }
 
+function getSeedsPerMinute(gameState) {
+  return getSeedsPerSecond(gameState) * SECONDS_PER_MINUTE;
+}
+
 // Sum all twig production from birds with twig-generating traits.
 function getTwigsPerSecond(gameState) {
   return getBirdTwigsPerSecond(gameState) - getGrubFarmRates(gameState).twigsPerSecond;
 }
 
+function getTwigsPerMinute(gameState) {
+  return getTwigsPerSecond(gameState) * SECONDS_PER_MINUTE;
+}
+
 // Sum all grub production from birds with grub-generating traits.
 function getGrubsPerSecond(gameState) {
   return getBirdGrubsPerSecond(gameState) + getGrubFarmRates(gameState).grubsPerSecond;
+}
+
+function getGrubsPerMinute(gameState) {
+  return getGrubsPerSecond(gameState) * SECONDS_PER_MINUTE;
+}
+
+function getGrubFarmRatesPerMinute(gameState) {
+  const grubFarmRates = getGrubFarmRates(gameState);
+
+  return {
+    seedsPerMinute: grubFarmRates.seedsPerSecond * SECONDS_PER_MINUTE,
+    twigsPerMinute: grubFarmRates.twigsPerSecond * SECONDS_PER_MINUTE,
+    grubsPerMinute: grubFarmRates.grubsPerSecond * SECONDS_PER_MINUTE
+  };
 }
 
 // Sum the total tree-cap bonus birds currently grant for one orchard type.
@@ -3294,15 +3530,17 @@ function formatLargeNumber(value) {
 // Shared top-bar renderer and interaction helpers
 // Render or refresh the shared top bar used across pages.
 function renderTopBar(topBarElement, gameState) {
-  const coinsPerSecond = getCoinsPerSecond(gameState);
-  const treeSeedsPerSecond = getTreeSeedsPerSecond(gameState);
-  const birdSeedsPerSecond = getBirdSeedsPerSecond(gameState);
-  const birdGrubsPerSecond = getBirdGrubsPerSecond(gameState);
-  const birdTwigsPerSecond = getBirdTwigsPerSecond(gameState);
-  const grubFarmRates = getGrubFarmRates(gameState);
-  const seedsPerSecond = getSeedsPerSecond(gameState);
-  const grubsPerSecond = getGrubsPerSecond(gameState);
-  const twigsPerSecond = getTwigsPerSecond(gameState);
+  const coinsPerMinute = getCoinsPerMinute(gameState);
+  const coinsPerDay = getCoinsPerDay(gameState);
+  const coinsPerVisitor = getCoinsPerVisitor(gameState);
+  const treeSeedsPerMinute = getTreeSeedsPerMinute(gameState);
+  const birdSeedsPerMinute = getBirdSeedsPerMinute(gameState);
+  const birdGrubsPerMinute = getBirdGrubsPerMinute(gameState);
+  const birdTwigsPerMinute = getBirdTwigsPerMinute(gameState);
+  const grubFarmRatesPerMinute = getGrubFarmRatesPerMinute(gameState);
+  const seedsPerMinute = getSeedsPerMinute(gameState);
+  const grubsPerMinute = getGrubsPerMinute(gameState);
+  const twigsPerMinute = getTwigsPerMinute(gameState);
 
   if (!topBarElement.querySelector(".top-bar-content")) {
     // Build the shared shell once so later refreshes only update text values
@@ -3371,13 +3609,15 @@ function renderTopBar(topBarElement, gameState) {
   seedsTooltipElement.style.left = "0";
   seedsTooltipElement.style.transform = "none";
   seedsTooltipElement.style.whiteSpace = "normal";
-  seedsTooltipElement.style.minWidth = "220px";
+  seedsTooltipElement.style.minWidth = "320px";
   seedsTooltipElement.style.textAlign = "left";
   seedsTooltipElement.innerHTML =
-    "Seeds from trees: " + treeSeedsPerSecond.toFixed(1) + " seeds/sec<br>" +
-    "Seeds from birds: " + birdSeedsPerSecond.toFixed(1) + " seeds/sec<br>" +
-    "Seeds from grub farm: -" + grubFarmRates.seedsPerSecond.toFixed(1) + " seeds/sec<br>" +
-    "Total: " + seedsPerSecond.toFixed(1) + " seeds/sec | Max seeds: " + formatSeeds(gameState.seedMax);
+    "Trees: " + formatRateValue(treeSeedsPerMinute) + " seeds/min<br>" +
+    "Birds: " + formatRateValue(birdSeedsPerMinute) + " seeds/min" +
+    (gameState.grubFarmActive
+      ? "<br>Grub Farm: -" + formatRateValue(grubFarmRatesPerMinute.seedsPerMinute) + " seeds/min"
+      : "") +
+    "<br>Total: " + formatRateValue(seedsPerMinute) + " seeds/min | Max seeds: " + formatSeeds(gameState.seedMax);
 
   grubsTooltipElement.style.left = "0";
   grubsTooltipElement.style.transform = "none";
@@ -3385,24 +3625,31 @@ function renderTopBar(topBarElement, gameState) {
   grubsTooltipElement.style.minWidth = "220px";
   grubsTooltipElement.style.textAlign = "left";
   grubsTooltipElement.innerHTML =
-    "Grubs from birds: " + birdGrubsPerSecond.toFixed(2) + " grubs/sec<br>" +
-    "Grubs from grub farm: " + grubFarmRates.grubsPerSecond.toFixed(2) + " grubs/sec<br>" +
-    "Total: " + grubsPerSecond.toFixed(2) + " grubs/sec | Max grubs: " + formatLargeNumber(gameState.grubMax);
+    "Grubs from birds: " + formatRateValue(birdGrubsPerMinute) + " grubs/min<br>" +
+    (gameState.grubFarmActive
+      ? "Grubs from grub farm: " + formatRateValue(grubFarmRatesPerMinute.grubsPerMinute) + " grubs/min<br>"
+      : "") +
+    "Total: " + formatRateValue(grubsPerMinute) + " grubs/min | Max grubs: " + formatLargeNumber(gameState.grubMax);
 
   coinsTooltipElement.textContent =
-    "Coins from visitors: " + coinsPerSecond.toFixed(1) + " coins/sec | Max coins: " + formatCoins(gameState.coinMax);
+      "Coins per visitor: " + formatRateValue(coinsPerVisitor) +
+      " | Federal Grant: " + formatRateValue(getFederalGrantPerMinute(gameState)) + " coins/min" +
+      " | Coins per minute: " + formatRateValue(coinsPerMinute) +
+      " | Max coins: " + formatCoins(gameState.coinMax);
 
   twigsTooltipElement.textContent =
-    "Twigs from birds: " + birdTwigsPerSecond.toFixed(2) +
-    " twigs/sec | Twigs from grub farm: -" + grubFarmRates.twigsPerSecond.toFixed(2) +
-    " twigs/sec | Total: " + twigsPerSecond.toFixed(2) + " twigs/sec | Max twigs: " + formatLargeNumber(gameState.twigMax);
+    "Twigs from birds: " + formatRateValue(birdTwigsPerMinute) + " twigs/min" +
+    (gameState.grubFarmActive
+      ? " | Twigs from grub farm: -" + formatRateValue(grubFarmRatesPerMinute.twigsPerMinute) + " twigs/min"
+      : "") +
+    " | Total: " + formatRateValue(twigsPerMinute) + " twigs/min | Max twigs: " + formatLargeNumber(gameState.twigMax);
 
   // Hide resources the player has not reached yet so the top bar stays compact
   // early, then reveal them as soon as they matter.
   twigsWrapperElement.style.display =
-    (gameState.twigs >= 1 || twigsPerSecond > 0) ? "inline" : "none";
+    (gameState.twigs >= 1 || twigsPerMinute > 0) ? "inline" : "none";
   grubsWrapperElement.style.display =
-    (gameState.grubs >= 1 || grubsPerSecond > 0) ? "inline" : "none";
+    (gameState.grubs >= 1 || grubsPerMinute > 0) ? "inline" : "none";
   hardwoodWrapperElement.style.display =
     gameState.hardwood >= 1 ? "inline" : "none";
   miceWrapperElement.style.display =
