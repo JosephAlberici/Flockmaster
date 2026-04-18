@@ -2207,7 +2207,7 @@
         upgradesOverviewList.appendChild(treasuryTitle);
 
         const treasuryRow = document.createElement("div");
-        treasuryRow.className = "upgrade-row upgrade-row-three";
+        treasuryRow.className = "upgrade-row";
         const basketDefinition = getUpgradeDefinition("basket");
         const depositBoxDefinition = getUpgradeDefinition("depositBox");
         const basketEntry = document.createElement("div");
@@ -2279,39 +2279,6 @@
       depositBoxTooltip.appendChild(depositBoxTooltipBox);
       depositBoxEntry.appendChild(depositBoxTooltip);
       treasuryRow.appendChild(depositBoxEntry);
-
-      const simpleSafeEntry = document.createElement("div");
-      simpleSafeEntry.className = "upgrade-entry";
-
-      const simpleSafeDefinition = getUpgradeDefinition("simpleSafe");
-      const simpleSafeTooltip = document.createElement("div");
-      simpleSafeTooltip.className = "upgrade-tooltip";
-
-      const simpleSafeButton = document.createElement("button");
-      simpleSafeButton.className = "upgrade-action-button";
-      simpleSafeButton.type = "button";
-      simpleSafeButton.dataset.requiresSuccess = "true";
-      simpleSafeButton.textContent = hasUpgrade(gameState, "simpleSafe")
-        ? "Simple Safe (Owned)"
-        : "Simple Safe (" + formatLargeNumber(simpleSafeDefinition.costs.scrap) + " Scrap)";
-      syncOwnedUpgradeButtonState(simpleSafeButton, gameState, "simpleSafe");
-
-      simpleSafeButton.addEventListener("click", function () {
-        handleUpgradePurchaseRequest(gameState, "simpleSafe", {
-          onSuccess: function () {
-            rerenderAviary();
-          }
-        });
-      });
-
-      const simpleSafeTooltipBox = document.createElement("div");
-      simpleSafeTooltipBox.className = "upgrade-tooltip-box";
-      simpleSafeTooltipBox.textContent = simpleSafeDefinition.description;
-
-      simpleSafeTooltip.appendChild(simpleSafeButton);
-      simpleSafeTooltip.appendChild(simpleSafeTooltipBox);
-      simpleSafeEntry.appendChild(simpleSafeTooltip);
-      treasuryRow.appendChild(simpleSafeEntry);
 
         upgradesOverviewList.appendChild(treasuryRow);
       }

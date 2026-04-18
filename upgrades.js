@@ -91,22 +91,6 @@ const BIRD_CATCHING_UPGRADES = {
     onPurchase(gameState) {
       gameState.seedMax = Math.max(gameState.seedMax, 100000);
     }
-  },
-  seedVault: {
-    id: "seedVault",
-    name: "Seed Vault",
-    page: "birdCatching",
-    section: "storage",
-    order: 3,
-    oneTime: true,
-    costs: { coins: 250000 },
-    description: "Increases maximum seeds to 1,000,000",
-    deriveOwned(gameState) {
-      return gameState.seedMax >= 1000000;
-    },
-    onPurchase(gameState) {
-      gameState.seedMax = Math.max(gameState.seedMax, 1000000);
-    }
   }
 };
 
@@ -424,22 +408,6 @@ const AVIARY_UPGRADES = {
     description: "Increases maximum coins to 1M",
     onPurchase(gameState) {
       gameState.coinMax = 1000000;
-    }
-  },
-  simpleSafe: {
-    id: "simpleSafe",
-    name: "Simple Safe",
-    page: "aviary",
-    section: "treasury",
-    order: 3,
-    oneTime: true,
-    costs: { scrap: 10 },
-    description: "Increases maximum coins to 10M",
-    deriveOwned(gameState) {
-      return gameState.coinMax >= 10000000;
-    },
-    onPurchase(gameState) {
-      gameState.coinMax = Math.max(gameState.coinMax, 10000000);
     }
   }
 };

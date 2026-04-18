@@ -1119,6 +1119,8 @@ function normalizeGameState(parsedGameState) {
   normalizedGameState.upgrades = mergeUpgradeOwnership(normalizedGameState.upgrades, normalizedGameState);
   normalizedGameState.birds = mergeBirdProgress(normalizedGameState.birds);
   normalizedGameState.seedMax = Math.max(normalizedGameState.seedMax, GAME_STATE_DEFAULTS.seedMax);
+  normalizedGameState.seedMax = Math.min(normalizedGameState.seedMax, 100000);
+  normalizedGameState.coinMax = Math.min(normalizedGameState.coinMax, 1000000);
   normalizedGameState.grubMax = Math.min(normalizedGameState.grubMax, 50000);
 
   // Clamp after every migration step so legacy overflows cannot leak back into
