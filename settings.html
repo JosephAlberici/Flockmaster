@@ -12,11 +12,38 @@
       box-sizing: border-box;
     }
 
+    .settings-nav-card {
+      background: #f7f1e6;
+      border: 2px solid black;
+      border-radius: 18px;
+      padding: 18px 24px;
+      margin-bottom: 18px;
+    }
+
+    .settings-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
     .settings-card {
       background: #f7f1e6;
       border: 2px solid black;
       border-radius: 18px;
       padding: 24px;
+    }
+
+    .settings-section + .settings-section {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .settings-section-title {
+      margin: 0 0 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      font-size: 20px;
     }
 
     .page-title {
@@ -39,17 +66,20 @@
     }
 
     .settings-actions {
-      margin-top: 24px;
+      margin-top: 0;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .settings-actions button,
     .settings-actions a {
-      margin-right: 12px;
-      margin-bottom: 12px;
+      margin: 0;
     }
 
     .settings-danger-row {
-      margin-top: 4px;
+      margin-top: 0;
     }
 
     .danger-button {
@@ -81,9 +111,7 @@
     }
 
     .confirm-box {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid #b9b2a8;
+      margin-top: 14px;
       display: none;
     }
 
@@ -95,18 +123,6 @@
       margin: 0 0 16px;
       color: #2c3e50;
       font-weight: bold;
-    }
-
-    .code-shell {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid #b9b2a8;
-    }
-
-    .account-shell {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid #b9b2a8;
     }
 
     .account-label {
@@ -174,12 +190,6 @@
 
     .cloud-save-actions {
       margin-top: 12px;
-    }
-
-    .settings-option-shell {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid #b9b2a8;
     }
 
     .settings-option-row {
@@ -257,28 +267,18 @@
   <div class="top-bar" id="topBar"></div>
 
   <div class="settings-shell">
+    <div class="settings-nav-card">
+      <div class="settings-nav-grid">
+        <a class="back-link" href="index.html">Home</a>
+        <a class="back-link" href="aviary.html">Aviary</a>
+      </div>
+    </div>
+
     <div class="settings-card">
       <h1 class="page-title">SETTINGS</h1>
-      <a class="back-link" href="index.html">Home</a>
-      <a class="back-link" href="aviary.html">Aviary</a>
 
-      <div class="settings-actions">
-        <button class="action-button" type="button" id="exportSaveButton">Export Save</button>
-        <button class="action-button" type="button" id="importSaveButton">Import Save</button>
-      </div>
-
-      <div class="settings-danger-row">
-        <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
-      </div>
-
-      <div class="confirm-box" id="eraseConfirmBox">
-        <p class="confirm-text">Are you sure? This will permanently erase your current save</p>
-        <button class="danger-button" type="button" id="confirmEraseButton">Yes, Erase Save</button>
-        <button class="back-link" type="button" id="cancelEraseButton">Cancel</button>
-      </div>
-
-      <div class="account-shell">
-        <p class="account-label">Account</p>
+      <div class="settings-section">
+        <h2 class="settings-section-title">Account</h2>
         <div class="account-grid">
           <div>
             <label class="account-field-label" for="playerNameInput">Display Name</label>
@@ -311,22 +311,20 @@
         </div>
       </div>
 
-      <div class="settings-option-shell">
+      <div class="settings-section">
+        <h2 class="settings-section-title">Options</h2>
         <div class="settings-option-row">
           <input class="settings-checkbox" type="checkbox" id="upgradeConfirmationCheckbox">
           <label class="settings-option-label" for="upgradeConfirmationCheckbox">Upgrade Confirmation (For Mobile Devices)</label>
         </div>
-      </div>
-
-      <div class="settings-option-shell">
         <div class="settings-option-row">
           <input class="settings-checkbox" type="checkbox" id="holdToClickCheckbox">
           <label class="settings-option-label" for="holdToClickCheckbox">Hold to Click</label>
         </div>
       </div>
 
-      <div class="code-shell">
-        <p class="code-label">Redeem Code</p>
+      <div class="settings-section">
+        <h2 class="settings-section-title">Codes</h2>
         <div class="code-row">
           <input class="code-input" type="text" id="codeInput" placeholder="Enter code">
           <button class="action-button" type="button" id="redeemCodeButton" data-requires-success="true">Redeem</button>
@@ -334,7 +332,20 @@
         <p class="code-result" id="codeResult"></p>
       </div>
 
-      <input type="file" id="importSaveInput" accept=".txt" style="display: none;">
+      <div class="settings-section">
+        <h2 class="settings-section-title">Save</h2>
+        <div class="settings-actions">
+          <div class="settings-danger-row">
+            <button class="danger-button" type="button" id="eraseProgressButton">Erase Progress</button>
+          </div>
+        </div>
+
+        <div class="confirm-box" id="eraseConfirmBox">
+          <p class="confirm-text">Are you sure? This will permanently erase your current save</p>
+          <button class="danger-button" type="button" id="confirmEraseButton">Yes, Erase Save</button>
+          <button class="back-link" type="button" id="cancelEraseButton">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -343,6 +354,7 @@
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -352,9 +364,6 @@
     const gameState = loadGameState();
     initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
     const topBar = document.querySelector("#topBar");
-    const exportSaveButton = document.querySelector("#exportSaveButton");
-    const importSaveButton = document.querySelector("#importSaveButton");
-    const importSaveInput = document.querySelector("#importSaveInput");
     const eraseProgressButton = document.querySelector("#eraseProgressButton");
     const eraseConfirmBox = document.querySelector("#eraseConfirmBox");
     const confirmEraseButton = document.querySelector("#confirmEraseButton");
@@ -417,15 +426,6 @@
       loadCloudSaveButton.style.opacity = (!isSignedIn || !hasCloudSave) ? "0.65" : "1";
       syncCloudSaveButton.style.cursor = isSignedIn ? "pointer" : "default";
       loadCloudSaveButton.style.cursor = (!isSignedIn || !hasCloudSave) ? "default" : "pointer";
-    }
-
-    function setLocalSaveTransferButtons(isEnabled) {
-      exportSaveButton.disabled = !isEnabled;
-      importSaveButton.disabled = !isEnabled;
-      exportSaveButton.style.opacity = isEnabled ? "1" : "0.65";
-      importSaveButton.style.opacity = isEnabled ? "1" : "0.65";
-      exportSaveButton.style.cursor = isEnabled ? "pointer" : "default";
-      importSaveButton.style.cursor = isEnabled ? "pointer" : "default";
     }
 
     async function getAuthenticatedGoogleUser() {
@@ -523,7 +523,6 @@
         setGoogleAuthButtons(false);
         setCloudSaveStatus("Supabase is not configured for cloud saves yet", "is-pending");
         setCloudSaveButtons(false, false);
-        setLocalSaveTransferButtons(true);
         return;
       }
 
@@ -534,7 +533,6 @@
         setGoogleAuthButtons(false);
         setCloudSaveStatus("Cloud save status could not be loaded", "is-pending");
         setCloudSaveButtons(false, false);
-        setLocalSaveTransferButtons(true);
         return;
       }
 
@@ -545,14 +543,12 @@
         setGoogleAuthButtons(false);
         setCloudSaveStatus("Sign in with Google to use cloud saves", "is-pending");
         setCloudSaveButtons(false, false);
-        setLocalSaveTransferButtons(true);
         return;
       }
 
       const userEmail = session.user.email || "Google account connected";
       setGoogleAuthStatus("Signed in with Google: " + userEmail, "is-ready");
       setGoogleAuthButtons(true);
-      setLocalSaveTransferButtons(false);
       refreshCloudSaveState();
     }
 
@@ -593,7 +589,6 @@
       setGoogleAuthButtons(false);
       setCloudSaveStatus("Sign in with Google to use cloud saves", "is-pending");
       setCloudSaveButtons(false, false);
-      setLocalSaveTransferButtons(true);
     }
 
     async function syncLocalSaveToCloud() {
@@ -678,7 +673,6 @@
     renderAccountFields();
     setGoogleAuthButtons(false);
     setCloudSaveButtons(false, false);
-    setLocalSaveTransferButtons(true);
     upgradeConfirmationCheckbox.checked = gameState.upgradeConfirmationEnabled === true;
     holdToClickCheckbox.checked = gameState.holdToClickEnabled === true;
     startIncomeSystem(gameState, function () {
@@ -736,44 +730,6 @@
       saveGameState(gameState);
     });
 
-    exportSaveButton.addEventListener("click", function () {
-      updateCoinsFromElapsedTime(gameState, Date.now());
-
-      const saveText = serializeGameState(gameState);
-      const saveBlob = new Blob([saveText], { type: "text/plain" });
-      const downloadUrl = URL.createObjectURL(saveBlob);
-      const downloadLink = document.createElement("a");
-
-      downloadLink.href = downloadUrl;
-      downloadLink.download = "flockmaster_save.txt";
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      URL.revokeObjectURL(downloadUrl);
-    });
-
-    importSaveButton.addEventListener("click", function () {
-      importSaveInput.click();
-    });
-
-    importSaveInput.addEventListener("change", async function () {
-      const selectedFile = importSaveInput.files[0];
-
-      if (!selectedFile) {
-        return;
-      }
-
-      try {
-        const fileText = await selectedFile.text();
-        importGameProgress(fileText);
-        window.location.reload();
-      } catch (error) {
-        alert("That save file could not be imported");
-      } finally {
-        importSaveInput.value = "";
-      }
-    });
-
     eraseProgressButton.addEventListener("click", function () {
       eraseConfirmBox.classList.add("is-visible");
     });
@@ -813,20 +769,6 @@
         return;
       }
 
-      if (submittedCode === "patchreset1") {
-        gameState.trapLoadCost = 20;
-        gameState.appleTrees = getTreeMaxCount(gameState, "appleTrees");
-        gameState.pearTrees = getTreeMaxCount(gameState, "pearTrees");
-        gameState.peachTrees = getTreeMaxCount(gameState, "peachTrees");
-        gameState.redeemedCodes.push(submittedCode);
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-        codeResult.textContent = "Code redeemed: trap cost reset and tree counts restored to max";
-        codeInput.value = "";
-        return;
-      }
-
       if (submittedCode === "patchcoin1") {
         gameState.coins += 100000;
         gameState.coinMax = Math.max(gameState.coinMax, gameState.coins);
@@ -861,6 +803,38 @@
         return;
       }
 
+      if (submittedCode === "testdown2") {
+        gameState.feathers = (Number.isFinite(gameState.feathers) ? gameState.feathers : 0) + 25;
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: 25 Feathers added (" + formatLargeNumber(gameState.feathers) + " total)";
+        codeInput.value = "";
+        return;
+      }
+
+      if (submittedCode === "gyrtest50") {
+        const ptarmiganInFlock = getBirdById(gameState, "ptarmigan");
+
+        if (!ptarmiganInFlock) {
+          codeResult.textContent = "Rock Ptarmigan data could not be found";
+          return;
+        }
+
+        for (let index = 0; index < 50; index += 1) {
+          addBirdToFlock(gameState, ptarmiganInFlock);
+        }
+
+        gameState.redeemedCodes.push(submittedCode);
+        playButtonSound();
+        saveGameState(gameState);
+        renderTopBar(topBar, gameState);
+        codeResult.textContent = "Code redeemed: 50 Rock Ptarmigans added";
+        codeInput.value = "";
+        return;
+      }
+
       if (false && submittedCode === "screechtest") {
         const screechOwlInFlock = gameState.birds.find(function (bird) {
           return bird.id === "screechowl";
@@ -871,7 +845,7 @@
           return;
         }
 
-        addBirdToFlock(screechOwlInFlock);
+        addBirdToFlock(gameState, screechOwlInFlock);
         gameState.redeemedCodes.push(submittedCode);
         playButtonSound();
         saveGameState(gameState);
@@ -908,34 +882,8 @@
         return;
       }
 
-      if (submittedCode === "legacybirds") {
-        const repairReport = repairLegacyBirdProgress(gameState);
-        gameState.redeemedCodes.push(submittedCode);
-        playButtonSound();
-        saveGameState(gameState);
-        renderTopBar(topBar, gameState);
-
-        if (repairReport.didChange) {
-          codeResult.textContent =
-            "Code redeemed: legacy bird data repaired, Total individuals: " +
-            repairReport.totalIndividuals +
-            ", Common individuals: " +
-            repairReport.commonIndividuals;
-        } else {
-          codeResult.textContent =
-            "Code redeemed: no bird-count discrepancy found, Total individuals: " +
-            repairReport.totalIndividuals +
-            ", Common individuals: " +
-            repairReport.commonIndividuals;
-        }
-
-        codeInput.value = "";
-        return;
-      }
-
       codeResult.textContent = "That code is not valid";
     });
   </script>
 </body>
 </html>
-

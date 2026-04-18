@@ -12,7 +12,14 @@ const RARITY_WEIGHTS = {
   Epic: 4,
   Legendary: 1
 };
-const DOCKYARD_VOYAGE_COIN_COST = 1500000;
+const REINTRODUCTION_RELIEF_RARITY_WEIGHTS = {
+  Common: 2,
+  Uncommon: 3,
+  Rare: 5,
+  Epic: 10,
+  Legendary: 25
+};
+const DOCKYARD_VOYAGE_COIN_COST = 5000;
 const DOCKYARD_TREASURE_REWARD_TABLE = [
   {
     type: "item",
@@ -61,6 +68,56 @@ const DOCKYARD_TREASURE_REWARD_TABLE = [
     itemId: "voyageticket",
     amount: 1,
     weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "feathers",
+    amount: 5,
+    weight: 1
+  }
+];
+const PICKPOCKET_REWARD_TABLE = [
+  {
+    type: "currency",
+    resourceKey: "coins",
+    amount: 10000,
+    weight: 1
+  },
+  {
+    type: "currency",
+    resourceKey: "coins",
+    amount: 20000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "twigs",
+    amount: 10000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "twigs",
+    amount: 20000,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "scrap",
+    amount: 10,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "hardwood",
+    amount: 10,
+    weight: 1
+  },
+  {
+    type: "resource",
+    resourceKey: "fish",
+    amount: 15,
+    weight: 1
   }
 ];
 const TREE_BONUS_KEY_BY_TREE_KEY = {
@@ -93,6 +150,9 @@ const GAME_STATE_DEFAULTS = {
   grubs: 0,
   grubMax: 10000,
   grubsPerClick: 1,
+  feathers: 0,
+  pickpocketRewardDayKey: "",
+  pickpocketRewardedSpeciesCount: 0,
   grubFarmActive: false,
   grubFarmUnlocked: false,
   hardwood: 0,
@@ -101,6 +161,15 @@ const GAME_STATE_DEFAULTS = {
   loggerheadShowingBird: false,
   loggerheadQuestIndex: 0,
   shrikeQuestsCompleted: 0,
+  reintroductionUnlocked: false,
+  reintroductionQuestIndex: 0,
+  reintroductionCompletedReleases: {},
+  reintroductionDietRelief: {},
+  gyrfalconUnlocked: false,
+  gyrfalconReadyToCollect: false,
+  gyrfalconLastResult: "",
+  gyrfalconCompleted: false,
+  gyrfalconReleaseCount: 0,
   loggerheadMouseLoaded: false,
   loggerheadMouseResult: "",
   loggerheadMousePendingBirdId: null,
@@ -141,6 +210,8 @@ const GAME_STATE_DEFAULTS = {
   trapLoaded: false,
   trapPulled: false,
   trapBaitType: null,
+  trapUsedSeedTicket: false,
+  trapSpentSeedCost: 0,
   trapLoadCost: 20,
   trapGrubLoadCost: 25,
   catchRate: 0.5,
@@ -148,6 +219,7 @@ const GAME_STATE_DEFAULTS = {
   items: {},
   upgrades: {},
   speciesUpgrades: {},
+  speciesUpgradeCounters: {},
   ownedHabitats: ["City Living"],
   redeemedCodes: [],
   parasiteTargets: {},
@@ -214,6 +286,9 @@ const GAME_STATE_VALIDATORS = {
   grubs: isFiniteNumber,
   grubMax: isFiniteNumber,
   grubsPerClick: isFiniteNumber,
+  feathers: isFiniteNumber,
+  pickpocketRewardDayKey: isString,
+  pickpocketRewardedSpeciesCount: isFiniteNumber,
   grubFarmActive: isBoolean,
   grubFarmUnlocked: isBoolean,
   hardwood: isFiniteNumber,
@@ -222,6 +297,15 @@ const GAME_STATE_VALIDATORS = {
   loggerheadShowingBird: isBoolean,
   loggerheadQuestIndex: isFiniteNumber,
   shrikeQuestsCompleted: isFiniteNumber,
+  reintroductionUnlocked: isBoolean,
+  reintroductionQuestIndex: isFiniteNumber,
+  reintroductionCompletedReleases: isPlainObject,
+  reintroductionDietRelief: isPlainObject,
+  gyrfalconUnlocked: isBoolean,
+  gyrfalconReadyToCollect: isBoolean,
+  gyrfalconLastResult: isString,
+  gyrfalconCompleted: isBoolean,
+  gyrfalconReleaseCount: isFiniteNumber,
   loggerheadMouseLoaded: isBoolean,
   loggerheadMouseResult: isString,
   loggerheadMousePendingBirdId: isNullableString,
@@ -259,6 +343,8 @@ const GAME_STATE_VALIDATORS = {
   trapLoaded: isBoolean,
   trapPulled: isBoolean,
   trapBaitType: isNullableString,
+  trapUsedSeedTicket: isBoolean,
+  trapSpentSeedCost: isFiniteNumber,
   trapLoadCost: isFiniteNumber,
   trapGrubLoadCost: isFiniteNumber,
   catchRate: isFiniteNumber,
@@ -266,6 +352,7 @@ const GAME_STATE_VALIDATORS = {
   items: isPlainObject,
   upgrades: isPlainObject,
   speciesUpgrades: isPlainObject,
+  speciesUpgradeCounters: isPlainObject,
   ownedHabitats: Array.isArray,
   redeemedCodes: Array.isArray,
   parasiteTargets: isPlainObject,
@@ -921,6 +1008,72 @@ function normalizeGameState(parsedGameState) {
     normalizedGameState.shrikeQuestsCompleted = normalizedGameState.loggerheadQuestIndex;
   }
 
+  if (getTotalBirdCount(normalizedGameState) >= 100) {
+    normalizedGameState.reintroductionUnlocked = true;
+  }
+
+  if (getBirdCountById(normalizedGameState, "ptarmigan") > 0) {
+    normalizedGameState.gyrfalconUnlocked = true;
+  }
+
+  if (getBirdCountById(normalizedGameState, "gyrfalcon") > 0) {
+    normalizedGameState.gyrfalconCompleted = true;
+    normalizedGameState.gyrfalconReadyToCollect = false;
+    normalizedGameState.gyrfalconLastResult = "";
+  }
+
+  if (!isPlainObject(normalizedGameState.speciesUpgradeCounters)) {
+    normalizedGameState.speciesUpgradeCounters = {};
+  } else {
+    Object.keys(normalizedGameState.speciesUpgradeCounters).forEach(function (counterKey) {
+      const counterValue = normalizedGameState.speciesUpgradeCounters[counterKey];
+
+      if (!isFiniteNumber(counterValue) || counterValue < 0) {
+        delete normalizedGameState.speciesUpgradeCounters[counterKey];
+        return;
+      }
+
+      normalizedGameState.speciesUpgradeCounters[counterKey] = Math.floor(counterValue);
+    });
+  }
+
+  if (!isFiniteNumber(normalizedGameState.gyrfalconReleaseCount) || normalizedGameState.gyrfalconReleaseCount < 0) {
+    normalizedGameState.gyrfalconReleaseCount = 0;
+  } else {
+    normalizedGameState.gyrfalconReleaseCount = Math.floor(normalizedGameState.gyrfalconReleaseCount);
+  }
+
+  if (!isFiniteNumber(normalizedGameState.reintroductionQuestIndex) || normalizedGameState.reintroductionQuestIndex < 0) {
+    normalizedGameState.reintroductionQuestIndex = 0;
+  } else {
+    normalizedGameState.reintroductionQuestIndex = Math.floor(normalizedGameState.reintroductionQuestIndex);
+  }
+
+  if (!isPlainObject(normalizedGameState.reintroductionCompletedReleases)) {
+    normalizedGameState.reintroductionCompletedReleases = {};
+  } else {
+    Object.keys(normalizedGameState.reintroductionCompletedReleases).forEach(function (releaseKey) {
+      if (normalizedGameState.reintroductionCompletedReleases[releaseKey] !== true) {
+        delete normalizedGameState.reintroductionCompletedReleases[releaseKey];
+      }
+    });
+  }
+
+  if (!isPlainObject(normalizedGameState.reintroductionDietRelief)) {
+    normalizedGameState.reintroductionDietRelief = {};
+  } else {
+    Object.keys(normalizedGameState.reintroductionDietRelief).forEach(function (dietType) {
+      const reliefAmount = normalizedGameState.reintroductionDietRelief[dietType];
+
+      if (!isFiniteNumber(reliefAmount) || reliefAmount <= 0) {
+        delete normalizedGameState.reintroductionDietRelief[dietType];
+        return;
+      }
+
+      normalizedGameState.reintroductionDietRelief[dietType] = Math.floor(reliefAmount);
+    });
+  }
+
   ensurePlayerAccountIdentity(normalizedGameState);
 
   // Preserve the older single-field sawmill overseer save by copying it into
@@ -966,6 +1119,7 @@ function normalizeGameState(parsedGameState) {
   normalizedGameState.upgrades = mergeUpgradeOwnership(normalizedGameState.upgrades, normalizedGameState);
   normalizedGameState.birds = mergeBirdProgress(normalizedGameState.birds);
   normalizedGameState.seedMax = Math.max(normalizedGameState.seedMax, GAME_STATE_DEFAULTS.seedMax);
+  normalizedGameState.grubMax = Math.min(normalizedGameState.grubMax, 50000);
 
   // Clamp after every migration step so legacy overflows cannot leak back into
   // the running game state.
@@ -1009,15 +1163,69 @@ function getSpeciesUpgradeLibrary() {
   return SPECIES_UPGRADE_LIBRARY;
 }
 
-// Fetch one bird's tech-tree definitions in their intended display order.
-function getSpeciesUpgradeDefinitionsForBird(birdId) {
+function getSpeciesUpgradeCatalogEntryForBird(birdId) {
   const speciesUpgradeLibrary = getSpeciesUpgradeLibrary();
-  const birdUpgradeDefinitions = Array.isArray(speciesUpgradeLibrary[birdId])
-    ? speciesUpgradeLibrary[birdId].slice()
-    : [];
+  const rawEntry = speciesUpgradeLibrary[birdId];
+
+  if (Array.isArray(rawEntry)) {
+    return {
+      visible: false,
+      upgrades: rawEntry
+    };
+  }
+
+  if (isPlainObject(rawEntry)) {
+    return {
+      visible: rawEntry.visible === true,
+      upgrades: Array.isArray(rawEntry.upgrades) ? rawEntry.upgrades : []
+    };
+  }
+
+  return {
+    visible: false,
+    upgrades: []
+  };
+}
+
+function isSpeciesUpgradeBirdVisible(birdId) {
+  return getSpeciesUpgradeCatalogEntryForBird(birdId).visible;
+}
+
+function getSpeciesUpgradeDefinitionsForBird(birdId) {
+  const birdUpgradeDefinitions = getSpeciesUpgradeCatalogEntryForBird(birdId).upgrades.slice();
 
   return birdUpgradeDefinitions.sort(function (leftUpgrade, rightUpgrade) {
     return (leftUpgrade.order || 0) - (rightUpgrade.order || 0);
+  });
+}
+
+function getOwnedSpeciesUpgradeDefinitions(gameState) {
+  return Object.keys(getSpeciesUpgradeLibrary()).reduce(function (ownedDefinitions, birdId) {
+    return ownedDefinitions.concat(getOwnedSpeciesUpgradeDefinitionsForBird(gameState, birdId));
+  }, []);
+}
+
+function getOwnedSpeciesUpgradeDefinitionsForBird(gameState, birdId) {
+  return getSpeciesUpgradeDefinitionsForBird(birdId).filter(function (speciesUpgradeDefinition) {
+    return hasSpeciesUpgrade(gameState, speciesUpgradeDefinition.id);
+  });
+}
+
+function applyOwnedSpeciesUpgradeModifiers(gameState, startingValue, hookName, extraContext) {
+  return getOwnedSpeciesUpgradeDefinitions(gameState).reduce(function (currentValue, speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition[hookName] !== "function") {
+      return currentValue;
+    }
+
+    return speciesUpgradeDefinition[hookName](currentValue, extraContext || {});
+  }, startingValue);
+}
+
+function runOwnedSpeciesUpgradeHooks(gameState, hookName, extraContext) {
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition[hookName] === "function") {
+      speciesUpgradeDefinition[hookName](gameState, extraContext || {});
+    }
   });
 }
 
@@ -1034,9 +1242,7 @@ function getSpeciesUpgradeDefinitionById(speciesUpgradeId) {
   const birdIds = Object.keys(speciesUpgradeLibrary);
 
   for (let index = 0; index < birdIds.length; index += 1) {
-    const birdUpgradeDefinitions = Array.isArray(speciesUpgradeLibrary[birdIds[index]])
-      ? speciesUpgradeLibrary[birdIds[index]]
-      : [];
+    const birdUpgradeDefinitions = getSpeciesUpgradeCatalogEntryForBird(birdIds[index]).upgrades;
     const matchingDefinition = birdUpgradeDefinitions.find(function (speciesUpgradeDefinition) {
       return speciesUpgradeDefinition.id === speciesUpgradeId;
     });
@@ -1057,21 +1263,24 @@ function setSpeciesUpgradeOwned(gameState, speciesUpgradeId, isOwned) {
   gameState.speciesUpgrades[speciesUpgradeId] = isOwned === true;
 }
 
-function meetsSpeciesUpgradeRequirements(gameState, speciesUpgradeDefinition) {
-  const parentIds = Array.isArray(speciesUpgradeDefinition.parents)
-    ? speciesUpgradeDefinition.parents
-    : [];
-
-  if (parentIds.length > 0) {
-    const parentsOwned = parentIds.every(function (parentId) {
-      return hasSpeciesUpgrade(gameState, parentId);
-    });
-
-    if (!parentsOwned) {
-      return false;
-    }
+function getSpeciesUpgradeCounter(gameState, counterKey) {
+  if (!gameState.speciesUpgradeCounters || typeof gameState.speciesUpgradeCounters !== "object") {
+    return 0;
   }
 
+  const counterValue = gameState.speciesUpgradeCounters[counterKey];
+  return isFiniteNumber(counterValue) ? Math.max(0, Math.floor(counterValue)) : 0;
+}
+
+function setSpeciesUpgradeCounter(gameState, counterKey, counterValue) {
+  if (!gameState.speciesUpgradeCounters || typeof gameState.speciesUpgradeCounters !== "object") {
+    gameState.speciesUpgradeCounters = {};
+  }
+
+  gameState.speciesUpgradeCounters[counterKey] = Math.max(0, Math.floor(counterValue));
+}
+
+function meetsSpeciesUpgradeRequirements(gameState, speciesUpgradeDefinition) {
   return meetsUpgradeRequirements(gameState, speciesUpgradeDefinition);
 }
 
@@ -1205,6 +1414,16 @@ function meetsUpgradeRequirements(gameState, upgradeDefinition) {
     }
   }
 
+  if (requirements.dietIndividuals && typeof requirements.dietIndividuals === "object") {
+    const hasEnoughDietBirds = Object.keys(requirements.dietIndividuals).every(function (dietType) {
+      return getBirdDietIndividualCount(gameState, dietType) >= requirements.dietIndividuals[dietType];
+    });
+
+    if (!hasEnoughDietBirds) {
+      return false;
+    }
+  }
+
   if (typeof upgradeDefinition.canPurchase === "function") {
     return upgradeDefinition.canPurchase(gameState);
   }
@@ -1319,6 +1538,27 @@ function getUpgradeRequirementSummary(gameState, upgradeDefinition) {
       const bird = getBirdById(gameState, birdId);
       requirementParts.push(
         formatLargeNumber(requirements.birds[birdId]) + " " + (bird ? bird.species : birdId)
+      );
+    });
+  }
+
+  if (requirements.dietIndividuals && typeof requirements.dietIndividuals === "object") {
+    Object.keys(requirements.dietIndividuals).forEach(function (dietType) {
+      const normalizedDietType = typeof dietType === "string" ? dietType.toLowerCase() : "";
+      let dietLabel = dietType;
+
+      if (normalizedDietType === "grubs") {
+        dietLabel = "Insectivores";
+      } else if (normalizedDietType === "seeds") {
+        dietLabel = "Seed-Eaters";
+      } else if (normalizedDietType === "fish") {
+        dietLabel = "Piscivores";
+      } else if (normalizedDietType === "mice") {
+        dietLabel = "Predators";
+      }
+
+      requirementParts.push(
+        formatLargeNumber(requirements.dietIndividuals[dietType]) + " " + dietLabel
       );
     });
   }
@@ -1652,6 +1892,15 @@ function getBirdVisitorRatePerDay(bird, gameState, visitedBirdIds) {
         }
       });
 
+      getOwnedSpeciesUpgradeDefinitionsForBird(resolvedGameState, resolvedBird.id).forEach(function (speciesUpgradeDefinition) {
+        if (typeof speciesUpgradeDefinition.modifyVisitorsPerDay === "function") {
+          visitorRate = speciesUpgradeDefinition.modifyVisitorsPerDay(visitorRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
+      });
+
       return visitorRate;
     }
   );
@@ -1666,9 +1915,19 @@ function getAcquiredBirds(gameState) {
 
 // Sum total visitors/day across all owned individual birds.
 function getVisitorsPerDay(gameState) {
-  return getAcquiredBirds(gameState).reduce(function (total, bird) {
+  let totalVisitorsPerDay = getAcquiredBirds(gameState).reduce(function (total, bird) {
     return total + getBirdVisitorRatePerDay(bird, gameState) * bird.count;
   }, 0);
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifyTotalVisitorsPerDay === "function") {
+      totalVisitorsPerDay = upgrade.modifyTotalVisitorsPerDay(totalVisitorsPerDay, {
+        gameState: gameState
+      });
+    }
+  });
+
+  return totalVisitorsPerDay;
 }
 
 // Count unique acquired species for overview and top-bar display.
@@ -1702,19 +1961,50 @@ function birdHasAbility(bird, abilityId) {
   return Array.isArray(bird.abilities) && bird.abilities.includes(abilityId);
 }
 
-// Track how far a parasite bird has expanded its allowed target rarities.
-function getParasiteTargetTier(gameState, birdId) {
-  if (!gameState.parasiteUpgradeTiers || typeof gameState.parasiteUpgradeTiers !== "object") {
-    return 0;
+function birdHasGrantedSpeciesUpgradeAbility(gameState, bird, abilityId) {
+  if (!gameState || !bird || !abilityId) {
+    return false;
   }
 
-  const savedTier = gameState.parasiteUpgradeTiers[birdId];
-  return isFiniteNumber(savedTier) ? Math.max(0, Math.floor(savedTier)) : 0;
+  const speciesUpgradeDefinitions = getSpeciesUpgradeDefinitionsForBird(bird.id);
+
+  return speciesUpgradeDefinitions.some(function (speciesUpgradeDefinition) {
+    return (
+      hasSpeciesUpgrade(gameState, speciesUpgradeDefinition.id) &&
+      Array.isArray(speciesUpgradeDefinition.grantedAbilities) &&
+      speciesUpgradeDefinition.grantedAbilities.includes(abilityId)
+    );
+  });
 }
 
-// Convert a parasite tier into the highest rarity index it can currently copy.
+function birdHasAbilityForGameState(gameState, bird, abilityId) {
+  return birdHasAbility(bird, abilityId) || birdHasGrantedSpeciesUpgradeAbility(gameState, bird, abilityId);
+}
+
+function getParasiteTargetTier(gameState, birdId) {
+  let targetTier = 0;
+
+  if (hasSpeciesUpgrade(gameState, birdId + "ParasiteUncommon")) {
+    targetTier = 1;
+  }
+
+  if (hasSpeciesUpgrade(gameState, birdId + "ParasiteRare")) {
+    targetTier = 2;
+  }
+
+  if (hasSpeciesUpgrade(gameState, birdId + "ParasiteEpic")) {
+    targetTier = 3;
+  }
+
+  return targetTier;
+}
+
 function getParasiteMaxRarityIndex(gameState, birdId) {
   return Math.min(getParasiteTargetTier(gameState, birdId), 3);
+}
+
+function isParasiteInvasive(gameState, birdId) {
+  return hasSpeciesUpgrade(gameState, birdId + "ParasiteInvasive");
 }
 
 // Track how far a predator bird has expanded its maximum seed-bait bonus cap.
@@ -1759,13 +2049,14 @@ function getParasiteEligibleTargetBirds(parasiticBird, gameState) {
   }
 
   const maxRarityIndex = getParasiteMaxRarityIndex(gameState, parasiticBird.id);
+  const invasiveParasite = isParasiteInvasive(gameState, parasiticBird.id);
 
   return getAcquiredBirds(gameState).filter(function (candidateBird) {
     const candidateRarityIndex = RARITY_ORDER.indexOf(candidateBird.rarity);
 
     if (
       candidateBird.id === parasiticBird.id ||
-      candidateBird.nativeHabitat !== parasiticBird.nativeHabitat ||
+      (!invasiveParasite && candidateBird.nativeHabitat !== parasiticBird.nativeHabitat) ||
       birdHasAbility(candidateBird, "parasite") ||
       candidateRarityIndex === -1
     ) {
@@ -1839,10 +2130,113 @@ function getBirdsByDiet(gameState, dietType) {
   });
 }
 
+function getBirdReintroductionReliefWeight(bird) {
+  if (!bird || typeof bird.rarity !== "string") {
+    return 0;
+  }
+
+  return REINTRODUCTION_RELIEF_RARITY_WEIGHTS[bird.rarity] || 0;
+}
+
+function getBirdReintroductionReliefContribution(bird, count) {
+  const normalizedCount = isFiniteNumber(count) ? Math.max(0, count) : 0;
+  return getBirdReintroductionReliefWeight(bird) * normalizedCount;
+}
+
 function getBirdDietIndividualCount(gameState, dietType) {
   return getBirdsByDiet(gameState, dietType).reduce(function (totalBirds, bird) {
     return totalBirds + Math.max(0, bird.count || 0);
   }, 0);
+}
+
+function getReintroductionDietReliefCount(gameState, dietType) {
+  if (!gameState.reintroductionDietRelief || typeof gameState.reintroductionDietRelief !== "object") {
+    return 0;
+  }
+
+  const reliefAmount = gameState.reintroductionDietRelief[dietType];
+  return isFiniteNumber(reliefAmount) ? Math.max(0, reliefAmount) : 0;
+}
+
+function addReintroductionDietRelief(gameState, birdId, amountReleased) {
+  const bird = getBirdById(gameState, birdId);
+
+  if (!bird || amountReleased <= 0) {
+    return;
+  }
+
+  if (!gameState.reintroductionDietRelief || typeof gameState.reintroductionDietRelief !== "object") {
+    gameState.reintroductionDietRelief = {};
+  }
+
+  const dietTypes = Array.isArray(bird.diet) ? bird.diet : [bird.diet];
+  const baitReliefAmount = getBirdReintroductionReliefContribution(bird, amountReleased) - amountReleased;
+
+  dietTypes.forEach(function (dietType) {
+    if (typeof dietType !== "string" || dietType.length === 0) {
+      return;
+    }
+
+    const normalizedDietType = dietType.toLowerCase();
+    gameState.reintroductionDietRelief[normalizedDietType] =
+      getReintroductionDietReliefCount(gameState, normalizedDietType) + baitReliefAmount;
+  });
+}
+
+function getEffectiveBaitCostDietIndividualCount(gameState, dietType) {
+  const normalizedDietType = typeof dietType === "string" ? dietType.toLowerCase() : "";
+  return Math.max(
+    0,
+    getBirdDietIndividualCount(gameState, normalizedDietType) - getReintroductionDietReliefCount(gameState, normalizedDietType)
+  );
+}
+
+function getProjectedEffectiveBaitCostDietIndividualCount(gameState, dietType, releasedBirdId, releasedAmount) {
+  const normalizedDietType = typeof dietType === "string" ? dietType.toLowerCase() : "";
+  let projectedCount = getEffectiveBaitCostDietIndividualCount(gameState, normalizedDietType);
+  const releasedBird = getBirdById(gameState, releasedBirdId);
+
+  if (!releasedBird || !releasedAmount || projectedCount <= 0) {
+    return Math.max(0, projectedCount);
+  }
+
+  if (!birdMatchesBaitType(releasedBird, normalizedDietType)) {
+    return Math.max(0, projectedCount);
+  }
+
+  return Math.max(
+    0,
+    projectedCount - getBirdReintroductionReliefContribution(releasedBird, releasedAmount)
+  );
+}
+
+function getTrapSeedCostFromDietCount(gameState, seedBirdCount) {
+  const compoundedBaseCost = gameState.trapLoadCost * Math.pow(1.05, Math.max(0, seedBirdCount - 1));
+  const effectiveCost = applyGlobalAbilityModifiers(
+    gameState,
+    compoundedBaseCost,
+    "modifyTrapSeedCost"
+  );
+
+  return Math.max(1, effectiveCost);
+}
+
+function getTrapGrubCostFromDietCount(gameState, grubBirdCount) {
+  return Math.max(1, gameState.trapGrubLoadCost + (grubBirdCount * 8));
+}
+
+function getProjectedTrapSeedCost(gameState, releasedBirdId, releasedAmount) {
+  return getTrapSeedCostFromDietCount(
+    gameState,
+    getProjectedEffectiveBaitCostDietIndividualCount(gameState, "seeds", releasedBirdId, releasedAmount)
+  );
+}
+
+function getProjectedTrapGrubCost(gameState, releasedBirdId, releasedAmount) {
+  return getTrapGrubCostFromDietCount(
+    gameState,
+    getProjectedEffectiveBaitCostDietIndividualCount(gameState, "grubs", releasedBirdId, releasedAmount)
+  );
 }
 
 // Split the mouse pool into first-time catches and already-owned repeats.
@@ -1998,6 +2392,15 @@ function getBirdTwigRatePerMinute(bird, gameState, visitedBirdIds) {
         }
       });
 
+      getOwnedSpeciesUpgradeDefinitionsForBird(resolvedGameState, resolvedBird.id).forEach(function (speciesUpgradeDefinition) {
+        if (typeof speciesUpgradeDefinition.modifyTwigRatePerMinute === "function") {
+          twigRate = speciesUpgradeDefinition.modifyTwigRatePerMinute(twigRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
+      });
+
       return twigRate;
     }
   );
@@ -2014,6 +2417,15 @@ function getBirdSeedRatePerMinute(bird, gameState, visitedBirdIds) {
       getOwnedUpgradeDefinitions(resolvedGameState).forEach(function (upgrade) {
         if (typeof upgrade.modifySeedRatePerMinute === "function") {
           seedRate = upgrade.modifySeedRatePerMinute(seedRate, {
+            bird: resolvedBird,
+            gameState: resolvedGameState
+          });
+        }
+      });
+
+      getOwnedSpeciesUpgradeDefinitionsForBird(resolvedGameState, resolvedBird.id).forEach(function (speciesUpgradeDefinition) {
+        if (typeof speciesUpgradeDefinition.modifySeedRatePerMinute === "function") {
+          seedRate = speciesUpgradeDefinition.modifySeedRatePerMinute(seedRate, {
             bird: resolvedBird,
             gameState: resolvedGameState
           });
@@ -2138,8 +2550,8 @@ function getGrubFarmRates(gameState) {
   }
 
   return {
-    seedsPerSecond: 15,
-    twigsPerSecond: 1,
+    seedsPerSecond: 2.5,
+    twigsPerSecond: 0.5,
     grubsPerSecond: 0.5
   };
 }
@@ -2216,7 +2628,7 @@ function tryAutoStartSawmill(gameState, currentTime) {
 
   gameState.twigs -= processingCost;
   gameState.sawmillProcessingStart = currentTime;
-  gameState.sawmillProcessingPendingHardwood = 10;
+  gameState.sawmillProcessingPendingHardwood = getSawmillHardwoodYield(gameState);
   gameState.sawmillProcessingActive = true;
   gameState.sawmillProcessingReady = false;
   return true;
@@ -2334,6 +2746,146 @@ function rollDockyardTreasureRewards(gameState) {
   }
 
   return pendingRewards;
+}
+
+function getNewYorkDayKey(referenceTime) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const dateParts = formatter.formatToParts(referenceTime || Date.now());
+  const year = dateParts.find(function (part) { return part.type === "year"; });
+  const month = dateParts.find(function (part) { return part.type === "month"; });
+  const day = dateParts.find(function (part) { return part.type === "day"; });
+
+  return year && month && day
+    ? (year.value + "-" + month.value + "-" + day.value)
+    : "";
+}
+
+function rollWeightedRewardEntry(rewardTable) {
+  const totalWeight = rewardTable.reduce(function (sum, rewardEntry) {
+    return sum + rewardEntry.weight;
+  }, 0);
+
+  if (totalWeight <= 0) {
+    return null;
+  }
+
+  let roll = Math.random() * totalWeight;
+
+  for (let index = 0; index < rewardTable.length; index += 1) {
+    roll -= rewardTable[index].weight;
+    if (roll < 0) {
+      return rewardTable[index];
+    }
+  }
+
+  return rewardTable[rewardTable.length - 1] || null;
+}
+
+function cloneRewardEntry(rewardEntry) {
+  return rewardEntry ? { ...rewardEntry } : null;
+}
+
+function applyRewardEntry(gameState, rewardEntry) {
+  if (!rewardEntry) {
+    return;
+  }
+
+  if (rewardEntry.type === "item" && rewardEntry.itemId) {
+    addItemCount(gameState, rewardEntry.itemId, rewardEntry.amount);
+    return;
+  }
+
+  if ((rewardEntry.type === "resource" || rewardEntry.type === "currency") && rewardEntry.resourceKey && typeof gameState[rewardEntry.resourceKey] === "number") {
+    gameState[rewardEntry.resourceKey] += rewardEntry.amount;
+  }
+}
+
+function getModifiedPickpocketRewardEntry(gameState) {
+  const rolledRewardEntry = cloneRewardEntry(rollWeightedRewardEntry(PICKPOCKET_REWARD_TABLE));
+
+  return applyOwnedSpeciesUpgradeModifiers(
+    gameState,
+    rolledRewardEntry,
+    "modifyPickpocketReward",
+    {
+      gameState: gameState
+    }
+  );
+}
+
+function formatRewardEntryText(rewardEntry) {
+  if (!rewardEntry) {
+    return "";
+  }
+
+  if (rewardEntry.type === "item" && rewardEntry.itemId) {
+    const rewardItem = getItemById(rewardEntry.itemId);
+    return formatLargeNumber(rewardEntry.amount) + " " + (rewardItem ? rewardItem.name : rewardEntry.itemId);
+  }
+
+  if ((rewardEntry.type === "resource" || rewardEntry.type === "currency") && rewardEntry.resourceKey) {
+    if (rewardEntry.resourceKey === "coins") {
+      return formatCoins(rewardEntry.amount) + " coins";
+    }
+
+    return formatLargeNumber(rewardEntry.amount) + " " + rewardEntry.resourceKey;
+  }
+
+  return "";
+}
+
+function collectPickpocketRewards(gameState, currentTime) {
+  const currentDayKey = getNewYorkDayKey(currentTime);
+  const currentSpeciesCount = getBirdAbilitySpeciesCount(gameState, "pickpocket");
+
+  if (gameState.pickpocketRewardDayKey !== currentDayKey) {
+    gameState.pickpocketRewardDayKey = currentDayKey;
+    gameState.pickpocketRewardedSpeciesCount = 0;
+  }
+
+  const rewardedSpeciesCount = isFiniteNumber(gameState.pickpocketRewardedSpeciesCount)
+    ? Math.max(0, Math.floor(gameState.pickpocketRewardedSpeciesCount))
+    : 0;
+  const pendingRewardCount = Math.max(0, currentSpeciesCount - rewardedSpeciesCount);
+  const grantedRewards = [];
+
+  if (pendingRewardCount <= 0) {
+    return grantedRewards;
+  }
+
+  for (let rewardIndex = 0; rewardIndex < pendingRewardCount; rewardIndex += 1) {
+    const rewardEntry = getModifiedPickpocketRewardEntry(gameState);
+    applyRewardEntry(gameState, rewardEntry);
+
+    if (rewardEntry) {
+      grantedRewards.push(rewardEntry);
+    }
+  }
+
+  gameState.pickpocketRewardedSpeciesCount = currentSpeciesCount;
+  return grantedRewards;
+}
+
+function processPickpocketRewards(gameState, currentTime) {
+  return collectPickpocketRewards(gameState, currentTime).length > 0;
+}
+
+function handleBirdCaughtFromTrap(gameState, caughtBird, context) {
+  if (!caughtBird) {
+    return;
+  }
+
+  runOwnedSpeciesUpgradeHooks(gameState, "onBirdCaught", {
+    bird: caughtBird,
+    baitType: context && context.baitType ? context.baitType : null,
+    usedSeedTicket: Boolean(context && context.usedSeedTicket),
+    spentSeedCost: context && isFiniteNumber(context.spentSeedCost) ? context.spentSeedCost : 0
+  });
 }
 
 // Return the current Harbor coin cost for beginning one voyage.
@@ -2645,7 +3197,7 @@ function runAutomationSystems(gameState, currentTime) {
 // Count how many owned birds currently carry a given ability.
 function getBirdAbilityCount(gameState, abilityId) {
   return getAcquiredBirds(gameState).reduce(function (total, bird) {
-    if (!Array.isArray(bird.abilities) || !bird.abilities.includes(abilityId)) {
+    if (!birdHasAbilityForGameState(gameState, bird, abilityId)) {
       return total;
     }
 
@@ -2656,7 +3208,7 @@ function getBirdAbilityCount(gameState, abilityId) {
 // Count how many owned species carry a given ability, regardless of stack size.
 function getBirdAbilitySpeciesCount(gameState, abilityId) {
   return getAcquiredBirds(gameState).reduce(function (totalSpecies, bird) {
-    if (!Array.isArray(bird.abilities) || !bird.abilities.includes(abilityId)) {
+    if (!birdHasAbilityForGameState(gameState, bird, abilityId)) {
       return totalSpecies;
     }
 
@@ -2712,6 +3264,31 @@ function spendItemCount(gameState, itemId, amountToSpend) {
   return true;
 }
 
+function canUseInventoryItem(gameState, itemId) {
+  if (itemId === "coinhourticket") {
+    return getItemCount(gameState, itemId) > 0;
+  }
+
+  return false;
+}
+
+function useInventoryItem(gameState, itemId) {
+  if (!canUseInventoryItem(gameState, itemId)) {
+    return false;
+  }
+
+  if (itemId === "coinhourticket") {
+    if (!spendItemCount(gameState, itemId, 1)) {
+      return false;
+    }
+
+    gameState.coins += Math.max(0, Math.round(getCoinsPerMinute(gameState) * 60));
+    return true;
+  }
+
+  return false;
+}
+
 // Return the current item catalog merged with live owned counts.
 function getInventoryItems(gameState) {
   return ITEM_LIBRARY.map(function (item) {
@@ -2740,20 +3317,10 @@ function grantHabitatConstructionRewards(gameState, habitatName) {
   addItemCount(gameState, "seedbaitticket", Math.max(0, Math.round(habitatConstructionSeedBaitTickets)));
 }
 
-// Population bonuses only stay active while their flock requirement is still met.
-function isMurderPartyActive(gameState) {
-  return hasUpgrade(gameState, "murderParty") && getBirdCountById(gameState, "crow") >= 3;
-}
-
-// Population bonuses only stay active while their flock requirement is still met.
-function isTurtleWakeActive(gameState) {
-  return hasUpgrade(gameState, "turtleWake") && getBirdCountById(gameState, "mourningdove") >= 5;
-}
-
 // Return owned species that carry a specific ability.
 function getAcquiredBirdsWithAbility(gameState, abilityId) {
   return getAcquiredBirds(gameState).filter(function (bird) {
-    return Array.isArray(bird.abilities) && bird.abilities.includes(abilityId);
+    return birdHasAbilityForGameState(gameState, bird, abilityId);
   });
 }
 
@@ -2830,6 +3397,15 @@ function getEffectiveCatchRate(gameState, baitType) {
     }
   );
 
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifyCatchRate === "function") {
+      catchRate = speciesUpgradeDefinition.modifyCatchRate(catchRate, {
+        gameState: gameState,
+        baitType: resolvedBaitType
+      });
+    }
+  });
+
   return Math.min(1, Math.max(0, catchRate));
 }
 
@@ -2862,20 +3438,13 @@ function applyGlobalAbilityModifiers(gameState, startingValue, hookName, extraCo
 
 // Apply all matching ability handlers for a trap seed bait cost calculation.
 function getEffectiveTrapSeedCost(gameState) {
-  const seedBirdCount = Math.max(0, getBirdDietIndividualCount(gameState, "seeds"));
-  const compoundedBaseCost = gameState.trapLoadCost * Math.pow(1.05, Math.max(0, seedBirdCount - 1));
-  const effectiveCost = applyGlobalAbilityModifiers(
-    gameState,
-    compoundedBaseCost,
-    "modifyTrapSeedCost"
-  );
-
-  return Math.min(100000, Math.max(1, effectiveCost));
+  const seedBirdCount = Math.max(0, getEffectiveBaitCostDietIndividualCount(gameState, "seeds"));
+  return getTrapSeedCostFromDietCount(gameState, seedBirdCount);
 }
 
 function getEffectiveTrapGrubCost(gameState) {
-  const grubBirdCount = Math.max(0, getBirdDietIndividualCount(gameState, "grubs"));
-  return Math.min(5000, Math.max(1, gameState.trapGrubLoadCost + (grubBirdCount * 5)));
+  const grubBirdCount = Math.max(0, getEffectiveBaitCostDietIndividualCount(gameState, "grubs"));
+  return getTrapGrubCostFromDietCount(gameState, grubBirdCount);
 }
 
 // Apply all matching ability handlers for Dockyard fish haul calculations.
@@ -2948,7 +3517,7 @@ function getEffectiveTrapFishCost() {
 }
 
 function getSawmillTwigProcessingCost(gameState) {
-  let processingCost = 10000;
+  let processingCost = 2500;
 
   getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
     if (typeof upgrade.modifySawmillTwigProcessingCost === "function") {
@@ -2959,12 +3528,30 @@ function getSawmillTwigProcessingCost(gameState) {
   return Math.max(1, Math.round(processingCost));
 }
 
+function getSawmillHardwoodYield(gameState) {
+  let hardwoodYield = 10;
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifySawmillHardwoodYield === "function") {
+      hardwoodYield = upgrade.modifySawmillHardwoodYield(hardwoodYield, gameState);
+    }
+  });
+
+  return Math.max(1, Math.round(hardwoodYield));
+}
+
 function getSawmillProcessingDurationMs(gameState) {
   let processingDurationMs = gameState.sawmillProcessingDurationMs;
 
   getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
     if (typeof upgrade.modifySawmillProcessingDurationMs === "function") {
       processingDurationMs = upgrade.modifySawmillProcessingDurationMs(processingDurationMs, gameState);
+    }
+  });
+
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifySawmillProcessingDurationMs === "function") {
+      processingDurationMs = speciesUpgradeDefinition.modifySawmillProcessingDurationMs(processingDurationMs, gameState);
     }
   });
 
@@ -2995,6 +3582,52 @@ function getBirdAbilityDescriptions(bird) {
   }
 
   return bird.abilities.map(function (abilityId) {
+    if (ABILITIES[abilityId] && ABILITIES[abilityId].description) {
+      return ABILITIES[abilityId].description;
+    }
+
+    return abilityId;
+  });
+}
+
+function getBirdAbilityNamesForGameState(bird, gameState) {
+  const abilityIds = new Set(Array.isArray(bird.abilities) ? bird.abilities : []);
+
+  getSpeciesUpgradeDefinitionsForBird(bird.id).forEach(function (speciesUpgradeDefinition) {
+    if (
+      hasSpeciesUpgrade(gameState, speciesUpgradeDefinition.id) &&
+      Array.isArray(speciesUpgradeDefinition.grantedAbilities)
+    ) {
+      speciesUpgradeDefinition.grantedAbilities.forEach(function (abilityId) {
+        abilityIds.add(abilityId);
+      });
+    }
+  });
+
+  return Array.from(abilityIds).map(function (abilityId) {
+    if (ABILITIES[abilityId] && ABILITIES[abilityId].name) {
+      return ABILITIES[abilityId].name;
+    }
+
+    return abilityId;
+  });
+}
+
+function getBirdAbilityDescriptionsForGameState(bird, gameState) {
+  const abilityIds = new Set(Array.isArray(bird.abilities) ? bird.abilities : []);
+
+  getSpeciesUpgradeDefinitionsForBird(bird.id).forEach(function (speciesUpgradeDefinition) {
+    if (
+      hasSpeciesUpgrade(gameState, speciesUpgradeDefinition.id) &&
+      Array.isArray(speciesUpgradeDefinition.grantedAbilities)
+    ) {
+      speciesUpgradeDefinition.grantedAbilities.forEach(function (abilityId) {
+        abilityIds.add(abilityId);
+      });
+    }
+  });
+
+  return Array.from(abilityIds).map(function (abilityId) {
     if (ABILITIES[abilityId] && ABILITIES[abilityId].description) {
       return ABILITIES[abilityId].description;
     }
@@ -3083,64 +3716,6 @@ function getBirdResourceLinesHtml(bird, gameState, options) {
 }
 
 // Bird rendering and catch-resolution helpers
-// Repair older bird-save fields and report whether anything changed.
-function repairLegacyBirdProgress(gameState) {
-  let didChange = false;
-
-  gameState.birds.forEach(function (bird) {
-    const originalCount = typeof bird.count === "number" ? bird.count : null;
-    const originalAcquired = bird.acquired === true;
-
-    if (typeof bird.count !== "number") {
-      bird.count = bird.acquired ? 1 : 0;
-      didChange = true;
-    }
-
-    if (bird.count > 0 && bird.acquired !== true) {
-      bird.acquired = true;
-      didChange = true;
-    }
-
-    if (bird.count <= 0 && bird.acquired === true) {
-      bird.count = 1;
-      didChange = true;
-    }
-
-    if (bird.variantImages) {
-      if (!bird.variantCounts || typeof bird.variantCounts !== "object") {
-        bird.variantCounts = createBirdVariantCounts(bird, bird.count);
-        didChange = true;
-      } else {
-        let assignedVariantCount = 0;
-
-        Object.keys(bird.variantImages).forEach(function (variantKey) {
-          if (typeof bird.variantCounts[variantKey] !== "number") {
-            bird.variantCounts[variantKey] = 0;
-            didChange = true;
-          }
-
-          assignedVariantCount += bird.variantCounts[variantKey];
-        });
-
-        if (assignedVariantCount !== bird.count) {
-          bird.variantCounts = mergeBirdVariantCounts(bird, bird, bird.count);
-          didChange = true;
-        }
-      }
-    }
-
-    if (originalCount !== bird.count || originalAcquired !== bird.acquired) {
-      didChange = true;
-    }
-  });
-
-  return {
-    didChange: didChange,
-    totalIndividuals: getTotalBirdCount(gameState),
-    commonIndividuals: getCaughtBirdCountByRarity(gameState, "Common")
-  };
-}
-
 // Return which visual variants of a bird are currently owned.
 function getOwnedBirdVariantKeys(bird) {
   if (!bird.variantImages) {
@@ -3190,9 +3765,17 @@ function getBirdPrimaryImage(bird) {
 }
 
 // Assign one caught individual into a random owned visual variant bucket.
-function addBirdToFlock(bird) {
+function addBirdToFlock(gameState, bird, options) {
+  const resolvedOptions = options && typeof options === "object" ? options : {};
+  const isCatch = Boolean(resolvedOptions.isCatch);
+  const birdsToAdd = isCatch &&
+    bird.id === "pileatedwoodpecker" &&
+    hasSpeciesUpgrade(gameState, "pileatedwoodpeckerMonogamist")
+      ? 2
+      : 1;
+
   bird.acquired = true;
-  bird.count += 1;
+  bird.count += birdsToAdd;
 
   if (!bird.variantImages) {
     return null;
@@ -3204,9 +3787,13 @@ function addBirdToFlock(bird) {
     bird.variantCounts = createBirdVariantCounts(bird, 0);
   }
 
-  const chosenVariantKey = variantKeys[Math.floor(Math.random() * variantKeys.length)];
-  bird.variantCounts[chosenVariantKey] = (bird.variantCounts[chosenVariantKey] || 0) + 1;
-  return chosenVariantKey;
+  let lastChosenVariantKey = null;
+  for (let i = 0; i < birdsToAdd; i += 1) {
+    lastChosenVariantKey = variantKeys[Math.floor(Math.random() * variantKeys.length)];
+    bird.variantCounts[lastChosenVariantKey] = (bird.variantCounts[lastChosenVariantKey] || 0) + 1;
+  }
+
+  return lastChosenVariantKey;
 }
 
 // Remove owned individuals from one species and keep variant counts in sync.
@@ -3248,6 +3835,12 @@ function getBaseRarityWeights(gameState) {
   getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade){
     if (typeof upgrade.modifyRarityWeights === "function"){
       rarityWeights = upgrade.modifyRarityWeights(rarityWeights, gameState);
+    }
+  });
+
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifyRarityWeights === "function") {
+      rarityWeights = speciesUpgradeDefinition.modifyRarityWeights(rarityWeights, gameState);
     }
   });
   return rarityWeights;
@@ -3335,13 +3928,21 @@ function getRandomBirdByRarityForGameState(birdPool, gameState) {
 function getCoinsPerVisitor(gameState) {
   let coinsPerVisitor = applyGlobalAbilityModifiers(
     gameState,
-    100,
+    250,
     "modifyCoinsPerVisitorRate"
   );
 
   getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
     if (typeof upgrade.modifyCoinsPerVisitorRate === "function") {
       coinsPerVisitor = upgrade.modifyCoinsPerVisitorRate(coinsPerVisitor, {
+        gameState: gameState
+      });
+    }
+  });
+
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifyCoinsPerVisitorRate === "function") {
+      coinsPerVisitor = speciesUpgradeDefinition.modifyCoinsPerVisitorRate(coinsPerVisitor, {
         gameState: gameState
       });
     }
@@ -3385,7 +3986,25 @@ function getTreeSeedsPerSecond(gameState) {
 }
 
 function getTreeSeedsPerMinute(gameState) {
-  return getTreeSeedsPerSecond(gameState) * SECONDS_PER_MINUTE;
+  let treeSeedsPerMinute = getTreeSeedsPerSecond(gameState) * SECONDS_PER_MINUTE;
+
+  getOwnedUpgradeDefinitions(gameState).forEach(function (upgrade) {
+    if (typeof upgrade.modifyTreeSeedsPerMinute === "function") {
+      treeSeedsPerMinute = upgrade.modifyTreeSeedsPerMinute(treeSeedsPerMinute, {
+        gameState: gameState
+      });
+    }
+  });
+
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifyTreeSeedsPerMinute === "function") {
+      treeSeedsPerMinute = speciesUpgradeDefinition.modifyTreeSeedsPerMinute(treeSeedsPerMinute, {
+        gameState: gameState
+      });
+    }
+  });
+
+  return treeSeedsPerMinute;
 }
 
 // Sum seed production coming specifically from birds.
@@ -3483,6 +4102,15 @@ function getTreeMaxCount(gameState, treeKey) {
     }
   });
 
+  getOwnedSpeciesUpgradeDefinitions(gameState).forEach(function (speciesUpgradeDefinition) {
+    if (typeof speciesUpgradeDefinition.modifyTreeMaxCount === "function") {
+      maxCount = speciesUpgradeDefinition.modifyTreeMaxCount(maxCount, {
+        gameState: gameState,
+        treeKey: treeKey
+      });
+    }
+  });
+
   return maxCount;
 }
 
@@ -3501,6 +4129,7 @@ function clampGameStateResources(gameState) {
   gameState.coins = Math.max(0, gameState.coins);
   gameState.seeds = Math.max(0, gameState.seeds);
   gameState.grubs = Math.max(0, gameState.grubs);
+  gameState.feathers = Math.max(0, gameState.feathers);
   gameState.twigs = Math.max(0, gameState.twigs);
   gameState.hardwood = Math.max(0, gameState.hardwood);
   gameState.mice = Math.max(0, gameState.mice);
@@ -3553,6 +4182,7 @@ function renderTopBar(topBarElement, gameState) {
             "<span class='top-bar-tooltip-box top-bar-seeds-tooltip'></span>" +
             "</span>" +
             "<span class='top-bar-grubs-wrapper' style='display: none;'> | <span class='top-bar-tooltip'><span class='top-bar-grubs'></span><span class='top-bar-tooltip-box top-bar-grubs-tooltip'></span></span></span>" +
+            "<span class='top-bar-feathers-wrapper' style='display: none;'> | <span class='top-bar-feathers'></span></span>" +
             "<span class='top-bar-hardwood-wrapper' style='display: none;'> | <span class='top-bar-hardwood'></span></span>" +
             "<span class='top-bar-mice-wrapper' style='display: none;'> | <span class='top-bar-mice'></span></span>" +
             "<span class='top-bar-fish-wrapper' style='display: none;'> | <span class='top-bar-fish'></span></span>" +
@@ -3576,6 +4206,7 @@ function renderTopBar(topBarElement, gameState) {
 
   const seedsElement = topBarElement.querySelector(".top-bar-seeds");
   const grubsElement = topBarElement.querySelector(".top-bar-grubs");
+  const feathersElement = topBarElement.querySelector(".top-bar-feathers");
   const hardwoodElement = topBarElement.querySelector(".top-bar-hardwood");
   const miceElement = topBarElement.querySelector(".top-bar-mice");
   const fishElement = topBarElement.querySelector(".top-bar-fish");
@@ -3588,6 +4219,7 @@ function renderTopBar(topBarElement, gameState) {
   const twigsTooltipElement = topBarElement.querySelector(".top-bar-twigs-tooltip");
   const twigsWrapperElement = topBarElement.querySelector(".top-bar-twigs-wrapper");
   const grubsWrapperElement = topBarElement.querySelector(".top-bar-grubs-wrapper");
+  const feathersWrapperElement = topBarElement.querySelector(".top-bar-feathers-wrapper");
   const hardwoodWrapperElement = topBarElement.querySelector(".top-bar-hardwood-wrapper");
   const miceWrapperElement = topBarElement.querySelector(".top-bar-mice-wrapper");
   const fishWrapperElement = topBarElement.querySelector(".top-bar-fish-wrapper");
@@ -3597,6 +4229,7 @@ function renderTopBar(topBarElement, gameState) {
   // shared resource math coming from game.js.
   seedsElement.textContent = "Seeds: " + formatSeeds(gameState.seeds);
   grubsElement.textContent = "Grubs: " + formatLargeNumber(gameState.grubs);
+  feathersElement.textContent = "Feathers: " + formatLargeNumber(gameState.feathers);
   hardwoodElement.textContent = "Hardwood: " + formatLargeNumber(gameState.hardwood);
   miceElement.textContent = "Mice: " + formatLargeNumber(gameState.mice);
   fishElement.textContent = "Fish: " + formatLargeNumber(gameState.fish);
@@ -3650,6 +4283,8 @@ function renderTopBar(topBarElement, gameState) {
     (gameState.twigs >= 1 || twigsPerMinute > 0) ? "inline" : "none";
   grubsWrapperElement.style.display =
     (gameState.grubs >= 1 || grubsPerMinute > 0) ? "inline" : "none";
+  feathersWrapperElement.style.display =
+    gameState.feathers >= 1 ? "inline" : "none";
   hardwoodWrapperElement.style.display =
     gameState.hardwood >= 1 ? "inline" : "none";
   miceWrapperElement.style.display =
@@ -3831,6 +4466,7 @@ function initViewportAwareTooltips() {
 // Apply passive resource income based on real elapsed time.
 function updateCoinsFromElapsedTime(gameState, currentTime) {
   const didAutomationUpdate = runAutomationSystems(gameState, currentTime);
+  const didPickpocketUpdate = processPickpocketRewards(gameState, currentTime);
   const coinsPerSecond = getCoinsPerSecond(gameState);
   const passiveTreeSeedsPerSecond = getTreeSeedsPerSecond(gameState);
   const passiveBirdSeedsPerSecond = getBirdSeedsPerSecond(gameState);
@@ -3846,12 +4482,12 @@ function updateCoinsFromElapsedTime(gameState, currentTime) {
   const automationTargetTime = gameState.lastCoinUpdate + Math.max(0, elapsedTime);
 
   if (elapsedTime <= 0) {
-    if (didAutomationUpdate) {
+    if (didAutomationUpdate || didPickpocketUpdate) {
       clampGameStateResources(gameState);
       saveGameState(gameState);
     }
 
-    return didAutomationUpdate;
+    return didAutomationUpdate || didPickpocketUpdate;
   }
 
   // Even when nothing is producing right now, advance the clock so the next

@@ -14,5 +14,13 @@ const ITEM_LIBRARY = [
     image: "/Resources/Misc%20Images/voyageTicket.png",
     startingCount: 0,
     description: "Instantly finishes the current Harbor voyage"
+  },
+  {
+    id: "coinhourticket",
+    name: "1 Hour Coin Ticket",
+    image: "/Resources/Misc%20Images/ticketCoin1.png",
+    startingCount: 0,
+    description: "Grants 1 hour of coins at your current production rate",
+    inventoryUsable: true
   }
 ];

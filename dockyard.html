@@ -61,6 +61,7 @@
       max-width: 760px;
       display: block;
       margin: 0 auto;
+      margin-top: 158px;
     }
 
     .dockyard-image-tooltip-box {
@@ -411,16 +412,38 @@
     }
 
     #harborUpgrades {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: flex-start;
+      display: block;
     }
 
     #harborUpgrades .upgrade-tooltip {
       display: inline-block;
       margin: 0;
       min-width: 220px;
+    }
+
+    .shop-divider {
+      width: 100%;
+      margin: 8px 0 14px;
+      padding-top: 14px;
+      border-top: 1px solid #b9b2a8;
+    }
+
+    .harbor-upgrade-section {
+      width: 100%;
+    }
+
+    .harbor-upgrade-title {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .harbor-upgrade-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-start;
     }
   </style>
 </head>
@@ -479,7 +502,7 @@
         <a class="menu-button" href="aviary.html">Aviary</a>
         <a class="menu-button" href="birdCatching.html">Bird Catching</a>
         <a class="menu-button" href="earthworks.html">Earthworks</a>
-        <span class="menu-button is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
+        <a class="menu-button" href="speciesUpgrades.html">Species Upgrades</a>
       </div>
 
       <div class="card">
@@ -517,6 +540,7 @@
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -618,8 +642,60 @@
     function renderHarborUpgrades() {
       harborUpgrades.innerHTML = "";
       const harborConstructed = hasUpgrade(gameState, "constructHarbor");
+      const lighthouseConstructed = hasUpgrade(gameState, "constructLighthouse");
       const constructHarborDefinition = getUpgradeDefinition("constructHarbor");
+      const constructLighthouseDefinition = getUpgradeDefinition("constructLighthouse");
+      const installBeaconDefinition = getUpgradeDefinition("installBeacon");
       const dredgerDefinition = getUpgradeDefinition("dredger");
+      const trawlNetsDefinition = getUpgradeDefinition("trawlNets");
+      let hasRenderedSection = false;
+
+      function appendHarborSection(section) {
+        if (hasRenderedSection) {
+          const divider = document.createElement("div");
+          divider.className = "shop-divider";
+          harborUpgrades.appendChild(divider);
+        }
+
+        harborUpgrades.appendChild(section);
+        hasRenderedSection = true;
+      }
+
+      const constructionSection = document.createElement("div");
+      constructionSection.className = "harbor-upgrade-section";
+      const constructionTitle = document.createElement("p");
+      constructionTitle.className = "harbor-upgrade-title";
+      constructionTitle.textContent = "Construction";
+      const constructionRow = document.createElement("div");
+      constructionRow.className = "harbor-upgrade-row";
+      constructionSection.appendChild(constructionTitle);
+      constructionSection.appendChild(constructionRow);
+      appendHarborSection(constructionSection);
+
+      const boatSection = document.createElement("div");
+      boatSection.className = "harbor-upgrade-section";
+      const boatTitle = document.createElement("p");
+      boatTitle.className = "harbor-upgrade-title";
+      boatTitle.textContent = "Boat";
+      const boatRow = document.createElement("div");
+      boatRow.className = "harbor-upgrade-row";
+      boatSection.appendChild(boatTitle);
+      boatSection.appendChild(boatRow);
+      appendHarborSection(boatSection);
+
+      let lighthouseRow = null;
+      if (lighthouseConstructed) {
+        const lighthouseSection = document.createElement("div");
+        lighthouseSection.className = "harbor-upgrade-section";
+        const lighthouseTitle = document.createElement("p");
+        lighthouseTitle.className = "harbor-upgrade-title";
+        lighthouseTitle.textContent = "Lighthouse";
+        lighthouseRow = document.createElement("div");
+        lighthouseRow.className = "harbor-upgrade-row";
+        lighthouseSection.appendChild(lighthouseTitle);
+        lighthouseSection.appendChild(lighthouseRow);
+        appendHarborSection(lighthouseSection);
+      }
 
       const constructHarborTooltip = document.createElement("div");
       constructHarborTooltip.className = "upgrade-tooltip";
@@ -630,7 +706,7 @@
       constructHarborButton.dataset.requiresSuccess = "true";
       constructHarborButton.textContent = hasUpgrade(gameState, "constructHarbor")
         ? "Construct Harbor (Owned)"
-        : "Construct Harbor (100 Hardwood, 10k Coins)";
+        : "Construct Harbor (40 Hardwood, 10k Coins)";
 
       if (hasUpgrade(gameState, "constructHarbor")) {
         constructHarborButton.classList.add("is-locked");
@@ -657,7 +733,83 @@
 
       constructHarborTooltip.appendChild(constructHarborButton);
       constructHarborTooltip.appendChild(constructHarborTooltipBox);
-      harborUpgrades.appendChild(constructHarborTooltip);
+      constructionRow.appendChild(constructHarborTooltip);
+
+      const constructLighthouseTooltip = document.createElement("div");
+      constructLighthouseTooltip.className = "upgrade-tooltip";
+
+      const constructLighthouseButton = document.createElement("button");
+      constructLighthouseButton.className = "menu-button";
+      constructLighthouseButton.type = "button";
+      constructLighthouseButton.dataset.requiresSuccess = "true";
+      constructLighthouseButton.textContent = hasUpgrade(gameState, "constructLighthouse")
+        ? "Construct Lighthouse (Owned)"
+        : "Construct Lighthouse (15 Scrap, 25 Hardwood)";
+
+      if (!harborConstructed || hasUpgrade(gameState, "constructLighthouse")) {
+        constructLighthouseButton.classList.add("is-locked");
+      }
+
+      constructLighthouseButton.addEventListener("click", function () {
+        handleUpgradePurchaseRequest(gameState, "constructLighthouse", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderDockyardOverview();
+            renderHarborUpgrades();
+            renderDockyardPanel();
+          }
+        });
+      });
+
+      const constructLighthouseTooltipBox = document.createElement("div");
+      constructLighthouseTooltipBox.className = "upgrade-tooltip-box";
+      constructLighthouseTooltipBox.textContent = constructLighthouseDefinition.description;
+
+      constructLighthouseTooltip.appendChild(constructLighthouseButton);
+      constructLighthouseTooltip.appendChild(constructLighthouseTooltipBox);
+      constructionRow.appendChild(constructLighthouseTooltip);
+
+      if (lighthouseRow !== null) {
+        const installBeaconTooltip = document.createElement("div");
+        installBeaconTooltip.className = "upgrade-tooltip";
+
+        const installBeaconButton = document.createElement("button");
+        installBeaconButton.className = "menu-button";
+        installBeaconButton.type = "button";
+        installBeaconButton.dataset.requiresSuccess = "true";
+        installBeaconButton.textContent = hasUpgrade(gameState, "installBeacon")
+          ? "Install Beacon (Owned)"
+          : "Install Beacon (25k Coins)";
+
+        if (!lighthouseConstructed || hasUpgrade(gameState, "installBeacon")) {
+          installBeaconButton.classList.add("is-locked");
+        }
+
+        installBeaconButton.addEventListener("click", function () {
+          handleUpgradePurchaseRequest(gameState, "installBeacon", {
+            beforePurchase: function () {
+              updateCoinsFromElapsedTime(gameState, Date.now());
+            },
+            onSuccess: function () {
+              renderTopBar(topBar, gameState);
+              renderDockyardOverview();
+              renderHarborUpgrades();
+              renderDockyardPanel();
+            }
+          });
+        });
+
+        const installBeaconTooltipBox = document.createElement("div");
+        installBeaconTooltipBox.className = "upgrade-tooltip-box";
+        installBeaconTooltipBox.textContent = installBeaconDefinition.description;
+
+        installBeaconTooltip.appendChild(installBeaconButton);
+        installBeaconTooltip.appendChild(installBeaconTooltipBox);
+        lighthouseRow.appendChild(installBeaconTooltip);
+      }
 
       const dredgerTooltip = document.createElement("div");
       dredgerTooltip.className = "upgrade-tooltip";
@@ -668,7 +820,7 @@
       dredgerButton.dataset.requiresSuccess = "true";
       dredgerButton.textContent = hasUpgrade(gameState, "dredger")
         ? "Dredger (Owned)"
-        : "Dredger (25k Coins)";
+        : "Dredger (20k Coins)";
 
       if (!harborConstructed || hasUpgrade(gameState, "dredger")) {
         dredgerButton.classList.add("is-locked");
@@ -694,7 +846,44 @@
 
       dredgerTooltip.appendChild(dredgerButton);
       dredgerTooltip.appendChild(dredgerTooltipBox);
-      harborUpgrades.appendChild(dredgerTooltip);
+      boatRow.appendChild(dredgerTooltip);
+
+      const trawlNetsTooltip = document.createElement("div");
+      trawlNetsTooltip.className = "upgrade-tooltip";
+
+      const trawlNetsButton = document.createElement("button");
+      trawlNetsButton.className = "menu-button";
+      trawlNetsButton.type = "button";
+      trawlNetsButton.dataset.requiresSuccess = "true";
+      trawlNetsButton.textContent = hasUpgrade(gameState, "trawlNets")
+        ? "Trawl Nets (Owned)"
+        : "Trawl Nets (40k Coins)";
+
+      if (!harborConstructed || hasUpgrade(gameState, "trawlNets")) {
+        trawlNetsButton.classList.add("is-locked");
+      }
+
+      trawlNetsButton.addEventListener("click", function () {
+        handleUpgradePurchaseRequest(gameState, "trawlNets", {
+          beforePurchase: function () {
+            updateCoinsFromElapsedTime(gameState, Date.now());
+          },
+          onSuccess: function () {
+            renderTopBar(topBar, gameState);
+            renderDockyardOverview();
+            renderHarborUpgrades();
+            renderDockyardPanel();
+          }
+        });
+      });
+
+      const trawlNetsTooltipBox = document.createElement("div");
+      trawlNetsTooltipBox.className = "upgrade-tooltip-box";
+      trawlNetsTooltipBox.textContent = trawlNetsDefinition.description;
+
+      trawlNetsTooltip.appendChild(trawlNetsButton);
+      trawlNetsTooltip.appendChild(trawlNetsTooltipBox);
+      boatRow.appendChild(trawlNetsTooltip);
     }
 
     function renderDockyardGiftOverlay() {
@@ -760,10 +949,17 @@
 
     function renderDockyardPanel() {
       const dockyardUnlocked = isDockyardUnlocked(gameState);
-      const harborConstructed = hasUpgrade(gameState, "constructHarbor");
-      dockyardPanelContent.innerHTML = "";
-      dockyardMinimizeButton.classList.toggle("is-locked", !dockyardUnlocked);
-      dockyardVoyageButton.classList.toggle("is-locked", !dockyardUnlocked || !harborConstructed);
+        const harborConstructed = hasUpgrade(gameState, "constructHarbor");
+        const lighthouseConstructed = hasUpgrade(gameState, "constructLighthouse");
+        dockyardPanelContent.innerHTML = "";
+        dockyardPanel.style.backgroundImage = lighthouseConstructed
+          ? "url('/Resources/Misc%20Images/harborBackground.jpg')"
+          : "url('/Resources/Misc%20Images/harborBackgroundEmpty.png')";
+        dockyardPanel.style.backgroundSize = "cover";
+        dockyardPanel.style.backgroundPosition = "center center";
+        dockyardPanel.style.backgroundRepeat = "no-repeat";
+        dockyardMinimizeButton.classList.toggle("is-locked", !dockyardUnlocked);
+        dockyardVoyageButton.classList.toggle("is-locked", !dockyardUnlocked || !harborConstructed);
 
       if (!harborConstructed && activeDockyardMode === "voyage") {
         activeDockyardMode = "minimize";

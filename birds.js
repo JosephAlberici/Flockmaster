@@ -78,7 +78,7 @@ const BIRD_LIBRARY = [
     id: "pileatedwoodpecker",
     species: "Pileated Woodpecker",
     visitorsPerDay: 1,
-    twigsPerMinute: 3.5,
+    twigsPerMinute: 4,
     grubsPerMinute: 3,
     abilities: ["treePeck"],
     diet: "grubs",
@@ -187,7 +187,7 @@ const BIRD_LIBRARY = [
     species: "Red-Tailed Hawk",
     twigsPerMinute: 6,
     bonusPeachTree: 1,
-    habitatScale: 1.5,
+    habitatScale: 1.3,
     diet: "mice",
     rarity: "Epic",
     abilities: ["predator"],
@@ -217,7 +217,8 @@ const BIRD_LIBRARY = [
     call: "/Resources/Calls/mallard.wav",
     nativeHabitat: "Urban Waters",
     scientificName: "Anas platyrhynchos",
-    order: "Waterfowl"
+    order: "Waterfowl",
+    habitatScale: 1.3
   },
   {
     id: "goose",
@@ -369,7 +370,7 @@ const BIRD_LIBRARY = [
     diet: "mice",
     rarity: "Epic",
     abilities: ["overseer"],
-    twigsPerMinute: 4.5,
+    twigsPerMinute: 6,
     visitorsPerDay: 5,
     bonusPearTree: 1,
     image: "/Resources/Bird Images/harrier.png",
@@ -390,5 +391,56 @@ const BIRD_LIBRARY = [
     nativeHabitat: "Urban Waters",
     scientificName: "Podilymbus podiceps",
     order: "Grebes"
+  },
+  {
+    id: "snowBunting",
+    species: "Snow Bunting",
+    diet: "seeds",
+    rarity: "Common",
+    visitorsPerDay: 2,
+    image: "/Resources/Bird Images/snowBunting.png",
+    call: "/Resources/Calls/snowBunting.mp3",
+    nativeHabitat: "Arctic Coast",
+    scientificName: "Plectrophenax nivalis",
+    order: "Passerines",
+    family: "Calcariidae"
+  },
+  {
+    id: "ptarmigan",
+    species: "Rock Ptarmigan",
+    diet: "seeds",
+    rarity: "Uncommon",
+    visitorsPerDay: 1,
+    image: "/Resources/Bird Images/ptarmigan.png",
+    call: "/Resources/Calls/ptarmigan.mp3",
+    nativeHabitat: "Arctic Coast",
+    scientificName: "Lagopus muta",
+    order: "Landfowl"
+  },
+  {
+    id: "gyrfalcon",
+    species: "Gyrfalcon",
+    diet: "ptarmigans",
+    rarity: "Legendary",
+    visitorsPerDay: 10,
+    abilities: ["prizedFalconry"],
+    image: "/Resources/Bird Images/gyrfalcon.png",
+    call: "/Resources/Calls/gyrfalcon.wav",
+    nativeHabitat: "Arctic Coast",
+    scientificName: "Falco rusticolus",
+    order: "Falcons"
+  },
+  {
+    id: "dunlin",
+    species: "Dunlin",
+    diet: "grubs",
+    rarity: "Common",
+    visitorsPerDay: 1,
+    grubsPerMinute: 0.5,
+    image: "/Resources/Bird Images/dunlin.png",
+    call: "/Resources/Calls/dunlin.mp3",
+    nativeHabitat: "Arctic Coast",
+    scientificName: "Calidris alpina",
+    order: "Shorebirds"
   }
 ];

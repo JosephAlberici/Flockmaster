@@ -315,23 +315,30 @@
     }
 
     .habitat-bird-controls {
-      position: absolute;
-      bottom: 38px;
-      left: 0;
-      right: 0;
+        position: absolute;
+        bottom: 38px;
+        left: 0;
+        right: 0;
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
       gap: 8px;
       padding: 0 10px;
       box-sizing: border-box;
-      pointer-events: none;
-      z-index: 2;
-    }
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .habitat-bird-action-buttons {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        pointer-events: auto;
+      }
 
     .habitat-parasite-button {
-      min-width: 56px;
-      max-width: 68px;
+        min-width: 56px;
+        max-width: 68px;
       background: #2c3e50;
       color: #f7f1e6;
       border: 2px solid black;
@@ -346,12 +353,32 @@
       text-align: center;
       word-break: break-word;
       flex: 0 0 auto;
-      pointer-events: auto;
-    }
+        pointer-events: auto;
+      }
 
     .habitat-parasite-button.is-selected {
-      background: #6d8f4e;
-    }
+        background: #6d8f4e;
+      }
+
+      .habitat-feed-button {
+        min-width: 56px;
+        max-width: 68px;
+        background: #6d8f4e;
+        color: #f7f1e6;
+        border: 2px solid black;
+        border-radius: 10px;
+        padding: 4px 6px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: bold;
+        line-height: 1.05;
+        cursor: pointer;
+        white-space: normal;
+        text-align: center;
+        word-break: break-word;
+        flex: 0 0 auto;
+        pointer-events: auto;
+      }
 
     .stat-line {
       margin: 12px 0;
@@ -519,21 +546,97 @@
     }
 
     .parasite-overlay-close {
-      background: #2c3e50;
-      color: #f7f1e6;
-      border: 2px solid black;
+        background: #2c3e50;
+        color: #f7f1e6;
+        border: 2px solid black;
       border-radius: 10px;
       padding: 8px 12px;
       font-family: inherit;
       font-weight: bold;
-      cursor: pointer;
-      flex: 0 0 auto;
-    }
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+
+      .falconry-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+        z-index: 62;
+      }
+
+      .falconry-overlay.is-visible {
+        display: flex;
+      }
+
+      .falconry-overlay-card {
+        width: min(560px, 100%);
+        background: #f7f1e6;
+        border: 2px solid black;
+        border-radius: 18px;
+        padding: 22px;
+        box-sizing: border-box;
+      }
+
+      .falconry-overlay-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .falconry-overlay-header h3 {
+        margin: 0 0 6px;
+        color: #2c3e50;
+      }
+
+      .falconry-overlay-header p {
+        margin: 0;
+        color: #2c3e50;
+        font-weight: bold;
+      }
+
+      .falconry-overlay-close {
+        background: #2c3e50;
+        color: #f7f1e6;
+        border: 2px solid black;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-family: inherit;
+        font-weight: bold;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+
+      .falconry-feed-shell {
+        max-width: 220px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .falconry-feed-shell .selector-image-shell {
+        margin-bottom: 12px;
+      }
 
     .parasite-target-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 16px;
+    }
+
+    .parasite-target-habitat-group + .parasite-target-habitat-group {
+      margin-top: 22px;
+    }
+
+    .parasite-target-habitat-title {
+      margin: 0 0 12px;
+      color: #2c3e50;
+      font-size: 22px;
     }
 
     .parasite-target-card {
@@ -839,7 +942,7 @@
         <a class="back-link" href="birdCatching.html">Bird Catching</a>
         <span class="nav-tooltip" id="earthworksNavWrapper"></span>
         <span class="nav-tooltip" id="dockyardNavWrapper"></span>
-        <span class="back-link is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
+        <a class="back-link" href="speciesUpgrades.html">Species Upgrades</a>
       </div>
 
       <div class="card">
@@ -926,9 +1029,23 @@
     </div>
   </div>
 
+  <div class="falconry-overlay" id="falconryOverlay">
+    <div class="falconry-overlay-card">
+      <div class="falconry-overlay-header">
+        <div>
+          <h3>Prized Falconry</h3>
+          <p id="falconryOverlaySubtitle">Feed the Gyrfalcon 10 Rock Ptarmigans to receive 1 feeder mouse</p>
+        </div>
+        <button class="falconry-overlay-close" id="falconryOverlayClose" type="button">Close</button>
+      </div>
+      <div class="falconry-feed-shell" id="falconryFeedShell"></div>
+    </div>
+  </div>
+
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -968,23 +1085,28 @@
     const saplingShopExpandButton = document.querySelector("#saplingShopExpandButton");
     const earthworksNavWrapper = document.querySelector("#earthworksNavWrapper");
     const dockyardNavWrapper = document.querySelector("#dockyardNavWrapper");
-    const parasiteOverlay = document.querySelector("#parasiteOverlay");
-    const parasiteOverlayTitle = document.querySelector("#parasiteOverlayTitle");
-    const parasiteOverlaySubtitle = document.querySelector("#parasiteOverlaySubtitle");
-    const parasiteOverlayClose = document.querySelector("#parasiteOverlayClose");
-    const parasiteTargetGrid = document.querySelector("#parasiteTargetGrid");
-    const AVIARY_HABITAT_DISPLAY_ORDER = ["City Living", "Urban Waters", "The Hollow"];
+      const parasiteOverlay = document.querySelector("#parasiteOverlay");
+      const parasiteOverlayTitle = document.querySelector("#parasiteOverlayTitle");
+      const parasiteOverlaySubtitle = document.querySelector("#parasiteOverlaySubtitle");
+      const parasiteOverlayClose = document.querySelector("#parasiteOverlayClose");
+      const parasiteTargetGrid = document.querySelector("#parasiteTargetGrid");
+      const falconryOverlay = document.querySelector("#falconryOverlay");
+      const falconryOverlayClose = document.querySelector("#falconryOverlayClose");
+      const falconryFeedShell = document.querySelector("#falconryFeedShell");
+      const AVIARY_HABITAT_DISPLAY_ORDER = ["City Living", "Urban Waters", "Arctic Coast", "The Hollow"];
     const INACTIVE_AVIARY_HABITATS = ["The Hollow"];
     const HABITAT_BACKGROUND_IMAGES = {
       "City Living": "/Resources/Habitat%20Backgrounds/cityLiving.jpg",
-      "Urban Waters": "/Resources/Habitat%20Backgrounds/urbanWaters.jpg"
+      "Urban Waters": "/Resources/Habitat%20Backgrounds/urbanWaters.jpg",
+      "Arctic Coast": "/Resources/Habitat%20Backgrounds/arcticCoast.avif"
     };
     let activeOverviewMode = "minimize";
     let activeUpgradesMode = "minimize";
-    let activeConstructionMode = "minimize";
-    let activeSaplingShopMode = "minimize";
-    let activeParasiteBirdId = null;
-    const habitatPanelModes = {};
+      let activeConstructionMode = "minimize";
+      let activeSaplingShopMode = "minimize";
+      let activeParasiteBirdId = null;
+      let activeFalconryBirdId = null;
+      const habitatPanelModes = {};
 
     // Build the Earthworks nav button and its locked-state tooltip from current flock progress.
     function renderEarthworksNav() {
@@ -1019,7 +1141,11 @@
 
     // Return the habitat names that should drive overview tabs and habitat panels.
     function getAviaryHabitatNames() {
-      return getAllHabitatNames(gameState)
+      return AVIARY_HABITAT_DISPLAY_ORDER
+        .concat(getAllHabitatNames(gameState))
+        .filter(function (habitatName, habitatIndex, habitatList) {
+          return habitatList.indexOf(habitatName) === habitatIndex;
+        })
         .filter(function (habitatName) {
           return !INACTIVE_AVIARY_HABITATS.includes(habitatName);
         })
@@ -1045,13 +1171,87 @@
     }
 
     // Close the parasite target selector and clear the currently focused bird id.
-    function closeParasiteOverlay() {
-      parasiteOverlay.classList.remove("is-visible");
-      activeParasiteBirdId = null;
-    }
+      function closeParasiteOverlay() {
+        parasiteOverlay.classList.remove("is-visible");
+        activeParasiteBirdId = null;
+      }
 
-    // Build the target-selection overlay for the currently active parasitic bird.
-    function renderParasiteOverlay() {
+      function openFalconryOverlay(birdId) {
+        activeFalconryBirdId = birdId;
+        renderFalconryOverlay();
+        falconryOverlay.classList.add("is-visible");
+      }
+
+      function closeFalconryOverlay() {
+        falconryOverlay.classList.remove("is-visible");
+        activeFalconryBirdId = null;
+      }
+
+      function renderFalconryOverlay() {
+        const falconryBird = getBirdById(gameState, activeFalconryBirdId);
+        falconryFeedShell.innerHTML = "";
+
+        if (!falconryBird || !birdHasAbilityForGameState(gameState, falconryBird, "prizedFalconry")) {
+          falconryFeedShell.innerHTML = "<p class='parasite-target-empty'>No falcon available</p>";
+          return;
+        }
+
+        const ptarmiganBird = getBirdById(gameState, "ptarmigan");
+        const ptarmiganCount = getBirdCountById(gameState, "ptarmigan");
+
+        const imageShell = document.createElement("div");
+        imageShell.className = "selector-image-shell";
+        imageShell.tabIndex = 0;
+
+        const image = document.createElement("img");
+        image.src = "/Resources/Bird Images/ptarmigan.png";
+        image.alt = "Rock Ptarmigan";
+
+        const tooltip = document.createElement("div");
+        tooltip.className = "selector-image-tooltip";
+        tooltip.innerHTML = "<p>Rock Ptarmigans in flock: " + formatLargeNumber(ptarmiganCount) + "</p>";
+
+        imageShell.addEventListener("click", function (event) {
+          event.stopPropagation();
+          imageShell.classList.toggle("is-open");
+        });
+
+        imageShell.appendChild(tooltip);
+        imageShell.appendChild(image);
+
+        const feedButton = document.createElement("button");
+        feedButton.className = "menu-button";
+        feedButton.type = "button";
+        feedButton.dataset.requiresSuccess = "true";
+        feedButton.textContent = "Feed";
+
+        if (!ptarmiganBird || ptarmiganCount < 10) {
+          feedButton.classList.add("is-locked");
+          feedButton.disabled = true;
+        }
+
+        feedButton.addEventListener("click", function () {
+          if (!ptarmiganBird || getBirdCountById(gameState, "ptarmigan") < 10) {
+            return;
+          }
+
+          removeBirdsFromFlock(gameState, "ptarmigan", 10);
+          gameState.mice += 1;
+          playButtonSound();
+          saveGameState(gameState);
+          renderTopBar(topBar, gameState);
+          refreshAviarySummary();
+          renderOverview();
+          renderHabitatPanels();
+          renderFalconryOverlay();
+        });
+
+        falconryFeedShell.appendChild(imageShell);
+        falconryFeedShell.appendChild(feedButton);
+      }
+
+      // Build the target-selection overlay for the currently active parasitic bird.
+      function renderParasiteOverlay() {
       const parasiticBird = getBirdById(gameState, activeParasiteBirdId);
       parasiteTargetGrid.innerHTML = "";
 
@@ -1064,15 +1264,38 @@
 
       const parasiteTargetBird = getParasiteTargetBird(parasiticBird, gameState);
       const eligibleTargetBirds = getParasiteEligibleTargetBirds(parasiticBird, gameState);
+      const invasiveParasite = isParasiteInvasive(gameState, parasiticBird.id);
+      const maxRarityIndex = getParasiteMaxRarityIndex(gameState, parasiticBird.id);
+      const maxRarityName = RARITY_ORDER[maxRarityIndex] || "Common";
+      const rarityArticle = ["A", "E", "I", "O", "U"].includes(maxRarityName.charAt(0)) ? "an" : "a";
       parasiteOverlayTitle.textContent = parasiticBird.species + " Target";
-      parasiteOverlaySubtitle.textContent = "Choose a Common species from " + parasiticBird.nativeHabitat;
+      parasiteOverlaySubtitle.textContent = invasiveParasite
+        ? ("Choose up to " + rarityArticle + " " + maxRarityName + " species from any habitat")
+        : ("Choose up to " + rarityArticle + " " + maxRarityName + " species from " + parasiticBird.nativeHabitat);
 
       if (eligibleTargetBirds.length === 0) {
-        parasiteTargetGrid.innerHTML = "<p class='parasite-target-empty'>No eligible targets in this habitat yet</p>";
+        parasiteTargetGrid.innerHTML = "<p class='parasite-target-empty'>" + (invasiveParasite
+          ? "No eligible targets in any habitat yet"
+          : "No eligible targets in this habitat yet") + "</p>";
         return;
       }
 
-      eligibleTargetBirds.forEach(function (targetBird) {
+      function getParasitePreviewHtml(targetBird) {
+        const previewBird = {
+          ...targetBird,
+          count: parasiticBird.count
+        };
+
+        const resourceLinesHtml = getBirdResourceLinesHtml(previewBird, gameState, { multiplyByCount: true });
+
+        if (!resourceLinesHtml) {
+          return "<p>With " + parasiticBird.count + " " + parasiticBird.species + ": no passive resource gain</p>";
+        }
+
+        return "<p>With " + parasiticBird.count + " " + parasiticBird.species + ":</p>" + resourceLinesHtml;
+      }
+
+      function appendTargetCard(targetBird) {
         const isSelectedTarget = parasiteTargetBird && parasiteTargetBird.id === targetBird.id;
         const targetCard = document.createElement("div");
         targetCard.className = "parasite-target-card";
@@ -1087,7 +1310,7 @@
 
         const targetTooltip = document.createElement("div");
         targetTooltip.className = "selector-image-tooltip";
-        targetTooltip.innerHTML = getBirdResourceLinesHtml(targetBird, gameState, { multiplyByCount: true });
+        targetTooltip.innerHTML = getParasitePreviewHtml(targetBird);
 
         targetImageShell.addEventListener("click", function (event) {
           event.stopPropagation();
@@ -1148,7 +1371,55 @@
         targetCard.appendChild(targetImageShell);
         targetCard.appendChild(targetName);
         targetCard.appendChild(targetButton);
-        parasiteTargetGrid.appendChild(targetCard);
+        return targetCard;
+      }
+
+      if (!invasiveParasite) {
+        eligibleTargetBirds.forEach(function (targetBird) {
+          parasiteTargetGrid.appendChild(appendTargetCard(targetBird));
+        });
+        return;
+      }
+
+      const groupedTargetBirds = eligibleTargetBirds.reduce(function (groupedBirds, targetBird) {
+        const habitatName = targetBird.nativeHabitat || "Unknown Habitat";
+        if (!groupedBirds[habitatName]) {
+          groupedBirds[habitatName] = [];
+        }
+        groupedBirds[habitatName].push(targetBird);
+        return groupedBirds;
+      }, {});
+
+      const habitatDisplayOrder = AVIARY_HABITAT_DISPLAY_ORDER
+        .concat(Object.keys(groupedTargetBirds))
+        .filter(function (habitatName, habitatIndex, habitatList) {
+          return habitatList.indexOf(habitatName) === habitatIndex;
+        });
+
+      habitatDisplayOrder.forEach(function (habitatName) {
+        const habitatBirds = groupedTargetBirds[habitatName];
+
+        if (!Array.isArray(habitatBirds) || habitatBirds.length === 0) {
+          return;
+        }
+
+        const habitatGroup = document.createElement("div");
+        habitatGroup.className = "parasite-target-habitat-group";
+
+        const habitatTitle = document.createElement("h4");
+        habitatTitle.className = "parasite-target-habitat-title";
+        habitatTitle.textContent = habitatName;
+
+        const habitatGrid = document.createElement("div");
+        habitatGrid.className = "parasite-target-grid";
+
+        habitatBirds.forEach(function (targetBird) {
+          habitatGrid.appendChild(appendTargetCard(targetBird));
+        });
+
+        habitatGroup.appendChild(habitatTitle);
+        habitatGroup.appendChild(habitatGrid);
+        parasiteTargetGrid.appendChild(habitatGroup);
       });
     }
 
@@ -1526,8 +1797,8 @@
     function createBirdSummaryElement(bird) {
       const birdSummary = document.createElement("div");
       birdSummary.className = "bird-summary";
-      const birdAbilityNames = getBirdAbilityNames(bird);
-      const birdAbilityDescriptions = getBirdAbilityDescriptions(bird);
+      const birdAbilityNames = getBirdAbilityNamesForGameState(bird, gameState);
+      const birdAbilityDescriptions = getBirdAbilityDescriptionsForGameState(bird, gameState);
       const rarityClassName = getRarityClassName(bird.rarity);
       birdSummary.innerHTML =
         "<h3>" + bird.species + "</h3>" +
@@ -1745,7 +2016,7 @@
       birdsInHabitat.forEach(function (bird) {
         const habitatFigure = document.createElement("figure");
         habitatFigure.className = "habitat-bird-figure";
-        const birdAbilityNames = getBirdAbilityNames(bird);
+        const birdAbilityNames = getBirdAbilityNamesForGameState(bird, gameState);
         const parasiteTargetBird = getParasiteTargetBird(bird, gameState);
         const visibleVariantKeys = getOwnedBirdVariantKeys(bird);
         const habitatImages = getBirdHabitatImages(bird);
@@ -1784,24 +2055,29 @@
               "</span>";
             })();
 
-        habitatFigure.innerHTML =
-          "<div class='habitat-bird-tooltip'>" +
-            getBirdResourceLinesHtml(bird, gameState, { multiplyByCount: true }) +
-            (parasiteTargetBird
-              ? "<p>Target: " + parasiteTargetBird.species + "</p>"
-              : "") +
-            (birdAbilityNames.length > 0
-              ? "<p>Ability: " + birdAbilityNames.join(", ") + "</p>"
-              : "") +
-          "</div>" +
-          imageMarkup +
-          "<div class='habitat-bird-controls'>" +
-            (birdHasAbility(bird, "parasite")
-              ? "<button class='habitat-parasite-button" + (parasiteTargetBird ? " is-selected" : "") + "' type='button' data-parasite-bird-id='" + bird.id + "'>" + (parasiteTargetBird ? "Reset<br>Target" : "Set<br>Target") + "</button>"
-              : "<span></span>") +
-            (habitatImages.length === 1 && bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
-          "</div>" +
-          "<figcaption>" + bird.species + "</figcaption>";
+          habitatFigure.innerHTML =
+            "<div class='habitat-bird-tooltip'>" +
+              getBirdResourceLinesHtml(bird, gameState, { multiplyByCount: true }) +
+              (parasiteTargetBird
+                ? "<p>Target: " + parasiteTargetBird.species + "</p>"
+                : "") +
+              (birdAbilityNames.length > 0
+                ? "<p>Ability: " + birdAbilityNames.join(", ") + "</p>"
+                : "") +
+            "</div>" +
+            imageMarkup +
+            "<div class='habitat-bird-controls'>" +
+              "<div class='habitat-bird-action-buttons'>" +
+                (birdHasAbilityForGameState(gameState, bird, "parasite")
+                  ? "<button class='habitat-parasite-button" + (parasiteTargetBird ? " is-selected" : "") + "' type='button' data-parasite-bird-id='" + bird.id + "'>" + (parasiteTargetBird ? "Reset<br>Target" : "Set<br>Target") + "</button>"
+                  : "") +
+                (birdHasAbilityForGameState(gameState, bird, "prizedFalconry")
+                  ? "<button class='habitat-feed-button' type='button' data-falconry-bird-id='" + bird.id + "'>Feed</button>"
+                  : "") +
+              "</div>" +
+              (habitatImages.length === 1 && bird.count > 1 ? "<span class='bird-count-badge'>x" + bird.count + "</span>" : "") +
+            "</div>" +
+            "<figcaption>" + bird.species + "</figcaption>";
 
         habitatBirdList.appendChild(habitatFigure);
 
@@ -1813,16 +2089,24 @@
           });
         });
 
-        const parasiteButton = habitatFigure.querySelector(".habitat-parasite-button");
+          const parasiteButton = habitatFigure.querySelector(".habitat-parasite-button");
+          const falconryButton = habitatFigure.querySelector(".habitat-feed-button");
 
-        if (parasiteButton) {
-          parasiteButton.addEventListener("click", function (event) {
-            event.stopPropagation();
-            openParasiteOverlay(bird.id);
-          });
-        }
-      });
-    }
+          if (parasiteButton) {
+            parasiteButton.addEventListener("click", function (event) {
+              event.stopPropagation();
+              openParasiteOverlay(bird.id);
+            });
+          }
+
+          if (falconryButton) {
+            falconryButton.addEventListener("click", function (event) {
+              event.stopPropagation();
+              openFalconryOverlay(bird.id);
+            });
+          }
+        });
+      }
 
     // Rebuild the right-side habitat panels from the habitat library.
     function renderHabitatPanels() {
@@ -1873,45 +2157,47 @@
           fundraisingRow.className = "upgrade-row";
           upgradesOverviewList.appendChild(fundraisingRow);
 
-          const humbleParkDefinition = getUpgradeDefinition("humblePark");
-          const humbleParkEntry = document.createElement("div");
-          humbleParkEntry.className = "upgrade-entry";
+          ["humblePark", "burgeoningBirdscape", "grandBirdapestHotel"].forEach(function (upgradeId) {
+            const upgradeDefinition = getUpgradeDefinition(upgradeId);
+            const upgradeEntry = document.createElement("div");
+            upgradeEntry.className = "upgrade-entry";
 
-          const humbleParkTooltip = document.createElement("div");
-          humbleParkTooltip.className = "upgrade-tooltip";
+            const upgradeTooltip = document.createElement("div");
+            upgradeTooltip.className = "upgrade-tooltip";
 
-          const humbleParkButton = document.createElement("button");
-          humbleParkButton.className = "upgrade-action-button";
-          humbleParkButton.type = "button";
-          humbleParkButton.dataset.requiresSuccess = "true";
-          humbleParkButton.textContent = hasUpgrade(gameState, "humblePark")
-            ? "Humble Park (Active)"
-            : "Humble Park";
-          syncOwnedUpgradeButtonState(humbleParkButton, gameState, "humblePark");
+            const upgradeButton = document.createElement("button");
+            upgradeButton.className = "upgrade-action-button";
+            upgradeButton.type = "button";
+            upgradeButton.dataset.requiresSuccess = "true";
+            upgradeButton.textContent = hasUpgrade(gameState, upgradeId)
+              ? (upgradeDefinition.name + " (Active)")
+              : upgradeDefinition.name;
+            syncOwnedUpgradeButtonState(upgradeButton, gameState, upgradeId);
 
-          humbleParkButton.addEventListener("click", function () {
-            handleUpgradePurchaseRequest(gameState, "humblePark", {
-              onSuccess: function () {
-                rerenderAviary();
-              }
+            upgradeButton.addEventListener("click", function () {
+              handleUpgradePurchaseRequest(gameState, upgradeId, {
+                onSuccess: function () {
+                  rerenderAviary();
+                }
+              });
             });
+
+            const upgradeTooltipBox = document.createElement("div");
+            upgradeTooltipBox.className = "upgrade-tooltip-box";
+            upgradeTooltipBox.textContent = upgradeDefinition.description;
+
+            const upgradeRequirement = document.createElement("p");
+            upgradeRequirement.className = "upgrade-requirement";
+            upgradeRequirement.textContent =
+              "Requires: " + formatLargeNumber(upgradeDefinition.requirements.individuals) +
+              " Individuals | " + formatLargeNumber(upgradeDefinition.requirements.visitorsPerDay) + " Visitors/Day";
+
+            upgradeTooltip.appendChild(upgradeButton);
+            upgradeTooltip.appendChild(upgradeTooltipBox);
+            upgradeEntry.appendChild(upgradeTooltip);
+            upgradeEntry.appendChild(upgradeRequirement);
+            fundraisingRow.appendChild(upgradeEntry);
           });
-
-          const humbleParkTooltipBox = document.createElement("div");
-          humbleParkTooltipBox.className = "upgrade-tooltip-box";
-          humbleParkTooltipBox.textContent = humbleParkDefinition.description;
-
-          const humbleParkRequirement = document.createElement("p");
-          humbleParkRequirement.className = "upgrade-requirement";
-          humbleParkRequirement.textContent =
-            "Requires: " + formatLargeNumber(humbleParkDefinition.requirements.individuals) +
-            " Individuals | " + formatLargeNumber(humbleParkDefinition.requirements.visitorsPerDay) + " Visitors/Day";
-
-          humbleParkTooltip.appendChild(humbleParkButton);
-          humbleParkTooltip.appendChild(humbleParkTooltipBox);
-          humbleParkEntry.appendChild(humbleParkTooltip);
-          humbleParkEntry.appendChild(humbleParkRequirement);
-          fundraisingRow.appendChild(humbleParkEntry);
           return;
         }
 
@@ -2094,7 +2380,54 @@
           urbanWatersRequirement.textContent = "Requires: " + formatLargeNumber(30) + " Individuals and " + formatLargeNumber(8) + " Species";
           urbanWatersEntry.appendChild(urbanWatersRequirement);
           constructionOverviewList.appendChild(urbanWatersEntry);
-          return;
+
+          const arcticCoastEntry = document.createElement("div");
+          arcticCoastEntry.className = "upgrade-entry";
+
+          const arcticCoastTooltip = document.createElement("div");
+          arcticCoastTooltip.className = "upgrade-tooltip";
+
+            const arcticCoastButton = document.createElement("button");
+            arcticCoastButton.className = "upgrade-action-button";
+            arcticCoastButton.type = "button";
+            arcticCoastButton.textContent = gameState.ownedHabitats.includes("Arctic Coast")
+              ? "Arctic Coast (Constructed)"
+              : "Arctic Coast (10k Coins)";
+            arcticCoastButton.classList.toggle("is-locked", gameState.ownedHabitats.includes("Arctic Coast"));
+            arcticCoastButton.disabled = gameState.ownedHabitats.includes("Arctic Coast");
+
+            arcticCoastButton.addEventListener("click", function () {
+              if (gameState.ownedHabitats.includes("Arctic Coast")) {
+                return;
+              }
+
+              updateCoinsFromElapsedTime(gameState, Date.now());
+
+              if (
+                getTotalBirdCount(gameState) < 80 ||
+                getFlockDiversity(gameState) < 15 ||
+                gameState.coins < 10000
+              ) {
+                return;
+              }
+
+              gameState.coins -= 10000;
+              gameState.ownedHabitats.push("Arctic Coast");
+              grantHabitatConstructionRewards(gameState, "Arctic Coast");
+              playButtonSound();
+              saveGameState(gameState);
+              rerenderAviary();
+            });
+
+            arcticCoastTooltip.appendChild(arcticCoastButton);
+            arcticCoastEntry.appendChild(arcticCoastTooltip);
+
+            const arcticCoastRequirement = document.createElement("p");
+            arcticCoastRequirement.className = "upgrade-requirement";
+            arcticCoastRequirement.textContent = "Requires: 80 Individuals and 15 Species";
+            arcticCoastEntry.appendChild(arcticCoastRequirement);
+            constructionOverviewList.appendChild(arcticCoastEntry);
+            return;
         }
 
         const amenitiesTitle = document.createElement("p");
@@ -2106,47 +2439,49 @@
         amenitiesRow.className = "upgrade-row";
         constructionOverviewList.appendChild(amenitiesRow);
 
-        const cafeDefinition = getUpgradeDefinition("cafe");
-        const cafeEntry = document.createElement("div");
-        cafeEntry.className = "upgrade-entry";
+        ["cafe", "ornithologyLab", "cushionedSeating"].forEach(function (upgradeId) {
+          const upgradeDefinition = getUpgradeDefinition(upgradeId);
+          const amenityEntry = document.createElement("div");
+          amenityEntry.className = "upgrade-entry";
 
-        const cafeTooltip = document.createElement("div");
-        cafeTooltip.className = "upgrade-tooltip";
+          const amenityTooltip = document.createElement("div");
+          amenityTooltip.className = "upgrade-tooltip";
 
-        const cafeButton = document.createElement("button");
-        cafeButton.className = "upgrade-action-button";
-        cafeButton.type = "button";
-        cafeButton.dataset.requiresSuccess = "true";
-        const cafeCostSummary = getUpgradeCostSummary(cafeDefinition);
-        cafeButton.textContent = hasUpgrade(gameState, "cafe")
-          ? "Café (Owned)"
-          : "Café (" + cafeCostSummary + ")";
-        syncOwnedUpgradeButtonState(cafeButton, gameState, "cafe");
+          const amenityButton = document.createElement("button");
+          amenityButton.className = "upgrade-action-button";
+          amenityButton.type = "button";
+          amenityButton.dataset.requiresSuccess = "true";
+          const amenityCostSummary = getUpgradeCostSummary(upgradeDefinition);
+          amenityButton.textContent = hasUpgrade(gameState, upgradeId)
+            ? (upgradeDefinition.name + " (Owned)")
+            : (upgradeDefinition.name + " (" + amenityCostSummary + ")");
+          syncOwnedUpgradeButtonState(amenityButton, gameState, upgradeId);
 
-        cafeButton.addEventListener("click", function () {
-          handleUpgradePurchaseRequest(gameState, "cafe", {
-            beforePurchase: function () {
-              updateCoinsFromElapsedTime(gameState, Date.now());
-            },
-            onSuccess: function () {
-              rerenderAviary();
-            }
+          amenityButton.addEventListener("click", function () {
+            handleUpgradePurchaseRequest(gameState, upgradeId, {
+              beforePurchase: function () {
+                updateCoinsFromElapsedTime(gameState, Date.now());
+              },
+              onSuccess: function () {
+                rerenderAviary();
+              }
+            });
           });
+
+          const amenityTooltipBox = document.createElement("div");
+          amenityTooltipBox.className = "upgrade-tooltip-box";
+          amenityTooltipBox.textContent = upgradeDefinition.description;
+
+          amenityTooltip.appendChild(amenityButton);
+          amenityTooltip.appendChild(amenityTooltipBox);
+          amenityEntry.appendChild(amenityTooltip);
+
+          const amenityRequirement = document.createElement("p");
+          amenityRequirement.className = "upgrade-requirement";
+          amenityRequirement.textContent = "Requires: " + formatLargeNumber(upgradeDefinition.requirements.species) + " Species";
+          amenityEntry.appendChild(amenityRequirement);
+          amenitiesRow.appendChild(amenityEntry);
         });
-
-        const cafeTooltipBox = document.createElement("div");
-        cafeTooltipBox.className = "upgrade-tooltip-box";
-        cafeTooltipBox.textContent = cafeDefinition.description;
-
-        cafeTooltip.appendChild(cafeButton);
-        cafeTooltip.appendChild(cafeTooltipBox);
-        cafeEntry.appendChild(cafeTooltip);
-
-        const cafeRequirement = document.createElement("p");
-        cafeRequirement.className = "upgrade-requirement";
-        cafeRequirement.textContent = "Requires: " + formatLargeNumber(cafeDefinition.requirements.species) + " Species";
-        cafeEntry.appendChild(cafeRequirement);
-        amenitiesRow.appendChild(cafeEntry);
       }
 
     overviewMinimizeButton.addEventListener("click", function () {
@@ -2198,9 +2533,19 @@
       closeParasiteOverlay();
     });
 
+    falconryOverlayClose.addEventListener("click", function () {
+      closeFalconryOverlay();
+    });
+
     parasiteOverlay.addEventListener("click", function (event) {
       if (event.target === parasiteOverlay) {
         closeParasiteOverlay();
+      }
+    });
+
+    falconryOverlay.addEventListener("click", function (event) {
+      if (event.target === falconryOverlay) {
+        closeFalconryOverlay();
       }
     });
 
@@ -2217,6 +2562,11 @@
     document.addEventListener("click", function () {
       document.querySelectorAll(".bird-ability-shell.is-open").forEach(function (openShell) {
         openShell.classList.remove("is-open");
+      });
+      document.querySelectorAll(".selector-image-shell.is-open").forEach(function (openShell) {
+        if (!parasiteTargetGrid.contains(openShell) && !falconryFeedShell.contains(openShell)) {
+          openShell.classList.remove("is-open");
+        }
       });
     });
 

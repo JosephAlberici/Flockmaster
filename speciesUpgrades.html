@@ -5,65 +5,637 @@
   <title>Flockmaster Species Upgrades</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    body {
-      min-height: 100vh;
+    :root {
+      --action-panel-bg: #8fc7e8;
+    }
+
+    .page-layout {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      gap: 28px;
+      padding: 24px 32px 40px;
+      align-items: flex-start;
       box-sizing: border-box;
     }
 
-    .wip-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(31, 42, 54, 0.82);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
+    .species-sidebar {
+      width: 36%;
     }
 
-    .wip-card {
+    .species-main {
+      width: 64%;
+    }
+
+    .nav-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .nav-card .menu-button {
       width: 100%;
-      max-width: 620px;
-      background: var(--cream-bg);
-      border: 3px solid black;
-      border-radius: 22px;
-      padding: 28px;
-      box-sizing: border-box;
+      margin: 0;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      white-space: nowrap;
+      box-sizing: border-box;
     }
 
-    .wip-card h1 {
-      margin: 0 0 14px;
-      color: var(--navy-bg);
-      letter-spacing: 2px;
+    .species-habitat-card {
+      overflow: hidden;
+      position: relative;
+      background-size: cover;
+      background-position: center center;
     }
 
-    .wip-card p {
-      margin: 0 0 24px;
-      color: var(--navy-bg);
-      font-size: 18px;
+    .species-habitat-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(247, 241, 230, 0.9);
+      z-index: 0;
+    }
+
+    .species-habitat-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .species-habitat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .species-habitat-header h2 {
+      margin: 0;
+    }
+
+    .species-habitat-count {
+      font-weight: bold;
+      color: #17311e;
+    }
+
+    .species-habitat-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .species-habitat-toggle {
+      padding: 6px 10px;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .species-bird-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .species-bird-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0;
+      text-align: left;
+    }
+
+    .species-bird-button.is-active {
+      background: #17311e;
+    }
+
+    .species-bird-image {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      flex: 0 0 auto;
+      background: rgba(247, 241, 230, 0.75);
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      box-sizing: border-box;
+    }
+
+    .species-bird-text {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .species-bird-name {
+      display: block;
       font-weight: bold;
     }
 
-    .wip-card .menu-button {
+    .species-bird-meta {
+      display: block;
+      font-size: 14px;
+      opacity: 0.92;
+    }
+
+    .species-panel {
+      width: 100%;
+      min-height: 560px;
+      background: var(--action-panel-bg);
+    }
+
+    .species-panel-content {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .species-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .species-hero-image-shell {
+      flex: 0 0 220px;
+      max-width: 220px;
+      width: 100%;
+      background: rgba(247, 241, 230, 0.5);
+      border: 2px solid rgba(44, 62, 80, 0.4);
+      border-radius: 18px;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .species-hero-image {
+      width: 220px;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .species-hero-copy {
+      flex: 1 1 320px;
+      min-width: 260px;
+    }
+
+    .species-hero-copy h3 {
+      margin: 0 0 8px;
+      color: #17311e;
+      font-size: 30px;
+    }
+
+    .species-hero-copy p {
+      margin: 0 0 10px;
+      color: #2c3e50;
+      font-size: 17px;
+    }
+
+    .species-resource-box {
+      background: rgba(247, 241, 230, 0.45);
+      border: 2px solid rgba(44, 62, 80, 0.35);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+    }
+
+    .species-resource-box p {
       margin: 0;
-      min-width: 220px;
+    }
+
+    .species-resource-box p + p {
+      margin-top: 8px;
+    }
+
+    .species-status-note {
+      margin: -8px 0 0;
+      padding: 12px 16px;
+      background: rgba(247, 241, 230, 0.65);
+      border: 2px solid rgba(23, 49, 30, 0.25);
+      border-radius: 14px;
+      color: #17311e;
+      font-weight: bold;
+    }
+
+    .species-empty-note {
+      margin: 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #17311e;
+    }
+
+    .species-coming-soon-note {
+      margin: 14px 0 0;
+      font-size: 16px;
+      font-weight: bold;
+      color: #17311e;
       text-align: center;
+    }
+
+    .species-upgrade-entry {
+      background: rgba(247, 241, 230, 0.4);
+      border: 2px solid rgba(44, 62, 80, 0.35);
+      border-radius: 16px;
+      padding: 16px;
+      box-sizing: border-box;
+      margin-bottom: 14px;
+    }
+
+    .species-upgrade-entry h4 {
+      margin: 0 0 8px;
+      color: #17311e;
+      font-size: 22px;
+    }
+
+    .species-upgrade-entry p {
+      margin: 0 0 8px;
+      color: #2c3e50;
+    }
+
+    .species-upgrade-entry p:last-child {
+      margin-bottom: 0;
+    }
+
+    .species-upgrade-entry .menu-button {
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 980px) {
+      .page-layout {
+        flex-direction: column;
+      }
+
+      .species-sidebar,
+      .species-main {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="wip-overlay" role="dialog" aria-modal="true" aria-labelledby="wipTitle">
-    <div class="wip-card">
-      <h1 id="wipTitle">WORK IN PROGRESS</h1>
-      <p>Species Upgrades is still under construction.</p>
-      <a class="menu-button" href="aviary.html">Return to Aviary</a>
+  <div class="top-bar" id="topBar"></div>
+
+  <h1 class="page-title">SPECIES UPGRADES</h1>
+
+  <div class="page-layout">
+    <div class="species-sidebar">
+      <div class="card nav-card">
+        <a class="menu-button" href="index.html">Home</a>
+        <a class="menu-button" href="aviary.html">Aviary</a>
+        <a class="menu-button" href="birdCatching.html">Bird Catching</a>
+        <a class="menu-button" href="earthworks.html">Earthworks</a>
+        <a class="menu-button" href="dockyard.html">Dockyard</a>
+      </div>
+      <div id="speciesSidebarCards"></div>
+      <p class="species-coming-soon-note">More species coming soon</p>
+    </div>
+
+    <div class="species-main">
+      <div class="card species-panel">
+        <h2 class="panel-header">Species Upgrades</h2>
+        <div class="species-panel-content" id="speciesPanelContent"></div>
+      </div>
     </div>
   </div>
+
+  <script src="birds.js"></script>
+  <script src="abilities.js"></script>
+  <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
+  <script src="items.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const gameState = loadGameState();
+    initCloudSaveForCurrentPage(gameState, { reloadOnRemoteLoad: true });
+    const topBar = document.getElementById("topBar");
+    const speciesSidebarCards = document.getElementById("speciesSidebarCards");
+    const speciesPanelContent = document.getElementById("speciesPanelContent");
+    const habitatCardStates = {};
+    const HABITAT_BACKGROUND_IMAGES = {
+      "City Living": "/Resources/Habitat%20Backgrounds/cityLiving.jpg",
+      "Urban Waters": "/Resources/Habitat%20Backgrounds/urbanWaters.jpg"
+    };
+    let activeBirdId = null;
+    let speciesUpgradeStatusMessage = "";
+
+    function getHabitatBackgroundImage(habitatName) {
+      return HABITAT_BACKGROUND_IMAGES[habitatName] || "";
+    }
+
+    function getAcquiredBirdsByHabitat() {
+      const acquiredBirds = gameState.birds.filter(function (bird) {
+        return bird.acquired && isSpeciesUpgradeBirdVisible(bird.id);
+      });
+
+      return gameState.ownedHabitats
+        .map(function (habitatName) {
+          const birdsForHabitat = acquiredBirds.filter(function (bird) {
+            return bird.nativeHabitat === habitatName;
+          });
+
+          return {
+            habitatName: habitatName,
+            birds: birdsForHabitat
+          };
+        })
+        .filter(function (entry) {
+          return entry.birds.length > 0;
+        });
+    }
+
+    function ensureActiveBirdSelection() {
+      const acquiredBirdsByHabitat = getAcquiredBirdsByHabitat();
+      const acquiredBirds = acquiredBirdsByHabitat.flatMap(function (entry) {
+        return entry.birds;
+      });
+
+      if (acquiredBirds.length === 0) {
+        activeBirdId = null;
+        return null;
+      }
+
+      const stillOwnedBird = acquiredBirds.find(function (bird) {
+        return bird.id === activeBirdId;
+      });
+
+      if (!stillOwnedBird) {
+        activeBirdId = acquiredBirds[0].id;
+      }
+
+      return acquiredBirds.find(function (bird) {
+        return bird.id === activeBirdId;
+      });
+    }
+
+    function getDisplayedSpeciesUpgradeEntriesForBird(birdId) {
+      const directSpeciesUpgradeDefinitions = getSpeciesUpgradeDefinitionsForBird(birdId)
+        .map(function (speciesUpgradeDefinition) {
+          return {
+            source: "speciesUpgrade",
+            definition: speciesUpgradeDefinition
+          };
+        });
+
+      return directSpeciesUpgradeDefinitions.sort(function (leftEntry, rightEntry) {
+        return (leftEntry.definition.order || 0) - (rightEntry.definition.order || 0);
+      });
+    }
+
+    function createSpeciesUpgradeEntry(entry) {
+      const upgradeDefinition = entry.definition;
+      const isOwned = hasSpeciesUpgrade(gameState, upgradeDefinition.id);
+      const costSummary = getUpgradeCostSummary(upgradeDefinition);
+      const requirementSummary = getUpgradeRequirementSummary(gameState, upgradeDefinition);
+      const canPurchase = !isOwned && meetsSpeciesUpgradeRequirements(gameState, upgradeDefinition) && canAffordUpgrade(gameState, upgradeDefinition);
+      const entryShell = document.createElement("div");
+      entryShell.className = "species-upgrade-entry";
+
+      const title = document.createElement("h4");
+      title.textContent = upgradeDefinition.name + (isOwned ? " (Owned)" : "");
+      entryShell.appendChild(title);
+
+      const description = document.createElement("p");
+      description.textContent = upgradeDefinition.description || "No description available.";
+      entryShell.appendChild(description);
+
+      if (requirementSummary) {
+        const requirementLine = document.createElement("p");
+        requirementLine.innerHTML = "<strong>Requires:</strong> " + requirementSummary;
+        entryShell.appendChild(requirementLine);
+      }
+
+      const purchaseButton = document.createElement("button");
+      purchaseButton.className = "menu-button";
+      purchaseButton.type = "button";
+      purchaseButton.textContent = isOwned
+        ? "Purchased"
+        : ("Purchase" + (costSummary ? " (" + costSummary + ")" : ""));
+      purchaseButton.disabled = isOwned || !canPurchase;
+
+      if (purchaseButton.disabled) {
+        purchaseButton.classList.add("is-locked");
+      } else {
+        purchaseButton.addEventListener("click", function () {
+          updateCoinsFromElapsedTime(gameState, Date.now());
+          const didPurchase = purchaseSpeciesUpgrade(gameState, upgradeDefinition.id);
+
+          if (didPurchase) {
+            const grantedPickpocketRewards = collectPickpocketRewards(gameState, Date.now());
+            speciesUpgradeStatusMessage = grantedPickpocketRewards.length > 0
+              ? ("Pickpocket reward: " + grantedPickpocketRewards.map(function (rewardEntry) {
+                  return formatRewardEntryText(rewardEntry);
+                }).join(" | "))
+              : (upgradeDefinition.grantedAbilities && upgradeDefinition.grantedAbilities.includes("pickpocket")
+                  ? "Pickpocket is active. The next reward check happens at the next New York day reset."
+                  : "");
+            saveGameState(gameState);
+          }
+
+          if (didPurchase) {
+            playButtonSound();
+            renderSpeciesUpgradesPage();
+          }
+        });
+      }
+
+      entryShell.appendChild(purchaseButton);
+      return entryShell;
+    }
+
+    function renderSpeciesSidebar() {
+      const acquiredBirdsByHabitat = getAcquiredBirdsByHabitat();
+      speciesSidebarCards.innerHTML = "";
+
+      acquiredBirdsByHabitat.forEach(function (entry) {
+        const habitatCard = document.createElement("div");
+        habitatCard.className = "card species-habitat-card";
+        const habitatBackgroundImage = getHabitatBackgroundImage(entry.habitatName);
+
+        if (habitatBackgroundImage) {
+          habitatCard.style.backgroundImage = "url('" + habitatBackgroundImage + "')";
+        }
+
+        const habitatHeader = document.createElement("div");
+        habitatHeader.className = "species-habitat-header";
+
+        const habitatTitle = document.createElement("h2");
+        habitatTitle.textContent = entry.habitatName;
+
+        const habitatControls = document.createElement("div");
+        habitatControls.className = "species-habitat-controls";
+
+        const habitatCount = document.createElement("span");
+        habitatCount.className = "species-habitat-count";
+        habitatCount.textContent = entry.birds.length + " Unlocked";
+
+        const isCollapsed = habitatCardStates[entry.habitatName] === true;
+        const habitatToggle = document.createElement("button");
+        habitatToggle.className = "menu-button species-habitat-toggle";
+        habitatToggle.type = "button";
+        habitatToggle.textContent = isCollapsed ? "Expand" : "Minimize";
+        habitatToggle.addEventListener("click", function () {
+          habitatCardStates[entry.habitatName] = !isCollapsed;
+          renderSpeciesSidebar();
+        });
+
+        habitatControls.appendChild(habitatCount);
+        habitatControls.appendChild(habitatToggle);
+        habitatHeader.appendChild(habitatTitle);
+        habitatHeader.appendChild(habitatControls);
+        habitatCard.appendChild(habitatHeader);
+
+        if (!isCollapsed) {
+          const birdList = document.createElement("div");
+          birdList.className = "species-bird-list";
+
+          entry.birds.forEach(function (bird) {
+            const birdButton = document.createElement("button");
+            birdButton.className = "menu-button species-bird-button" + (bird.id === activeBirdId ? " is-active" : "");
+            birdButton.type = "button";
+            birdButton.addEventListener("click", function () {
+              activeBirdId = bird.id;
+              renderSpeciesUpgradesPage();
+            });
+
+            const birdImage = document.createElement("img");
+            birdImage.className = "species-bird-image";
+            birdImage.src = getBirdPrimaryImage(bird);
+            birdImage.alt = bird.species;
+
+            const birdText = document.createElement("span");
+            birdText.className = "species-bird-text";
+
+            const birdName = document.createElement("span");
+            birdName.className = "species-bird-name";
+            birdName.textContent = bird.species;
+
+            const birdMeta = document.createElement("span");
+            birdMeta.className = "species-bird-meta";
+            birdMeta.textContent = "Owned: " + bird.count;
+
+            birdText.appendChild(birdName);
+            birdText.appendChild(birdMeta);
+            birdButton.appendChild(birdImage);
+            birdButton.appendChild(birdText);
+            birdList.appendChild(birdButton);
+          });
+
+          habitatCard.appendChild(birdList);
+        }
+
+        speciesSidebarCards.appendChild(habitatCard);
+      });
+    }
+
+    function renderSpeciesPanel() {
+      const activeBird = ensureActiveBirdSelection();
+      speciesPanelContent.innerHTML = "";
+
+      if (!activeBird) {
+        const emptyNote = document.createElement("p");
+        emptyNote.className = "species-empty-note";
+        emptyNote.textContent = "No visible species upgrades are live yet for your unlocked birds.";
+        speciesPanelContent.appendChild(emptyNote);
+        return;
+      }
+
+      const displayedUpgradeEntries = getDisplayedSpeciesUpgradeEntriesForBird(activeBird.id);
+      const speciesHero = document.createElement("div");
+      speciesHero.className = "species-hero";
+
+      const speciesHeroImageShell = document.createElement("div");
+      speciesHeroImageShell.className = "species-hero-image-shell";
+
+      const speciesHeroImage = document.createElement("img");
+      speciesHeroImage.className = "species-hero-image";
+      speciesHeroImage.src = getBirdPrimaryImage(activeBird);
+      speciesHeroImage.alt = activeBird.species;
+
+      const speciesHeroCopy = document.createElement("div");
+      speciesHeroCopy.className = "species-hero-copy";
+      speciesHeroCopy.innerHTML =
+        "<h3>" + activeBird.species + "</h3>" +
+        "<p><strong>Scientific Name:</strong> " + (activeBird.scientificName || "Unknown") + "</p>" +
+        "<p><strong>Habitat:</strong> " + (activeBird.nativeHabitat || "Unknown") + "</p>" +
+        "<p><strong>Rarity:</strong> " + (activeBird.rarity || "Unknown") + "</p>" +
+        "<p><strong>Owned:</strong> " + activeBird.count + "</p>";
+
+      const speciesResourceBox = document.createElement("div");
+      speciesResourceBox.className = "species-resource-box";
+
+      const visitorsPerDay = getBirdVisitorRatePerDay(activeBird, gameState);
+      const seedsPerMinute = getBirdSeedRatePerMinute(activeBird, gameState);
+      const twigsPerMinute = getBirdTwigRatePerMinute(activeBird, gameState);
+      const grubsPerMinute = getBirdGrubRatePerMinute(activeBird, gameState);
+      const resourceLines = [];
+
+      if (visitorsPerDay > 0) {
+        resourceLines.push("Visitors: " + formatRateValue(visitorsPerDay) + "/day");
+      }
+      if (seedsPerMinute > 0) {
+        resourceLines.push("Seeds: " + formatRateValue(seedsPerMinute) + "/min");
+      }
+      if (twigsPerMinute > 0) {
+        resourceLines.push("Twigs: " + formatRateValue(twigsPerMinute) + "/min");
+      }
+      if (grubsPerMinute > 0) {
+        resourceLines.push("Grubs: " + formatRateValue(grubsPerMinute) + "/min");
+      }
+
+      if (resourceLines.length === 0) {
+        resourceLines.push("No passive resource generation on this species yet.");
+      }
+
+      resourceLines.forEach(function (resourceLineText) {
+        const resourceLine = document.createElement("p");
+        resourceLine.textContent = resourceLineText;
+        speciesResourceBox.appendChild(resourceLine);
+      });
+
+      speciesHeroImageShell.appendChild(speciesHeroImage);
+      speciesHero.appendChild(speciesHeroImageShell);
+      speciesHero.appendChild(speciesHeroCopy);
+      speciesPanelContent.appendChild(speciesHero);
+      speciesPanelContent.appendChild(speciesResourceBox);
+
+      if (speciesUpgradeStatusMessage) {
+        const statusNote = document.createElement("p");
+        statusNote.className = "species-status-note";
+        statusNote.textContent = speciesUpgradeStatusMessage;
+        speciesPanelContent.appendChild(statusNote);
+      }
+
+      if (displayedUpgradeEntries.length === 0) {
+        const emptyNote = document.createElement("p");
+        emptyNote.className = "species-empty-note";
+        emptyNote.textContent = "No species-specific upgrades assigned to this bird yet.";
+        speciesPanelContent.appendChild(emptyNote);
+        return;
+      }
+
+      displayedUpgradeEntries.forEach(function (entry) {
+        speciesPanelContent.appendChild(createSpeciesUpgradeEntry(entry));
+      });
+    }
+
+    function renderSpeciesUpgradesPage() {
+      renderTopBar(topBar, gameState);
+      renderSpeciesSidebar();
+      renderSpeciesPanel();
+    }
+
+    updateCoinsFromElapsedTime(gameState, Date.now());
+    renderSpeciesUpgradesPage();
+    initButtonAudio();
+    initViewportAwareTooltips();
+    ensureSharedUpgradeUi();
+    syncUpgradeInteractionPreference(gameState);
+    startIncomeSystem(gameState, function () {
+      renderTopBar(topBar, gameState);
+    });
+  </script>
 </body>
 </html>

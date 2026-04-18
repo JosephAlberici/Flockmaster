@@ -362,6 +362,7 @@
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -415,7 +416,7 @@
       const birdEntry = document.createElement("div");
       birdEntry.className = "compendium-entry compendium-bestiary-entry";
       const isAcquired = getAcquiredStatus(bird);
-      const birdAbilityNames = getBirdAbilityNames(bird);
+      const birdAbilityNames = getBirdAbilityNamesForGameState(bird, gameState);
       const baseBestiaryScale = typeof bird.habitatScale === "number" ? bird.habitatScale : 1;
       const metaBlock = document.createElement("div");
       metaBlock.className = "compendium-bestiary-meta";

@@ -13,14 +13,9 @@ const BIRD_CATCHING_UPGRADES = {
     oneTime: true,
     costs: { twigs: 2000 },
     requirements: { commonIndividuals: 10 },
-    description: "-5% Common, +4% Uncommon, +1% Rare",
-    modifyRarityWeights(rarityWeights) {
-      return {
-        ...rarityWeights,
-        Common: rarityWeights.Common - 5,
-        Uncommon: rarityWeights.Uncommon + 4,
-        Rare: rarityWeights.Rare + 1
-      };
+    description: "+5% Catch Rate",
+    modifyCatchRate(catchRate) {
+      return catchRate + 0.05;
     }
   },
   advancedBedding: {
@@ -32,10 +27,37 @@ const BIRD_CATCHING_UPGRADES = {
     order: 2,
     oneTime: true,
     costs: { hardwood: 20 },
-    requirements: { individuals: 25 },
-    description: "+5% Catch Rate",
+    requirements: { individuals: 60 },
+    description: "-5% Common, +4% Uncommon, +1% Rare",
+    modifyRarityWeights(rarityWeights) {
+      return {
+        ...rarityWeights,
+        Common: rarityWeights.Common - 5,
+        Uncommon: rarityWeights.Uncommon + 4,
+        Rare: rarityWeights.Rare + 1
+      };
+    }
+  },
+  plushBedding: {
+    id: "plushBedding",
+    name: "Plush Bedding",
+    page: "birdCatching",
+    section: "bedding",
+    order: 3,
+    oneTime: true,
+    costs: { feathers: 10 },
+    requirements: { individuals: 120 },
+    description: "+5% Catch Rate, -1% Common, +0.5% Epic, +0.5% Legendary",
     modifyCatchRate(catchRate) {
       return catchRate + 0.05;
+    },
+    modifyRarityWeights(rarityWeights) {
+      return {
+        ...rarityWeights,
+        Common: rarityWeights.Common - 1,
+        Epic: rarityWeights.Epic + 0.5,
+        Legendary: rarityWeights.Legendary + 0.5
+      };
     }
   },
   seedPouch: {
@@ -61,7 +83,7 @@ const BIRD_CATCHING_UPGRADES = {
     section: "storage",
     order: 2,
     oneTime: true,
-    costs: { coins: 20000 },
+    costs: { coins: 10000 },
     description: "Increases maximum seeds to 100,000",
     deriveOwned(gameState) {
       return gameState.seedMax >= 100000;
@@ -96,7 +118,7 @@ const EARTHWORKS_UPGRADES = {
     section: "construction",
     order: 1,
     oneTime: true,
-    costs: { grubs: 1000 },
+    costs: { grubs: 500 },
     description: "Constructs the grub farm and unlocks passive grub conversion",
     deriveOwned(gameState) {
       return gameState.grubFarmUnlocked === true;
@@ -115,7 +137,7 @@ const EARTHWORKS_UPGRADES = {
     section: "construction",
     order: 2,
     oneTime: true,
-    costs: { twigs: 15000 },
+    costs: { twigs: 7500 },
     description: "Constructs the sawmill and unlocks twig processing",
     deriveOwned(gameState) {
       return gameState.sawmillConstructed === true;
@@ -138,6 +160,24 @@ const EARTHWORKS_UPGRADES = {
       gameState.grubsPerClick += 2;
     }
   },
+  stickyFingers: {
+    id: "stickyFingers",
+    name: "Sticky Fingers",
+    page: "earthworks",
+    section: "grubsPerClick",
+    order: 2,
+    oneTime: true,
+    costs: { coins: 1500 },
+    requirements: {
+      dietIndividuals: {
+        grubs: 10
+      }
+    },
+    description: "Increases grubs per click by another 2",
+    onPurchase(gameState) {
+      gameState.grubsPerClick += 2;
+    }
+  },
   grubBarn: {
     id: "grubBarn",
     name: "Grub Barn",
@@ -146,12 +186,12 @@ const EARTHWORKS_UPGRADES = {
     order: 1,
     oneTime: true,
     costs: { hardwood: 50 },
-    description: "Increases maximum grubs to 100k",
+    description: "Increases maximum grubs to 50k",
     deriveOwned(gameState) {
-      return gameState.grubMax >= 100000;
+      return gameState.grubMax >= 50000;
     },
     onPurchase(gameState) {
-      gameState.grubMax = Math.max(gameState.grubMax, 100000);
+      gameState.grubMax = Math.max(gameState.grubMax, 50000);
     }
   },
   birdPoweredBlades: {
@@ -169,6 +209,38 @@ const EARTHWORKS_UPGRADES = {
     },
     modifySawmillProcessingDurationMs(processingDurationMs) {
       return processingDurationMs * 0.8;
+    }
+  },
+  oakLogs: {
+    id: "oakLogs",
+    name: "Oak Logs",
+    page: "earthworks",
+    section: "hardwoodYield",
+    order: 1,
+    oneTime: true,
+    costs: { coins: 10000 },
+    description: "Increases hardwood yield by 5",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructSawmill");
+    },
+    modifySawmillHardwoodYield(hardwoodYield) {
+      return hardwoodYield + 5;
+    }
+  },
+  redwoodLogs: {
+    id: "redwoodLogs",
+    name: "Redwood Logs",
+    page: "earthworks",
+    section: "hardwoodYield",
+    order: 2,
+    oneTime: true,
+    costs: { coins: 50000 },
+    description: "Increases hardwood yield by another 5",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructSawmill");
+    },
+    modifySawmillHardwoodYield(hardwoodYield) {
+      return hardwoodYield + 5;
     }
   },
   twigCompactor: {
@@ -232,63 +304,6 @@ const AVIARY_UPGRADES = {
       return Boolean(gameState.upgrades && gameState.upgrades.orangeSeeds === true);
     }
   },
-  seedDispersal: {
-    id: "seedDispersal",
-    legacyPurchasedKey: "seedDispersalPurchased",
-    name: "Seed Dispersal",
-    page: "aviary",
-    section: "resourceGeneration",
-    order: 1,
-    oneTime: true,
-    costs: { birds: { mourningdove: 2 } },
-    description: "Grants a free Pear Tree and increases the Pear Tree max by 1",
-    modifyTreeMaxCount(maxTreeCount, context) {
-      if (context.treeKey === "pearTrees") {
-        return maxTreeCount + 1;
-      }
-
-      return maxTreeCount;
-    },
-    onPurchase(gameState) {
-      gameState.pearTrees += 1;
-    }
-  },
-  murderParty: {
-    id: "murderParty",
-    legacyPurchasedKey: "murderPartyPurchased",
-    name: "Murder Party",
-    page: "aviary",
-    section: "populationBonuses",
-    order: 1,
-    oneTime: true,
-    costs: { birds: { crow: 3 } },
-    description: "Doubles visitors per day generated by crows",
-    modifyVisitorsPerDay(visitorRate, context) {
-      if (context.bird.id === "crow") {
-        return visitorRate * 2;
-      }
-
-      return visitorRate;
-    }
-  },
-  turtleWake: {
-    id: "turtleWake",
-    legacyPurchasedKey: "turtleWakePurchased",
-    name: "Turtle Wake",
-    page: "aviary",
-    section: "populationBonuses",
-    order: 2,
-    oneTime: true,
-    costs: { birds: { mourningdove: 5 } },
-    description: "Mourning Doves start generating 2.4 twigs per minute",
-    modifyTwigRatePerMinute(twigRate, context) {
-      if (context.bird.id === "mourningdove") {
-        return twigRate + 2.4;
-      }
-
-      return twigRate;
-    }
-  },
   humblePark: {
     id: "humblePark",
     name: "Humble Park",
@@ -303,6 +318,34 @@ const AVIARY_UPGRADES = {
       gameState.federalGrantPerMinute = Math.max(gameState.federalGrantPerMinute, 25);
     }
   },
+  burgeoningBirdscape: {
+    id: "burgeoningBirdscape",
+    name: "Burgeoning Birdscape",
+    page: "aviary",
+    section: "fundraising",
+    order: 2,
+    oneTime: true,
+    costs: {},
+    requirements: { individuals: 100, visitorsPerDay: 200 },
+    description: "Increases Federal Grant by 25 coins per minute",
+    onPurchase(gameState) {
+      gameState.federalGrantPerMinute += 25;
+    }
+  },
+  grandBirdapestHotel: {
+    id: "grandBirdapestHotel",
+    name: "Grand Birdapest Hotel",
+    page: "aviary",
+    section: "fundraising",
+    order: 3,
+    oneTime: true,
+    costs: {},
+    requirements: { individuals: 150, visitorsPerDay: 350 },
+    description: "Increases Federal Grant by 50 coins per minute",
+    onPurchase(gameState) {
+      gameState.federalGrantPerMinute += 50;
+    }
+  },
   cafe: {
     id: "cafe",
     legacyPurchasedKey: "cafePurchased",
@@ -313,9 +356,46 @@ const AVIARY_UPGRADES = {
     oneTime: true,
     costs: { twigs: 200 },
     requirements: { species: 5 },
-    description: "Adds +20 coins per visitor",
+    description: "Adds +50 coins per visitor",
     modifyCoinsPerVisitorRate(coinsPerVisitorRate) {
-      return coinsPerVisitorRate + 20;
+      return coinsPerVisitorRate + 50;
+    }
+  },
+  ornithologyLab: {
+    id: "ornithologyLab",
+    name: "Ornithology Lab",
+    page: "aviary",
+    section: "amenities",
+    order: 2,
+    oneTime: true,
+    costs: { hardwood: 10 },
+    requirements: { species: 15 },
+    description: "Adds +100 coins per visitor and +5 Federal Grant coins per minute",
+    modifyCoinsPerVisitorRate(coinsPerVisitorRate) {
+      return coinsPerVisitorRate + 100;
+    },
+    onPurchase(gameState) {
+      gameState.federalGrantPerMinute += 5;
+    }
+  },
+  cushionedSeating: {
+    id: "cushionedSeating",
+    name: "Cushioned Seating",
+    page: "aviary",
+    section: "amenities",
+    order: 3,
+    oneTime: true,
+    costs: { feathers: 20 },
+    requirements: { species: 20 },
+    description: "Adds +100 coins per visitor and +10 visitors per day for each habitat you have",
+    modifyCoinsPerVisitorRate(coinsPerVisitorRate) {
+      return coinsPerVisitorRate + 100;
+    },
+    modifyTotalVisitorsPerDay(totalVisitorsPerDay, context) {
+      const ownedHabitats = context && context.gameState && Array.isArray(context.gameState.ownedHabitats)
+        ? context.gameState.ownedHabitats.length
+        : 0;
+      return totalVisitorsPerDay + (ownedHabitats * 10);
     }
   },
   basket: {
@@ -372,11 +452,49 @@ const DOCKYARD_UPGRADES = {
     section: "harbor",
     order: 1,
     oneTime: true,
-    costs: { hardwood: 100, coins: 10000 },
+    costs: { hardwood: 40, coins: 10000 },
     description: "Unlocks Harbor voyages and grants 2 Voyage Tickets",
     onPurchase(gameState) {
       addItemCount(gameState, "voyageticket", 2);
       gameState.dockyardHarborGiftPending = true;
+    }
+  },
+  constructLighthouse: {
+    id: "constructLighthouse",
+    name: "Construct Lighthouse",
+    page: "dockyard",
+    section: "harbor",
+    order: 2,
+    oneTime: true,
+    costs: { scrap: 15, hardwood: 25 },
+    description: "Access to new upgrades for voyages and reduces voyage duration by 5 minutes",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructHarbor");
+    },
+    onPurchase(gameState) {
+      gameState.dockyardVoyageDurationMs = Math.max(
+        10 * 60 * 1000,
+        gameState.dockyardVoyageDurationMs - (5 * 60 * 1000)
+      );
+    }
+  },
+  installBeacon: {
+    id: "installBeacon",
+    name: "Install Beacon",
+    page: "dockyard",
+    section: "harbor",
+    order: 2.5,
+    oneTime: true,
+    costs: { coins: 25000 },
+    description: "Reduces voyage duration by 10 minutes",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructLighthouse");
+    },
+    onPurchase(gameState) {
+      gameState.dockyardVoyageDurationMs = Math.max(
+        10 * 60 * 1000,
+        gameState.dockyardVoyageDurationMs - (10 * 60 * 1000)
+      );
     }
   },
   dredger: {
@@ -384,9 +502,9 @@ const DOCKYARD_UPGRADES = {
     name: "Dredger",
     page: "dockyard",
     section: "harbor",
-    order: 2,
+    order: 3,
     oneTime: true,
-    costs: { coins: 25000 },
+    costs: { coins: 20000 },
     description: "Adds 5 scrap and 5% treasure chance to each voyage",
     canPurchase(gameState) {
       return hasUpgrade(gameState, "constructHarbor");
@@ -394,6 +512,22 @@ const DOCKYARD_UPGRADES = {
     onPurchase(gameState) {
       gameState.dockyardScrapPerVoyage += 5;
       gameState.dockyardTreasureChance += 0.05;
+    }
+  },
+  trawlNets: {
+    id: "trawlNets",
+    name: "Trawl Nets",
+    page: "dockyard",
+    section: "harbor",
+    order: 4,
+    oneTime: true,
+    costs: { coins: 40000 },
+    description: "Adds 10 fish to each voyage",
+    canPurchase(gameState) {
+      return hasUpgrade(gameState, "constructHarbor");
+    },
+    onPurchase(gameState) {
+      gameState.dockyardFishPerVoyage += 10;
     }
   }
 };

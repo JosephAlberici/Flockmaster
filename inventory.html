@@ -157,6 +157,16 @@
       font-weight: bold;
       color: #2c3e50;
     }
+
+    .inventory-item-action {
+      margin-top: 10px;
+    }
+
+    .inventory-item-action .menu-button {
+      margin: 0;
+      padding: 8px 16px;
+      font-size: 15px;
+    }
   </style>
 </head>
 <body>
@@ -200,6 +210,7 @@
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -249,6 +260,7 @@
       const materialRows = [
         { label: "Seeds", value: formatSeeds(gameState.seeds) },
         { label: "Grubs", value: formatLargeNumber(gameState.grubs) },
+        { label: "Feathers", value: formatLargeNumber(gameState.feathers) },
         { label: "Hardwood", value: formatLargeNumber(gameState.hardwood) },
         { label: "Mice", value: formatLargeNumber(gameState.mice) },
         { label: "Fish", value: formatLargeNumber(gameState.fish) },
@@ -321,6 +333,40 @@
         itemFigure.appendChild(itemVisual);
         itemFigure.appendChild(countLine);
         itemFigure.appendChild(nameLine);
+
+        if (item.inventoryUsable) {
+          const actionShell = document.createElement("div");
+          actionShell.className = "inventory-item-action";
+
+          const useButton = document.createElement("button");
+          useButton.className = "menu-button";
+          useButton.type = "button";
+          useButton.dataset.requiresSuccess = "true";
+          useButton.textContent = "Use";
+
+          if (!canUseInventoryItem(gameState, item.id)) {
+            useButton.classList.add("is-locked");
+          }
+
+          useButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            updateCoinsFromElapsedTime(gameState, Date.now());
+
+            if (!useInventoryItem(gameState, item.id)) {
+              return;
+            }
+
+            playButtonSound();
+            saveGameState(gameState);
+            renderTopBar(topBar, gameState);
+            renderResources();
+            renderInventory();
+          });
+
+          actionShell.appendChild(useButton);
+          itemFigure.appendChild(actionShell);
+        }
+
         inventoryGrid.appendChild(itemFigure);
       });
     }

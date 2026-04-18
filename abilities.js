@@ -35,11 +35,11 @@ const ABILITIES = {
   },
   mascot: {
     name: "Mascot",
-    description: "Increases coins per visitor by 0.05 per mascot species acquired",
+    description: "Increases coins per visitor by 100 per mascot species acquired",
 
     // Reward broad flock variety rather than raw mascot headcount.
     modifyCoinsPerVisitorRate(currentCoinsPerVisitorRate, context) {
-      return currentCoinsPerVisitorRate + (context.totalSpecies * 0.05);
+      return currentCoinsPerVisitorRate + (context.totalSpecies * 100);
     }
   },
   mudSweeper: {
@@ -119,5 +119,9 @@ const ABILITIES = {
     modifyTrapSeedCost(currentCost, context) {
       return currentCost * Math.pow(0.8, context.totalIndividuals);
     }
+  },
+  prizedFalconry: {
+    name: "Prized Falconry",
+    description: "Can be fed 10 Rock Ptarmigans in the Aviary to receive 1 feeder mouse"
   }
 };

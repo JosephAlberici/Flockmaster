@@ -248,6 +248,85 @@
       text-align: center;
     }
 
+    .reintroduction-quest-title {
+      margin: 0 0 14px;
+      font-size: 24px;
+      color: #17311e;
+      text-align: center;
+    }
+
+    .reintroduction-bird-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      width: 100%;
+      margin: 0 0 18px;
+    }
+
+    .reintroduction-bird-card {
+      background: rgba(247, 241, 230, 0.55);
+      border: 2px solid rgba(44, 62, 80, 0.3);
+      border-radius: 16px;
+      padding: 12px;
+      box-sizing: border-box;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .reintroduction-bird-card:hover,
+    .reintroduction-bird-card:focus-visible {
+      border-color: #17311e;
+      box-shadow: 0 4px 12px rgba(23, 49, 30, 0.16);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .reintroduction-bird-card.is-selected {
+      border-color: #b8860b;
+      box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.22);
+    }
+
+    .reintroduction-bird-card.is-complete {
+      opacity: 0.68;
+      cursor: default;
+    }
+
+    .reintroduction-bird-card.is-complete:hover,
+    .reintroduction-bird-card.is-complete:focus-visible {
+      border-color: rgba(44, 62, 80, 0.3);
+      box-shadow: none;
+      transform: none;
+    }
+
+    .reintroduction-bird-card img {
+      width: 100%;
+      max-width: 140px;
+      height: 120px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 10px;
+    }
+
+    .reintroduction-bird-name {
+      margin: 0 0 6px;
+      font-weight: bold;
+      color: #17311e;
+    }
+
+    .reintroduction-bird-count {
+      margin: 0;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .reintroduction-preview {
+      margin: 0 0 18px;
+      color: #2c3e50;
+      font-weight: bold;
+      text-align: center;
+    }
+
     .mouse-intro-overlay {
       position: fixed;
       inset: 0;
@@ -287,13 +366,18 @@
       margin-bottom: 24px;
     }
 
-    .loggerhead-image {
-      width: 100%;
-      max-width: 560px;
-      max-height: 320px;
-      margin-bottom: 20px;
-      cursor: pointer;
-    }
+      .loggerhead-image {
+        width: 100%;
+        max-width: 560px;
+        height: auto;
+        max-height: 320px;
+        margin-bottom: 20px;
+        object-fit: contain;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        cursor: pointer;
+      }
 
     .ritual-image-stack {
       position: relative;
@@ -581,7 +665,7 @@
           <a class="menu-button" href="aviary.html">Aviary</a>
           <span class="nav-tooltip" id="earthworksNavWrapper"></span>
           <span class="nav-tooltip" id="dockyardNavWrapper"></span>
-          <span class="menu-button is-locked" title="Species Upgrades is a work in progress">Species Upgrades</span>
+          <a class="menu-button" href="speciesUpgrades.html">Species Upgrades</a>
         </div>
 
       <div class="card" id="upgradesCard">
@@ -598,10 +682,10 @@
 
     <div class="catching-panels">
       <div class="catching-panel action-panel" id="trapPanelShell">
-        <div class="panel-header-row">
-          <h2 class="panel-header">Check Trap</h2>
-          <div class="panel-controls" id="trapPanelControls"></div>
-        </div>
+          <div class="panel-header-row">
+            <h2 class="panel-header">Catching</h2>
+            <div class="panel-controls" id="trapPanelControls"></div>
+          </div>
         <div class="trap-panel-content" id="trapPanelContent"></div>
       </div>
 
@@ -611,6 +695,14 @@
           <div class="panel-controls" id="loggerheadPanelControls"></div>
         </div>
         <div class="trap-panel-content" id="loggerheadPanelContent"></div>
+      </div>
+
+      <div class="catching-panel action-panel" id="natureProgramsPanelShell">
+        <div class="panel-header-row">
+          <h2 class="panel-header">Nature Programs</h2>
+          <div class="panel-controls" id="natureProgramsPanelControls"></div>
+        </div>
+        <div class="trap-panel-content" id="natureProgramsPanelContent"></div>
       </div>
     </div>
   </div>
@@ -625,6 +717,7 @@
   <script src="birds.js"></script>
   <script src="abilities.js"></script>
   <script src="upgrades.js"></script>
+  <script src="speciesUpgrades.js"></script>
   <script src="items.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -643,6 +736,9 @@
     const loggerheadPanelShell = document.querySelector("#loggerheadPanelShell");
     const loggerheadPanelControls = document.querySelector("#loggerheadPanelControls");
     const loggerheadPanelContent = document.querySelector("#loggerheadPanelContent");
+    const natureProgramsPanelShell = document.querySelector("#natureProgramsPanelShell");
+    const natureProgramsPanelControls = document.querySelector("#natureProgramsPanelControls");
+    const natureProgramsPanelContent = document.querySelector("#natureProgramsPanelContent");
     const catchOverlay = document.querySelector("#catchOverlay");
     const catchOverlayImage = document.querySelector("#catchOverlayImage");
     const catchOverlayText = document.querySelector("#catchOverlayText");
@@ -654,18 +750,18 @@
     const shrikeSound = new Audio("/Resources/Calls/shrike.mp3");
     const sacrificeCompleteSound = new Audio("/Resources/Sound%20Effects/sacrificeComplete.wav");
     const LOGGERHEAD_REQUESTS = [
-      {
-        costs: [
-          { birdId: "pigeon", amount: 10 },
-          { birdId: "nuthatch", amount: 10 }
-        ],
-        rewardMice: 1
-      },
+        {
+          costs: [
+            { birdId: "pigeon", amount: 10 },
+            { birdId: "nuthatch", amount: 5 }
+          ],
+          rewardMice: 1
+        },
       {
         costs: [
           { birdId: "kestrel", amount: 5 },
           { birdId: "bluejay", amount: 5 },
-          { birdId: "cardinal", amount: 5 },
+          { birdId: "cardinal", amount: 3 },
           { birdId: "mourningdove", amount: 5 },
           { birdId: "pileatedwoodpecker", amount: 2 }
         ],
@@ -674,13 +770,81 @@
           voyageticket: 2
         },
         rewardResources: {
-          seeds: 100000
+          seeds: 50000
         }
       }
     ];
-    let activeTrapPanelMode = gameState.trapPurchased ? "trap" : "minimize";
-    let activeLoggerheadMode = "minimize";
-    let activeUpgradeCardMode = "expand";
+    const REINTRODUCTION_REQUESTS = [
+      {
+        name: "Waterfowl Wave",
+        costs: [
+          { birdId: "goose", amount: 5 },
+          { birdId: "mallard", amount: 5 }
+        ],
+        rewardItems: {
+          coinhourticket: 2
+        }
+      },
+      {
+        name: "Shorebird Sayonara",
+        costs: [
+          { birdId: "killdeer", amount: 5 },
+          { birdId: "sandpiper", amount: 5 }
+        ]
+      },
+        {
+          name: "Feathered Farewell",
+          costs: [
+            { birdId: "muteswan", amount: 2 },
+            { birdId: "cardinal", amount: 4 }
+          ]
+        },
+        {
+          name: "Avian Au Revoir",
+          costs: [
+            { birdId: "kestrel", amount: 5 },
+            { birdId: "grebe", amount: 10 }
+          ]
+        },
+        {
+          name: "Castaway Corvids",
+          costs: [
+            { birdId: "bluejay", amount: 5 },
+            { birdId: "crow", amount: 10 }
+          ]
+        }
+      ];
+      let activeTrapPanelMode = gameState.trapPurchased ? "trap" : "minimize";
+      let activeLoggerheadMode = "minimize";
+      let activeNatureProgramsMode = "minimize";
+      let activeUpgradeCardMode = "expand";
+      let selectedReintroductionBirdId = null;
+
+      function syncGyrfalconUnlockState() {
+        if (!gameState.gyrfalconUnlocked && getBirdCountById(gameState, "ptarmigan") > 0) {
+          gameState.gyrfalconUnlocked = true;
+          saveGameState(gameState);
+        }
+
+        if (!gameState.gyrfalconCompleted && getBirdCountById(gameState, "gyrfalcon") > 0) {
+          gameState.gyrfalconCompleted = true;
+          gameState.gyrfalconReadyToCollect = false;
+          gameState.gyrfalconLastResult = "";
+          saveGameState(gameState);
+        }
+      }
+
+      function isGyrfalconUnlocked() {
+        return gameState.gyrfalconUnlocked === true;
+      }
+
+      function isGyrfalconCompleted() {
+        return gameState.gyrfalconCompleted === true || getBirdCountById(gameState, "gyrfalcon") > 0;
+      }
+
+      function getGyrfalconSuccessChance() {
+        return 0.01 + (gameState.gyrfalconReleaseCount * 0.001);
+      }
 
     function getLoggerheadCurrentRequest() {
       return LOGGERHEAD_REQUESTS[gameState.loggerheadQuestIndex] || null;
@@ -692,6 +856,71 @@
 
     function isLoggerheadSpendMiceUnlocked() {
       return gameState.loggerheadQuestIndex >= 1;
+    }
+
+    function isReintroductionUnlocked() {
+      return gameState.reintroductionUnlocked === true;
+    }
+
+    function getCurrentReintroductionRequest() {
+      return REINTRODUCTION_REQUESTS[gameState.reintroductionQuestIndex] || null;
+    }
+
+    function canStartNextReintroductionQuest() {
+      return getEffectiveBaitCostDietIndividualCount(gameState, "seeds") > 50;
+    }
+
+    function canCompleteReintroductionRequest(request) {
+      if (!request) {
+        return false;
+      }
+
+      return request.costs.every(function (costEntry) {
+        return getBirdCountById(gameState, costEntry.birdId) >= costEntry.amount;
+      });
+    }
+
+    function getReintroductionPreviewLines(costEntry) {
+      const bird = getBirdById(gameState, costEntry.birdId);
+
+      if (!bird) {
+        return [];
+      }
+
+      const amount = costEntry.amount;
+      const previewLines = [];
+      const visitorLoss = getBirdVisitorRatePerDay(bird, gameState) * amount;
+      const seedLoss = getBirdSeedRatePerMinute(bird, gameState) * amount;
+      const twigLoss = getBirdTwigRatePerMinute(bird, gameState) * amount;
+      const grubLoss = getBirdGrubRatePerMinute(bird, gameState) * amount;
+
+      if (visitorLoss > 0) {
+        previewLines.push("-" + formatRateValue(visitorLoss) + " visitors/day");
+      }
+
+      if (seedLoss > 0) {
+        previewLines.push("-" + formatRateValue(seedLoss) + " seeds/min");
+      }
+
+      if (twigLoss > 0) {
+        previewLines.push("-" + formatRateValue(twigLoss) + " twigs/min");
+      }
+
+      if (grubLoss > 0) {
+        previewLines.push("-" + formatRateValue(grubLoss) + " grubs/min");
+      }
+
+      if (birdMatchesBaitType(bird, "seeds")) {
+        previewLines.push("Seed bait -> " + formatLargeNumber(Math.round(getProjectedTrapSeedCost(gameState, costEntry.birdId, amount))));
+      }
+
+      if (birdMatchesBaitType(bird, "grubs")) {
+        previewLines.push("Grub bait -> " + formatLargeNumber(Math.round(getProjectedTrapGrubCost(gameState, costEntry.birdId, amount))));
+      }
+
+      previewLines.push("+" + formatLargeNumber(amount) + " Feathers");
+
+      return previewLines;
     }
 
     function openMouseIntroOverlay() {
@@ -899,9 +1128,10 @@
       button.type = "button";
       button.style.width = "100%";
       button.style.marginRight = "0";
+      const costSummary = getUpgradeCostSummary(upgradeDefinition);
       button.textContent = hasUpgrade(gameState, config.upgradeId)
         ? upgradeDefinition.name + " (Owned)"
-        : upgradeDefinition.name;
+        : (costSummary ? (upgradeDefinition.name + " (" + costSummary + ")") : upgradeDefinition.name);
       syncOwnedUpgradeButtonState(button, gameState, config.upgradeId);
 
       button.addEventListener("click", function () {
@@ -922,30 +1152,15 @@
 
       const requirementLine = document.createElement("p");
       requirementLine.className = "shop-count";
-      const requirementParts = [];
-
-      if (typeof upgradeDefinition.costs.twigs === "number") {
-        requirementParts.push(formatLargeNumber(upgradeDefinition.costs.twigs) + " Twigs");
-      }
-
-      if (typeof upgradeDefinition.costs.hardwood === "number") {
-        requirementParts.push(formatLargeNumber(upgradeDefinition.costs.hardwood) + " Hardwood");
-      }
-
-      if (typeof upgradeDefinition.requirements.commonIndividuals === "number") {
-        requirementParts.push(formatLargeNumber(upgradeDefinition.requirements.commonIndividuals) + " Common Birds");
-      }
-
-      if (typeof upgradeDefinition.requirements.individuals === "number") {
-        requirementParts.push(formatLargeNumber(upgradeDefinition.requirements.individuals) + " Individuals");
-      }
-
-      requirementLine.textContent = "Requires: " + requirementParts.join(" | ");
+      const requirementSummary = getUpgradeRequirementSummary(gameState, upgradeDefinition);
+      requirementLine.textContent = requirementSummary ? ("Requires: " + requirementSummary) : "";
 
       tooltipWrapper.appendChild(button);
       tooltipWrapper.appendChild(tooltipBox);
       wrapper.appendChild(tooltipWrapper);
-      wrapper.appendChild(requirementLine);
+      if (requirementSummary) {
+        wrapper.appendChild(requirementLine);
+      }
 
       return wrapper;
     }
@@ -999,13 +1214,18 @@
     function renderSaplingShop() {}
 
     // Rebuild the trap panel based on the active tab and the trap's current step.
-    function renderTrapPanel() {
-      trapPanelControls.innerHTML = "";
-      trapPanelContent.innerHTML = "";
-      trapPanelShell.classList.toggle("is-collapsed", activeTrapPanelMode === "minimize");
+      function renderTrapPanel() {
+        syncGyrfalconUnlockState();
+        trapPanelControls.innerHTML = "";
+        trapPanelContent.innerHTML = "";
+        trapPanelShell.classList.toggle("is-collapsed", activeTrapPanelMode === "minimize");
 
-      trapPanelControls.appendChild(createPanelTabControl({
-        label: "Minimize",
+        if (activeTrapPanelMode === "gyrfalcon" && isGyrfalconCompleted()) {
+          activeTrapPanelMode = gameState.trapPurchased ? "trap" : "minimize";
+        }
+
+        trapPanelControls.appendChild(createPanelTabControl({
+          label: "Minimize",
         isActive: activeTrapPanelMode === "minimize",
         isLocked: false,
         onActivate: function () {
@@ -1014,23 +1234,133 @@
         }
       }));
 
-      trapPanelControls.appendChild(createPanelTabControl({
-        label: "Trap",
-        isActive: activeTrapPanelMode === "trap",
+        trapPanelControls.appendChild(createPanelTabControl({
+          label: "Trap",
+          isActive: activeTrapPanelMode === "trap",
         isLocked: !gameState.trapPurchased,
         tooltipText: "Purchase Buy Trap in Upgrades to unlock",
         onActivate: function () {
           activeTrapPanelMode = "trap";
           renderTrapPanel();
+          }
+        }));
+
+        if (isGyrfalconUnlocked() && !isGyrfalconCompleted()) {
+          trapPanelControls.appendChild(createPanelTabControl({
+            label: "Gyrfalcon",
+            isActive: activeTrapPanelMode === "gyrfalcon",
+            isLocked: false,
+            onActivate: function () {
+              activeTrapPanelMode = "gyrfalcon";
+              renderTrapPanel();
+            }
+          }));
         }
-      }));
 
-      if (activeTrapPanelMode === "minimize" || !gameState.trapPurchased) {
-        return;
-      }
+        if (activeTrapPanelMode === "minimize") {
+          return;
+        }
 
-      // The note and image always reflect the trap's current step so the panel
-      // can swap between baiting, waiting, and resolution without separate views.
+        if (activeTrapPanelMode === "gyrfalcon") {
+          const gyrfalconNote = document.createElement("p");
+          gyrfalconNote.className = "panel-note";
+          gyrfalconNote.textContent = "Release Rock Ptarmigans to try and catch the legendary Gyrfalcon";
+
+          const gyrfalconRateLine = document.createElement("p");
+          gyrfalconRateLine.className = "panel-subtitle-small";
+          gyrfalconRateLine.textContent = "Current rate of success: " + (getGyrfalconSuccessChance() * 100).toFixed(1) + "%";
+
+          const gyrfalconBirdImage = document.createElement("img");
+          gyrfalconBirdImage.className = "loggerhead-image";
+          gyrfalconBirdImage.src = gameState.gyrfalconReadyToCollect
+            ? "/Resources/Bird Images/gyrfalcon.png"
+            : "/Resources/Bird Images/ptarmigan.png";
+          gyrfalconBirdImage.alt = gameState.gyrfalconReadyToCollect ? "Gyrfalcon" : "Rock Ptarmigan";
+
+          const gyrfalconStatus = document.createElement("p");
+          gyrfalconStatus.className = "loggerhead-request-line";
+          gyrfalconStatus.textContent = gameState.gyrfalconReadyToCollect
+            ? "Success: the Gyrfalcon is ready to join your flock"
+            : "Rock Ptarmigans in flock: " + formatLargeNumber(getBirdCountById(gameState, "ptarmigan"));
+
+          const gyrfalconActionButton = document.createElement("button");
+          gyrfalconActionButton.className = "menu-button";
+          gyrfalconActionButton.type = "button";
+          gyrfalconActionButton.dataset.requiresSuccess = "true";
+
+          if (gameState.gyrfalconReadyToCollect) {
+            gyrfalconActionButton.textContent = "Collect";
+          } else if (gameState.gyrfalconLastResult === "failure") {
+            gyrfalconActionButton.textContent = "No Luck, Try Again";
+          } else {
+            gyrfalconActionButton.textContent = "Release";
+          }
+
+          if (!gameState.gyrfalconReadyToCollect && getBirdCountById(gameState, "ptarmigan") < 1) {
+            gyrfalconActionButton.classList.add("is-locked");
+            gyrfalconActionButton.disabled = true;
+          }
+
+          gyrfalconActionButton.addEventListener("click", function () {
+            if (gameState.gyrfalconReadyToCollect) {
+              const gyrfalconBird = getBirdById(gameState, "gyrfalcon");
+              if (!gyrfalconBird) {
+                return;
+              }
+
+              addBirdToFlock(gameState, gyrfalconBird, { isCatch: true });
+              gameState.gyrfalconCompleted = true;
+              gameState.gyrfalconReadyToCollect = false;
+              gameState.gyrfalconLastResult = "";
+              activeTrapPanelMode = gameState.trapPurchased ? "trap" : "minimize";
+              playButtonSound();
+              saveGameState(gameState);
+              renderTopBar(topBar, gameState);
+              renderEarthworksNav();
+              renderDockyardNav();
+              renderActionPanels();
+              showCaughtBirdOverlay(gyrfalconBird);
+              return;
+            }
+
+            if (getBirdCountById(gameState, "ptarmigan") < 1) {
+              return;
+            }
+
+            removeBirdsFromFlock(gameState, "ptarmigan", 1);
+            const successChance = getGyrfalconSuccessChance();
+            gameState.gyrfalconReleaseCount += 1;
+
+            if (Math.random() < successChance) {
+              gameState.gyrfalconReadyToCollect = true;
+              gameState.gyrfalconLastResult = "success";
+            } else {
+              gameState.gyrfalconReadyToCollect = false;
+              gameState.gyrfalconLastResult = "failure";
+            }
+
+            playButtonSound();
+            saveGameState(gameState);
+            renderTopBar(topBar, gameState);
+            renderEarthworksNav();
+            renderDockyardNav();
+            renderActionPanels();
+          });
+
+          trapPanelContent.appendChild(gyrfalconNote);
+          trapPanelContent.appendChild(gyrfalconRateLine);
+          trapPanelContent.appendChild(gyrfalconBirdImage);
+          trapPanelContent.appendChild(gyrfalconStatus);
+          trapPanelContent.appendChild(gyrfalconActionButton);
+          return;
+        }
+
+        if (!gameState.trapPurchased) {
+          return;
+        }
+
+        // The note and image always reflect the trap's current step so the panel
+        // can swap between baiting, waiting, and resolution without separate views.
       const trapNote = document.createElement("p");
       trapNote.className = "panel-note";
       if (gameState.trapPulled) {
@@ -1042,6 +1372,10 @@
       } else {
         trapNote.textContent = "Your trap is ready to be baited";
       }
+
+      const trapSubtitle = document.createElement("p");
+      trapSubtitle.className = "panel-subtitle-small";
+      trapSubtitle.textContent = "Seed and grub bait cost scales with how many birds of that diet are in your flock";
 
       const trapImage = document.createElement("img");
       trapImage.className = "trap-image";
@@ -1066,6 +1400,7 @@
 
       trapPanelContent.appendChild(trapImage);
       trapPanelContent.appendChild(trapNote);
+      trapPanelContent.appendChild(trapSubtitle);
 
       if (gameState.trapPulled) {
         // A pulled trap only needs one action: resolve the catch against the
@@ -1089,7 +1424,12 @@
               });
               const alreadyOwned = birdInFlock.count > 0;
 
-              addBirdToFlock(birdInFlock);
+              addBirdToFlock(gameState, birdInFlock, { isCatch: true });
+              handleBirdCaughtFromTrap(gameState, birdInFlock, {
+                baitType: gameState.trapBaitType,
+                usedSeedTicket: gameState.trapUsedSeedTicket,
+                spentSeedCost: gameState.trapSpentSeedCost
+              });
 
               if (alreadyOwned) {
                 gameState.lastTrapResult = "You caught another " + caughtBird.species;
@@ -1105,6 +1445,8 @@
           gameState.trapLoaded = false;
           gameState.trapPulled = false;
           gameState.trapBaitType = null;
+          gameState.trapUsedSeedTicket = false;
+          gameState.trapSpentSeedCost = 0;
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
           renderEarthworksNav();
@@ -1136,6 +1478,8 @@
             gameState.trapLoaded = true;
             gameState.trapPulled = false;
             gameState.trapBaitType = "seeds";
+            gameState.trapUsedSeedTicket = true;
+            gameState.trapSpentSeedCost = 0;
             playButtonSound();
             saveGameState(gameState);
             renderTopBar(topBar, gameState);
@@ -1174,6 +1518,8 @@
           gameState.trapLoaded = true;
           gameState.trapPulled = false;
           gameState.trapBaitType = "seeds";
+          gameState.trapUsedSeedTicket = false;
+          gameState.trapSpentSeedCost = currentTrapSeedCost;
           playButtonSound();
           saveGameState(gameState);
           renderTopBar(topBar, gameState);
@@ -1220,6 +1566,8 @@
             gameState.trapLoaded = true;
             gameState.trapPulled = false;
             gameState.trapBaitType = "grubs";
+            gameState.trapUsedSeedTicket = false;
+            gameState.trapSpentSeedCost = 0;
             playButtonSound();
             saveGameState(gameState);
             renderTopBar(topBar, gameState);
@@ -1261,6 +1609,8 @@
             gameState.trapLoaded = true;
             gameState.trapPulled = false;
             gameState.trapBaitType = "fish";
+            gameState.trapUsedSeedTicket = false;
+            gameState.trapSpentSeedCost = 0;
             playButtonSound();
             saveGameState(gameState);
             renderTopBar(topBar, gameState);
@@ -1405,7 +1755,7 @@
             const birdInFlock = getBirdById(gameState, pendingMouseBird.id);
             const alreadyOwned = birdInFlock.count > 0;
 
-            addBirdToFlock(birdInFlock);
+            addBirdToFlock(gameState, birdInFlock, { isCatch: true });
             gameState.loggerheadMousePendingBirdId = null;
             gameState.loggerheadMouseLoaded = false;
             gameState.loggerheadMouseResult = "Awaiting offering";
@@ -1581,10 +1931,240 @@
       loggerheadPanelContent.appendChild(loggerheadSacrificeButton);
     }
 
+    function renderNatureProgramsPanel() {
+      if (!gameState.reintroductionUnlocked && getTotalBirdCount(gameState) >= 100) {
+        gameState.reintroductionUnlocked = true;
+        saveGameState(gameState);
+      }
+
+      natureProgramsPanelControls.innerHTML = "";
+      natureProgramsPanelContent.innerHTML = "";
+      natureProgramsPanelShell.classList.toggle("is-collapsed", activeNatureProgramsMode === "minimize");
+
+      natureProgramsPanelControls.appendChild(createPanelTabControl({
+        label: "Minimize",
+        isActive: activeNatureProgramsMode === "minimize",
+        isLocked: false,
+        onActivate: function () {
+          activeNatureProgramsMode = "minimize";
+          renderNatureProgramsPanel();
+        }
+      }));
+
+      natureProgramsPanelControls.appendChild(createPanelTabControl({
+        label: "Reintroduction",
+        isActive: activeNatureProgramsMode === "reintroduction",
+        isLocked: !isReintroductionUnlocked(),
+        tooltipText: "Unlocks at 100 Individuals",
+        onActivate: function () {
+          activeNatureProgramsMode = "reintroduction";
+          renderNatureProgramsPanel();
+        }
+      }));
+
+      natureProgramsPanelControls.appendChild(createPanelTabControl({
+        label: "Breeding Program",
+        isActive: activeNatureProgramsMode === "breedingProgram",
+        isLocked: true,
+        tooltipText: "Work in Progress",
+        onActivate: function () {
+          activeNatureProgramsMode = "breedingProgram";
+          renderNatureProgramsPanel();
+        }
+      }));
+
+      if (activeNatureProgramsMode === "minimize") {
+        return;
+      }
+
+      if (activeNatureProgramsMode === "reintroduction" && !isReintroductionUnlocked()) {
+        return;
+      }
+
+      const title = document.createElement("h3");
+      title.className = "panel-subtitle";
+      title.textContent = activeNatureProgramsMode === "reintroduction" ? "Reintroduction" : "Breeding Program";
+
+      if (activeNatureProgramsMode === "reintroduction") {
+        const subtitle = document.createElement("p");
+        subtitle.className = "panel-subtitle-small";
+        subtitle.textContent = "Release birds to reduce the cost of bait, earn Feathers, and collect Coin Tickets";
+
+        natureProgramsPanelContent.appendChild(title);
+        natureProgramsPanelContent.appendChild(subtitle);
+
+        const currentRequest = getCurrentReintroductionRequest();
+
+        if (!currentRequest) {
+          const completeNote = document.createElement("p");
+          completeNote.className = "panel-note";
+          completeNote.textContent = "No new quests for now";
+          natureProgramsPanelContent.appendChild(completeNote);
+          return;
+        }
+
+        if (gameState.reintroductionQuestIndex > 0 && !canStartNextReintroductionQuest()) {
+          const waitingNote = document.createElement("p");
+          waitingNote.className = "panel-note";
+          waitingNote.textContent = "Catch More Birds to Receive the Next Quest";
+          natureProgramsPanelContent.appendChild(waitingNote);
+          return;
+        }
+
+        const questTitle = document.createElement("h4");
+        questTitle.className = "reintroduction-quest-title";
+        questTitle.textContent = currentRequest.name;
+
+        const rewardLine = document.createElement("p");
+        rewardLine.className = "loggerhead-request-line";
+
+        if (currentRequest.rewardItems && typeof currentRequest.rewardItems === "object") {
+          const rewardParts = Object.keys(currentRequest.rewardItems).map(function (itemId) {
+            const itemDefinition = getItemById(itemId);
+            const rewardAmount = currentRequest.rewardItems[itemId];
+            return itemDefinition && rewardAmount > 0
+              ? (formatLargeNumber(rewardAmount) + " " + itemDefinition.name)
+              : null;
+          }).filter(Boolean);
+
+          if (rewardParts.length > 0) {
+            rewardLine.textContent = "Program Reward: " + rewardParts.join(" | ");
+          }
+        }
+
+        const birdGrid = document.createElement("div");
+        birdGrid.className = "reintroduction-bird-grid";
+        const availableCosts = currentRequest.costs.slice();
+
+        if (!availableCosts.some(function (costEntry) {
+          return costEntry.birdId === selectedReintroductionBirdId;
+        })) {
+          selectedReintroductionBirdId = availableCosts.length > 0 ? availableCosts[0].birdId : null;
+        }
+
+        const activePreviewBirdId = selectedReintroductionBirdId;
+
+        availableCosts.forEach(function (costEntry) {
+          const bird = getBirdById(gameState, costEntry.birdId);
+
+          if (!bird) {
+            return;
+          }
+
+          const birdCard = document.createElement("button");
+          birdCard.className = "reintroduction-bird-card";
+          birdCard.type = "button";
+
+          if (costEntry.birdId === selectedReintroductionBirdId) {
+            birdCard.classList.add("is-selected");
+          }
+
+          const birdImage = document.createElement("img");
+          birdImage.src = getBirdPrimaryImage(bird);
+          birdImage.alt = bird.species;
+
+          const birdName = document.createElement("p");
+          birdName.className = "reintroduction-bird-name";
+          birdName.textContent = bird.species;
+
+          const birdCount = document.createElement("p");
+          birdCount.className = "reintroduction-bird-count";
+          birdCount.textContent = "Release " + costEntry.amount;
+          const previewLines = getReintroductionPreviewLines(costEntry);
+          birdCard.title = "Release " + costEntry.amount + " " + bird.species + ": " + (previewLines.length > 0 ? previewLines.join(" | ") : "No passive output loss");
+
+          birdCard.addEventListener("click", function () {
+            selectedReintroductionBirdId = costEntry.birdId;
+            renderNatureProgramsPanel();
+          });
+
+          birdCard.appendChild(birdImage);
+          birdCard.appendChild(birdName);
+          birdCard.appendChild(birdCount);
+          birdGrid.appendChild(birdCard);
+        });
+
+        natureProgramsPanelContent.appendChild(questTitle);
+        if (rewardLine.textContent) {
+          natureProgramsPanelContent.appendChild(rewardLine);
+        }
+        natureProgramsPanelContent.appendChild(birdGrid);
+
+        if (activePreviewBirdId) {
+          const previewCostEntry = availableCosts.find(function (costEntry) {
+            return costEntry.birdId === activePreviewBirdId;
+          }) || null;
+
+          if (previewCostEntry) {
+            const previewBird = getBirdById(gameState, previewCostEntry.birdId);
+            const previewLines = getReintroductionPreviewLines(previewCostEntry);
+            const previewNote = document.createElement("p");
+            previewNote.className = "reintroduction-preview";
+            previewNote.textContent = previewBird
+              ? ("Release " + previewCostEntry.amount + " " + previewBird.species + ": " + (previewLines.length > 0 ? previewLines.join(" | ") : "No passive output loss"))
+              : "";
+            natureProgramsPanelContent.appendChild(previewNote);
+          }
+        }
+
+        if (selectedReintroductionBirdId) {
+          const selectedCostEntry = availableCosts.find(function (costEntry) {
+            return costEntry.birdId === selectedReintroductionBirdId;
+          }) || null;
+
+          if (selectedCostEntry) {
+            const sayGoodbyeButton = document.createElement("button");
+            sayGoodbyeButton.className = "menu-button";
+            sayGoodbyeButton.type = "button";
+            sayGoodbyeButton.dataset.requiresSuccess = "true";
+            sayGoodbyeButton.textContent = "Say Goodbye";
+
+            if (getBirdCountById(gameState, selectedCostEntry.birdId) < selectedCostEntry.amount) {
+              sayGoodbyeButton.classList.add("is-locked");
+            }
+
+            sayGoodbyeButton.addEventListener("click", function () {
+              if (getBirdCountById(gameState, selectedCostEntry.birdId) < selectedCostEntry.amount) {
+                return;
+              }
+
+              removeBirdsFromFlock(gameState, selectedCostEntry.birdId, selectedCostEntry.amount);
+              addReintroductionDietRelief(gameState, selectedCostEntry.birdId, selectedCostEntry.amount);
+              gameState.feathers = (Number.isFinite(gameState.feathers) ? gameState.feathers : 0) + selectedCostEntry.amount;
+
+              if (currentRequest.rewardItems && typeof currentRequest.rewardItems === "object") {
+                Object.keys(currentRequest.rewardItems).forEach(function (itemId) {
+                  addItemCount(gameState, itemId, currentRequest.rewardItems[itemId]);
+                });
+              }
+
+              gameState.reintroductionQuestIndex += 1;
+              selectedReintroductionBirdId = null;
+
+              playButtonSound();
+              saveGameState(gameState);
+              renderTopBar(topBar, gameState);
+              renderActionPanels();
+            });
+
+            natureProgramsPanelContent.appendChild(sayGoodbyeButton);
+          }
+        }
+        return;
+      } else {
+        const note = document.createElement("p");
+        note.className = "panel-note";
+        note.textContent = "Work in Progress";
+        natureProgramsPanelContent.appendChild(title);
+        natureProgramsPanelContent.appendChild(note);
+      }
+    }
+
     // Refresh both right-side action panels together after state changes.
     function renderActionPanels() {
       renderTrapPanel();
       renderLoggerheadPanel();
+      renderNatureProgramsPanel();
     }
 
     // Rebuild the left-side upgrade list from current save data.
@@ -1617,6 +2197,8 @@
           gameState.trapLoaded = false;
           gameState.trapPulled = false;
           gameState.trapBaitType = null;
+          gameState.trapUsedSeedTicket = false;
+          gameState.trapSpentSeedCost = 0;
           gameState.lastTrapResult = "";
           activeTrapPanelMode = "trap";
           playButtonSound();
@@ -1645,6 +2227,9 @@
       }));
       beddingRow.appendChild(createBeddingUpgradeButton({
         upgradeId: "advancedBedding"
+      }));
+      beddingRow.appendChild(createBeddingUpgradeButton({
+        upgradeId: "plushBedding"
       }));
 
       const divider = document.createElement("div");
