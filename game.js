@@ -1118,6 +1118,8 @@ function normalizeGameState(parsedGameState) {
   normalizedGameState.items = mergeItemCounts(normalizedGameState.items);
   normalizedGameState.upgrades = mergeUpgradeOwnership(normalizedGameState.upgrades, normalizedGameState);
   normalizedGameState.birds = mergeBirdProgress(normalizedGameState.birds);
+  normalizedGameState.trapLoadCost = GAME_STATE_DEFAULTS.trapLoadCost;
+  normalizedGameState.trapGrubLoadCost = GAME_STATE_DEFAULTS.trapGrubLoadCost;
   normalizedGameState.seedMax = Math.max(normalizedGameState.seedMax, GAME_STATE_DEFAULTS.seedMax);
   normalizedGameState.seedMax = Math.min(normalizedGameState.seedMax, 100000);
   normalizedGameState.coinMax = Math.min(normalizedGameState.coinMax, 1000000);
